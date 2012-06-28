@@ -80,7 +80,8 @@ Just put the files in the page folder and Íon will create the tags in your them
 
 ## Roadmap
 * Generate RSS feeds
-* Page listings
+* Page listings with parameters
+* Template fragments
 
 ## Help
 
