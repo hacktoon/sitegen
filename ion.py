@@ -18,8 +18,6 @@ import re
 import sys
 
 
-if sys.version_info.major < 3:
-    sys.exit('Zap! Ion requires Python 3!')
 
 # pre-configuration values
 CFG = {
@@ -221,7 +219,10 @@ def ion_spark(path):
 with a data.ion file.'.format(path))
 
 
-def main():
+if __name__ == '__main__':
+    if sys.version_info.major < 3:
+        sys.exit('Zap! Ion requires Python 3!')
+    
     load_config()
 
     help_message = '''Usage:
@@ -253,7 +254,3 @@ folder under the path specified and its subfolders, recursively.
     else:
         print('Zap! {0} is a very strange command!'.format(command))
         sys.exit(help_message)
-
-
-if __name__ == '__main__':
-    main()
