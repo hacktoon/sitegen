@@ -177,33 +177,28 @@ found!'.format(theme_filepath))
     html_file.close()
     print('\'{0}\' generated.'.format(html_filepath))
 
-def is_blocked(dirname):
-    '''Checks if the actual directory is blocked to generation'''
-    return dirname in CFG['blocked_dirs']
-
 def ion_charge(path):
     '''Reads recursively every directory under path and
     outputs HTML/JSON for each data.ion file'''
     for dirpath, subdirs, filenames in os.walk(path):
         #removing '.' of the path in the case of root directory of site
         dirpath = re.sub('^\.$|\.\/', '', dirpath)
-        source_filepath = os.path.join(dirpath, CFG['source_file'])
+        source_file = os.path.join(dirpath, CFG['source_file'])
         # tests for blocked directories or
         # directories that doesn't have a source file
-        if is_blocked(dirpath) or not os.path.exists(source_filepath):
+        if dirpath in CFG['blocked_dirs'] or not os.path.exists(source_file):
             continue
         # extracts data from this page
-        page_data = get_page_data(source_filepath)
+        page_data = get_page_data(source_file)
         # set common page data
         page_data['base_url'] = CFG['base_url']
         page_data['themes_url'] = CFG['themes_url']
-        permalink = os.path.join(CFG['base_url'], dirpath)
-        page_data['permalink'] = permalink
+        page_data['permalink'] = os.path.join(CFG['base_url'], dirpath)
         # get css and javascript found in the folder
         css = page_data.get('css', '')
-        page_data['css'] = build_style_tags(css, permalink)
+        page_data['css'] = build_style_tags(css, page_data['permalink'])
         js = page_data.get('js', '')
-        page_data['js'] = build_script_tags(js, permalink)
+        page_data['js'] = build_script_tags(js, page_data['permalink'])
         # output
         save_json(dirpath, page_data)
         save_html(dirpath, page_data)
