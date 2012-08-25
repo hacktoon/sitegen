@@ -121,13 +121,11 @@ def build_external_tags(filenames, permalink, tag, ext):
 
 def build_style_tags(filenames, permalink):
     tag = '<link rel="stylesheet" type="text/css" href="{0}" />\n'
-    ext = '.css'
-    return build_external_tags(filenames, permalink, tag, ext)
+    return build_external_tags(filenames, permalink, tag, '.css')
 
 def build_script_tags(filenames, permalink):
     tag = '<script src="{0}"></script>\n'
-    ext = '.js'
-    return build_external_tags(filenames, permalink, tag, ext)
+    return build_external_tags(filenames, permalink, tag, '.js')
 
 def get_page_data(source_path):
     '''Parses *.ion data files and returns the values'''
@@ -158,23 +156,20 @@ def save_json(dirname, page_data):
     json_file.close()
 
 def save_html(dirname, page_data):
-    html_filepath = os.path.join(dirname, 'index.html')
-    html_file = open(html_filepath, 'w')
+    theme_name = CFG['default_theme']
     # if not using custom theme, use default
-    themes_dir = CFG['themes_path']
     if 'theme' in page_data.keys():
-        name = page_data['theme']
-    else:
-        name = CFG['default_theme']
-    theme_filepath = '{0}/{1}/index.html'.format(themes_dir, name)
+        theme_name = page_data['theme']
+    theme_dir = os.path.join(CFG['themes_path'], theme_name)
+    theme_filepath = os.path.join(theme_dir, CFG['template_file'])
     if not os.path.exists(theme_filepath):
         sys.exit('Zap! Template file {0} couldn\'t be \
 found!'.format(theme_filepath))
     #abrindo arquivo de template e extraindo o html
-    theme_file = open(theme_filepath, 'r')
-    html = theme_file.read()
-    theme_file.close()
+    html = open(theme_filepath, 'r').read()
     # fill template with page data
+    html_filepath = os.path.join(dirname, 'index.html')
+    html_file = open(html_filepath, 'w')
     for key, value in page_data.items():
         regex = re.compile(r'\{\{\s*' + key + '\s*\}\}')
         html = re.sub(regex, value.strip(), html)
