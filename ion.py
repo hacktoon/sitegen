@@ -17,14 +17,27 @@ import json
 import re
 import sys
 
+# obey the rules
+if sys.version_info.major < 3:
+    sys.exit('Zap! Ion requires Python 3!')
 
-
-# pre-configuration values
-CFG = {
-    'system_dir': '_ion',
-    'source_file': 'data.ion',
-    'blocked_dirs': []
-}
+# model of RSS file for feed generation
+RSS_MODEL = '''
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0">
+<channel>
+    <title></title>
+    <link></link>
+    <pubDate></pubDate>
+    <description></description>
+    <item>
+        <title></title>
+        <link></link>
+        <description></description>
+    </item>
+</channel>
+</rss>
+'''
 
 # this is the model of files used to store content
 # it will be saved to a new file data.ion every
@@ -35,12 +48,34 @@ content:
 Write your content here
 '''
 
+# pre-configuration values
+CFG = {
+    'system_dirname': '_ion',
+    'base_url': 'http://localhost/',
+    'themes_dirname': 'themes',
+    'default_theme': 'ionize',
+    'template_file': 'index.html',
+    'source_file': 'data.ion',
+    'blocked_dirs': [],
+    'cache_file': 'cache',
+    'config_file': 'config.ion'
+}
+
+# initialize some config data
+# getcwd allows calling ion.py from wherever it is located in system
+# example return: /home/user/site/_ion
+CFG['system_path'] = os.path.join(os.getcwd(), CFG['system_dirname'])
+
+# returns the path of the custom config: /home/user/site/_ion/config.ion
+CFG['config_path'] = os.path.join(CFG['system_path'], CFG['config_file'])
+
+CFG['themes_path'] = os.path.join(CFG['system_path'], CFG['themes_dirname'])
 
 def parse_config_file(file_path):
     '''Parse a configuration file and returns data in a dictionary'''
-    config_file = open(file_path)
+    config_file = open(file_path).readlines()
     # remove trailing whitespaces and linebreaks
-    lines = [line.strip() for line in config_file.readlines()]
+    lines = [line.strip() for line in config_file]
     config = {}
     for line in lines:
         # avoid comments, empty and incorrect lines
@@ -48,41 +83,38 @@ def parse_config_file(file_path):
             continue
         key, value = line.split('=')
         config[key.strip()] = value.strip()
-    config_file.close()
     return config
-
 
 def load_config():
     '''Loads the config file in system folder'''
-    # getcwd allows calling ion.py from wherever it is located
-    system_dir = os.path.join(os.getcwd(), CFG['system_dir'])
-
-    if not os.path.exists(system_dir):
-        sys.exit('Zap! System folder "{0}" doesn\'t exists or couldn\'t be \
-read. It must be in the same directory that ion.py is \
-called.'.format(CFG['system_dir']))
+    if not os.path.exists(CFG['system_path']):
+        sys.exit('Zap! System folder "{0}" doesn\'t exists. It must \
+be in the same directory that ion.py is called.'.format(CFG['system_path']))
 
     try:
-        config = parse_config_file(os.path.join(system_dir, 'config.ion'))
+        config = parse_config_file(CFG['config_path'])
     except:
         sys.exit('Zap! Could not load configuration file!')
+    
+    # FIXME
+    #cache_file = os.path.join(CFG['system_path'], CFG['cache_file'])
+    #if not os.path.exists(cache_file):
+    #    cache_file = open(cache_file, 'w')
+    #CFG['cache_dir'] = 
+    
     # try to set a default value if it wasn't defined in config
-    base_url = config.get('base_url', 'http://localhost/')
+    # add a trailing slash, if necessary
+    CFG['base_url'] = os.path.join(config.get('base_url', CFG['base_url']), '')
     
-    # will add a trailing slash, if not informed
-    CFG['base_url'] = os.path.join(base_url, '')
-    CFG['themes_dir'] = os.path.join(CFG['system_dir'], 'themes')
-    
-    # a example theme path: '_ion/themes/ionize/index.html'
-    CFG['default_theme'] = config.get('default_theme', 'ionize')
+    # get default theme, if it is defined in config
+    CFG['default_theme'] = config.get('default_theme', CFG['default_theme'])
 
-    # folders you don't want Ion to access
+    # folders you don't want Ion to enter
     if 'blocked_dirs' in config:
         for folder in config.get('blocked_dirs'):
             CFG['blocked_dirs'].append(folder)
-    # adds the system dir by default
-    CFG['blocked_dirs'].append(CFG['system_dir'])
-
+    # adds the system path by default
+    CFG['blocked_dirs'].append(CFG['system_dirname'])
 
 def build_external_tags(files, permalink):
     '''Detects if there are CSS and Javascript files in current folder
@@ -99,13 +131,12 @@ def build_external_tags(files, permalink):
             scripts.append(script_tag.format(url))
     return {'styles': ''.join(styles), 'scripts':''.join(scripts)}
 
-
 def build_html(page_data):
     '''Returns the template content populated with page data'''
     # if not using custom theme, use default
-    themes_dir = CFG['themes_dir']
+    themes_dir = CFG['themes_path']
     if 'theme' in page_data.keys():
-            name = page_data['theme']
+        name = page_data['theme']
     else:
         name = CFG['default_theme']
     theme_filepath = '{0}/{1}/index.html'.format(themes_dir, name)
@@ -124,7 +155,6 @@ found!'.format(theme_filepath))
         regex = re.compile(r'\{\{\s*' + key + '\s*\}\}')
         html = re.sub(regex, value.strip(), html)
     return html
-
 
 def get_page_data(source_path):
     '''Parses *.ion data files and returns the values'''
@@ -149,13 +179,11 @@ def get_page_data(source_path):
     source_file.close()
     return page_data
 
-
 def save_json(dirname, page_data):
     json_filepath = os.path.join(dirname, 'index.json')
     json_file = open(json_filepath, 'w')
     json_file.write(json.dumps(page_data))
     json_file.close()
-
 
 def save_html(dirname, html):
     html_filepath = os.path.join(dirname, 'index.html')
@@ -164,11 +192,9 @@ def save_html(dirname, html):
     html_file.close()
     print('\'{0}\' generated.'.format(html_filepath.replace('./', '')))
 
-
 def is_blocked(dirname):
     '''Checks if the actual directory is blocked to generation'''
     return dirname.replace('./', '') in CFG['blocked_dirs']
-
 
 def ion_charge(path):
     '''Reads recursively every directory under path and
@@ -183,11 +209,10 @@ def ion_charge(path):
         page_data = get_page_data(source_filepath)
 
         # set common page data
-        base_url = CFG['base_url']
-        page_data['base_url'] = base_url
-        page_data['themes_url'] = base_url + CFG['themes_dir']
+        page_data['base_url'] = CFG['base_url']
+        page_data['themes_url'] = CFG['base_url'] + CFG['themes_path']
         #removing '.' of the path in the case of root directory of site
-        page_data['permalink'] = base_url + re.sub('^.$|\.\/', '', dirname)
+        page_data['permalink'] = CFG['base_url'] + re.sub('^\.$|\.\/', '', dirname)
         # get css and javascript found in the folder
         external_tags = build_external_tags(filenames, page_data['permalink'])
         page_data['styles'] = external_tags['styles']
@@ -198,7 +223,6 @@ def ion_charge(path):
 
         # fills template with page data and saves a html file
         save_html(dirname, build_html(page_data))
-
 
 def ion_spark(path):
     '''Creates a new page in specified path'''
@@ -220,17 +244,13 @@ with a data.ion file.'.format(path))
 
 
 if __name__ == '__main__':
-    if sys.version_info.major < 3:
-        sys.exit('Zap! Ion requires Python 3!')
-    
-    load_config()
-
     help_message = '''Usage:
-    ion.py spark [path/to/folder] - Creates a empty page os path specified.
+    ion.py spark [path/to/folder] - Creates a empty page on path specified.
     ion.py charge [path/to/folder] - Generates HTML/JSON files of each \
 folder under the path specified and its subfolders, recursively.
     ion.py help - Shows this help message.
     '''
+    load_config()
 
     # first parameter - command
     try:
