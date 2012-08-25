@@ -110,20 +110,24 @@ be in the same directory that ion.py is called.'.format(CFG['system_path']))
     for folder in blocked.split(','):
         CFG['blocked_dirs'].append(folder.strip())
 
-def build_external_tags(files, permalink):
-    '''Detects if there are CSS and Javascript files in current folder
-    and returns concatenated link/script tags for each one'''
-    styles = []
-    scripts = []
-    link_tag = '<link rel="stylesheet" type="text/css" href="{0}" />\n'
-    script_tag = '<script src="{0}"></script>\n'
-    for filename in files:
+def build_external_tags(filenames, permalink, tag, ext):
+    tag_list = []
+    for filename in filenames.split(','):
+        filename = filename.strip()
         url = os.path.join(permalink, filename)
-        if filename.endswith('.css'):
-            styles.append(link_tag.format(url))
-        elif filename.endswith('.js'):
-            scripts.append(script_tag.format(url))
-    return {'styles': ''.join(styles), 'scripts':''.join(scripts)}
+        if filename.endswith(ext):
+            tag_list.append(tag.format(url))
+    return ''.join(tag_list)
+
+def build_style_tags(filenames, permalink):
+    tag = '<link rel="stylesheet" type="text/css" href="{0}" />\n'
+    ext = '.css'
+    return build_external_tags(filenames, permalink, tag, ext)
+
+def build_script_tags(filenames, permalink):
+    tag = '<script src="{0}"></script>\n'
+    ext = '.js'
+    return build_external_tags(filenames, permalink, tag, ext)
 
 def get_page_data(source_path):
     '''Parses *.ion data files and returns the values'''
@@ -163,23 +167,20 @@ def save_html(dirname, page_data):
     else:
         name = CFG['default_theme']
     theme_filepath = '{0}/{1}/index.html'.format(themes_dir, name)
-
     if not os.path.exists(theme_filepath):
         sys.exit('Zap! Template file {0} couldn\'t be \
 found!'.format(theme_filepath))
-
     #abrindo arquivo de template e extraindo o html
     theme_file = open(theme_filepath, 'r')
     html = theme_file.read()
     theme_file.close()
-
     # fill template with page data
     for key, value in page_data.items():
         regex = re.compile(r'\{\{\s*' + key + '\s*\}\}')
         html = re.sub(regex, value.strip(), html)
     html_file.write(html)
     html_file.close()
-    print('\'{0}\' generated.'.format(html_filepath.replace('./', '')))
+    print('\'{0}\' generated.'.format(html_filepath))
 
 def is_blocked(dirname):
     '''Checks if the actual directory is blocked to generation'''
@@ -201,11 +202,14 @@ def ion_charge(path):
         # set common page data
         page_data['base_url'] = CFG['base_url']
         page_data['themes_url'] = CFG['themes_url']
-        page_data['permalink'] = os.path.join(CFG['base_url'], dirpath)
+        permalink = os.path.join(CFG['base_url'], dirpath)
+        page_data['permalink'] = permalink
         # get css and javascript found in the folder
-        external_tags = build_external_tags(filenames, page_data['permalink'])
-        page_data['styles'] = external_tags['styles']
-        page_data['scripts'] = external_tags['scripts']
+        css = page_data.get('css', '')
+        page_data['css'] = build_style_tags(css, permalink)
+        js = page_data.get('js', '')
+        page_data['js'] = build_script_tags(js, permalink)
+        # output
         save_json(dirpath, page_data)
         save_html(dirpath, page_data)
 
