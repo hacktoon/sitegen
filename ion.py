@@ -26,18 +26,32 @@ RSS_MODEL = '''
 <?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0">
 <channel>
-    <title></title>
-    <link></link>
-    <pubDate></pubDate>
-    <description></description>
-    <item>
-        <title></title>
-        <link></link>
-        <description></description>
-    </item>
+    <title>{{title}}</title>
+    <link>{{link}}</link>
+    <pubDate>{{pubdate}}</pubDate>
+    <description>{{description}}</description>
+    {{item}}
 </channel>
 </rss>
 '''
+
+RSS_ITEM_MODEL = '''
+    <item>
+        <title>{{item_title}}</title>
+        <link>{{item_link}}</link>
+        <description>{{item_description}}</description>
+    </item>
+'''
+
+CONFIG_MODEL = '''
+# base_url must have a trailing slash
+base_url = http://localhost/
+# theme used by default if a custom theme is not provided in data files
+default_theme = ionize
+# directories Ion should not enter, comma separated
+blocked_dirs = com, mydir, teste
+'''
+
 
 # this is the model of files used to store content
 # it will be saved to a new file data.ion every
@@ -50,26 +64,17 @@ Write your content here
 
 # pre-configuration values
 CFG = {
-    'system_dirname': '_ion',
+    'system_dir': '_ion',
     'base_url': 'http://localhost/',
-    'themes_dirname': 'themes',
-    'default_theme': 'ionize',
+    'themes_dir': 'themes',
+    'meta_dir': 'meta',
     'blocked_dirs': [],
     'template_file': 'index.html',
-    'cache_file': 'cache.ion',
     'source_file': 'data.ion',
-    'config_file': 'config.ion'
+    'config_file': 'config.ion',
+    'pagelist_file': 'pagelist',
+    'default_theme': 'ionize',
 }
-
-# initialize some config data
-# getcwd allows calling ion.py from wherever it is located in system
-# example return: /home/user/site/_ion
-CFG['system_path'] = os.path.join(os.getcwd(), CFG['system_dirname'])
-# returns the path of the custom config: /home/user/site/_ion/config.ion
-CFG['config_path'] = os.path.join(CFG['system_path'], CFG['config_file'])
-CFG['themes_path'] = os.path.join(CFG['system_path'], CFG['themes_dirname'])
-CFG['cache_path'] = os.path.join(CFG['system_path'], CFG['config_file'])
-CFG['themes_url'] = os.path.join(CFG['base_url'], CFG['system_dirname'], CFG['themes_dirname'])
 
 def parse_config_file(file_path):
     '''Parse a configuration file and returns data in a dictionary'''
@@ -85,20 +90,33 @@ def parse_config_file(file_path):
         config[key.strip()] = value.strip()
     return config
 
+def build_config():
+    """Initializes config folder data"""
+    CFG['system_path'] = os.path.join(os.getcwd(), CFG['system_dir'])
+    CFG['config_path'] = os.path.join(CFG['system_path'], CFG['config_file'])
+    CFG['themes_path'] = os.path.join(CFG['system_path'], CFG['themes_dir'])
+    CFG['meta_path'] = os.path.join(CFG['system_path'], CFG['meta_dir'])
+    CFG['themes_url'] = os.path.join(CFG['base_url'], CFG['system_dir'], CFG['themes_dir'])
+    CFG['pagelist_path'] = os.path.join(CFG['meta_path'], CFG['pagelist_file'])
+    # Creates system folder
+    if not os.path.exists(CFG['system_path']):
+        print('Creating system folder {0}...'.format(CFG['system_path']))
+        os.makedirs(CFG['system_path'])
+    # Creates config file
+    if not os.path.exists(CFG['config_path']):
+        print('Generating config file {0}...'.format(CFG['config_path']))
+        open(CFG['config_path'], 'w').write(CONFIG_MODEL)
+    # Create meta folder to keep cache files
+    if not os.path.exists(CFG['meta_path']):
+        os.makedirs(CFG['meta_path'])
+    # Recent pages meta file
+    if not os.path.exists(CFG['pagelist_path']):
+        open(CFG['pagelist_path'], 'w').write('')
+
 def load_config():
     '''Loads the config file in system folder'''
-    if not os.path.exists(CFG['system_path']):
-        sys.exit('Zap! System folder "{0}" doesn\'t exists. It must \
-be in the same directory that ion.py is called.'.format(CFG['system_path']))
-    try:
-        config = parse_config_file(CFG['config_path'])
-    except:
-        sys.exit('Zap! Could not load configuration file!')
-    
-    # FIXME
-    #cache_file = os.path.join(CFG['system_path'], CFG['cache_file'])
-    #if not os.path.exists(cache_file):
-    #    cache_file = open(cache_file, 'w')
+    build_config()
+    config = parse_config_file(CFG['config_path'])
     # try to set a default value if it wasn't defined in config
     # add a trailing slash, if necessary
     CFG['base_url'] = os.path.join(config.get('base_url', CFG['base_url']), '')
@@ -106,9 +124,17 @@ be in the same directory that ion.py is called.'.format(CFG['system_path']))
     CFG['default_theme'] = config.get('default_theme', CFG['default_theme'])
     # folders you don't want Ion to enter
     # returns the system path by default
-    blocked = config.get('blocked_dirs', CFG['system_dirname'])
+    blocked = config.get('blocked_dirs', CFG['system_dir'])
     for folder in blocked.split(','):
         CFG['blocked_dirs'].append(folder.strip())
+
+def update_pagelist(pagedir, all=False):
+    '''Updates meta file containing list of all pages created'''
+    pages = open(CFG['pagelist_path'], 'r').readlines()
+    pages_file = open(CFG['pagelist_path'], 'w')
+    pages.insert(0, pagedir + '\n')
+    pages_file.writelines(pages)
+    pages_file.close()
 
 def build_external_tags(filenames, permalink, tag, ext):
     tag_list = []
@@ -218,6 +244,7 @@ with a data.ion file.'.format(path))
         data_file.close()
         print('Page \'{0}\' successfully created.'.format(path))
         print('Edit the file {0} and call \'ion charge\'!'.format(filepath))
+    update_pagelist(path)
 
 
 if __name__ == '__main__':
