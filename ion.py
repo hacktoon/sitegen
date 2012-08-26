@@ -64,7 +64,7 @@ Write your content here
 
 # pre-configuration values
 CFG = {
-    'system_dir': '_ion',
+    'system_dir': '.ion',
     'base_url': 'http://localhost/',
     'themes_dir': 'themes',
     'meta_dir': 'meta',
