@@ -26,7 +26,8 @@ TEMPLATE_MODEL = '''<!DOCTYPE html>
 <html>
     <head>
         <meta charset="UTF-8" />
-        <link rel="stylesheet" href="{{themes_url}}/ionize/main.css" type="text/css" />
+        <link rel="stylesheet" href="{{theme_url}}main.css" type="text/css" />
+        <link rel="stylesheet" href="{{themes_url}}bolt/main.css" type="text/css" />
         {{css}}
         <title>{{title}}</title>
     </head>
@@ -66,7 +67,7 @@ RSS_ITEM_MODEL = '''<item>
 CONFIG_MODEL = '''# base_url must have a trailing slash
 base_url = http://localhost/
 # theme used by default if a custom theme is not provided in data files
-default_theme = ionize
+default_theme = bolt
 # directories Ion should not enter, comma separated
 blocked_dirs = com, mydir, teste
 '''
@@ -83,7 +84,7 @@ Write your content here
 
 # pre-configuration values
 CFG = {
-    'system_dir': '.ion',
+    'system_dir': '_ion',
     'base_url': 'http://localhost/',
     'themes_dir': 'themes',
     'meta_dir': 'meta',
@@ -116,7 +117,8 @@ def build_config():
     CFG['themes_path'] = os.path.join(CFG['system_path'], CFG['themes_dir'])
     CFG['default_theme_path'] = os.path.join(CFG['themes_path'], CFG['default_theme'])
     CFG['default_template_path'] = os.path.join(CFG['default_theme_path'], CFG['template_file'])
-    CFG['themes_url'] = os.path.join(CFG['base_url'], CFG['system_dir'], CFG['themes_dir'])
+    # adds an end slash to url if not provided
+    CFG['themes_url'] = os.path.join(CFG['base_url'], CFG['system_dir'], CFG['themes_dir'], '')
     CFG['meta_path'] = os.path.join(CFG['system_path'], CFG['meta_dir'])
     CFG['pagelist_path'] = os.path.join(CFG['meta_path'], CFG['pagelist_file'])
     # Creates system folder
@@ -213,11 +215,7 @@ def save_json(dirname, page_data):
     json_file.close()
 
 def save_html(dirname, page_data):
-    theme_name = CFG['default_theme']
-    # if not using custom theme, use default
-    if 'theme' in page_data.keys():
-        theme_name = page_data['theme']
-    theme_dir = os.path.join(CFG['themes_path'], theme_name)
+    theme_dir = os.path.join(CFG['themes_path'], page_data['theme'])
     theme_filepath = os.path.join(theme_dir, CFG['template_file'])
     if not os.path.exists(theme_filepath):
         sys.exit('Zap! Template file {0} couldn\'t be \
@@ -250,6 +248,11 @@ def ion_charge(path):
         # set common page data
         page_data['base_url'] = CFG['base_url']
         page_data['themes_url'] = CFG['themes_url']
+        # if not using custom theme, use default
+        if 'theme' not in page_data.keys():
+            page_data['theme'] = CFG['default_theme']
+        # adds an end slash to url
+        page_data['theme_url'] = os.path.join(CFG['themes_url'], page_data['theme'], '')
         page_data['permalink'] = os.path.join(CFG['base_url'], dirpath)
         # get css and javascript found in the folder
         css = page_data.get('css', '')
