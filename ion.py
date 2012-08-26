@@ -21,9 +21,30 @@ import sys
 if sys.version_info.major < 3:
     sys.exit('Zap! Ion requires Python 3!')
 
+# default template with all basic template variables
+TEMPLATE_MODEL = '''<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8" />
+        <link rel="stylesheet" href="{{themes_url}}/ionize/main.css" type="text/css" />
+        {{css}}
+        <title>{{title}}</title>
+    </head>
+    <body>
+        <h1><a href="{{permalink}}">Ionize</a></h1>
+        <ul>
+            <li><a href="{{base_url}}home">Home</a></li>
+        </ul>
+        <h2>{{title}}</h2>
+        <span>{{date}}</span>
+        <p>{{content}}</p>
+        {{js}}
+    </body>
+</html>
+'''
+
 # model of RSS file for feed generation
-RSS_MODEL = '''
-<?xml version="1.0" encoding="utf-8"?>
+RSS_MODEL = '''<?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0">
 <channel>
     <title>{{title}}</title>
@@ -34,17 +55,15 @@ RSS_MODEL = '''
 </channel>
 </rss>
 '''
-
-RSS_ITEM_MODEL = '''
-    <item>
-        <title>{{item_title}}</title>
-        <link>{{item_link}}</link>
-        <description>{{item_description}}</description>
-    </item>
+RSS_ITEM_MODEL = '''<item>
+    <title>{{item_title}}</title>
+    <link>{{item_link}}</link>
+    <description>{{item_description}}</description>
+</item>
 '''
 
-CONFIG_MODEL = '''
-# base_url must have a trailing slash
+# default configuration file
+CONFIG_MODEL = '''# base_url must have a trailing slash
 base_url = http://localhost/
 # theme used by default if a custom theme is not provided in data files
 default_theme = ionize
@@ -73,7 +92,7 @@ CFG = {
     'source_file': 'data.ion',
     'config_file': 'config.ion',
     'pagelist_file': 'pagelist',
-    'default_theme': 'ionize',
+    'default_theme': 'bolt',
 }
 
 def parse_config_file(file_path):
@@ -95,17 +114,29 @@ def build_config():
     CFG['system_path'] = os.path.join(os.getcwd(), CFG['system_dir'])
     CFG['config_path'] = os.path.join(CFG['system_path'], CFG['config_file'])
     CFG['themes_path'] = os.path.join(CFG['system_path'], CFG['themes_dir'])
-    CFG['meta_path'] = os.path.join(CFG['system_path'], CFG['meta_dir'])
+    CFG['default_theme_path'] = os.path.join(CFG['themes_path'], CFG['default_theme'])
+    CFG['default_template_path'] = os.path.join(CFG['default_theme_path'], CFG['template_file'])
     CFG['themes_url'] = os.path.join(CFG['base_url'], CFG['system_dir'], CFG['themes_dir'])
+    CFG['meta_path'] = os.path.join(CFG['system_path'], CFG['meta_dir'])
     CFG['pagelist_path'] = os.path.join(CFG['meta_path'], CFG['pagelist_file'])
     # Creates system folder
     if not os.path.exists(CFG['system_path']):
-        print('Creating system folder {0}...'.format(CFG['system_path']))
+        print('Generating system folder {0}...'.format(CFG['system_path']))
         os.makedirs(CFG['system_path'])
     # Creates config file
     if not os.path.exists(CFG['config_path']):
         print('Generating config file {0}...'.format(CFG['config_path']))
         open(CFG['config_path'], 'w').write(CONFIG_MODEL)
+    # Creating themes directory
+    if not os.path.exists(CFG['themes_path']):
+        os.makedirs(CFG['themes_path'])
+    # Creating default theme directory
+    if not os.path.exists(CFG['default_theme_path']):
+        print('Generating default theme {0}...'.format(CFG['default_theme_path']))
+        os.makedirs(CFG['default_theme_path'])
+    # Creating default template file
+    if not os.path.exists(CFG['default_template_path']):
+        open(CFG['default_template_path'], 'w').write(TEMPLATE_MODEL)
     # Create meta folder to keep cache files
     if not os.path.exists(CFG['meta_path']):
         os.makedirs(CFG['meta_path'])
