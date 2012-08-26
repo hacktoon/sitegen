@@ -225,6 +225,8 @@ def ion_charge(path):
         page_data['css'] = build_style_tags(css, page_data['permalink'])
         js = page_data.get('js', '')
         page_data['js'] = build_script_tags(js, page_data['permalink'])
+        # saves data to file listing all pages created
+        update_pagelist(dirpath, page_data)
         # output
         save_json(dirpath, page_data)
         save_html(dirpath, page_data)
@@ -244,7 +246,6 @@ with a data.ion file.'.format(path))
         data_file.close()
         print('Page \'{0}\' successfully created.'.format(path))
         print('Edit the file {0} and call \'ion charge\'!'.format(filepath))
-    update_pagelist(path)
 
 
 if __name__ == '__main__':
