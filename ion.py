@@ -72,13 +72,12 @@ default_theme = bolt
 blocked_dirs = com, mydir, teste
 '''
 
-
 # this is the model of files used to store content
 # it will be saved to a new file data.ion every
 # time 'ion spark' is called
-DATA_MODEL = '''title: Write your title here
-date: yyyy-mm-dd
-content:
+DATA_MODEL = '''title = Write your title here
+date = yyyy-mm-dd
+content
 Write your content here
 '''
 
@@ -96,19 +95,31 @@ CFG = {
     'default_theme': 'bolt',
 }
 
-def parse_config_file(file_path):
-    '''Parse a configuration file and returns data in a dictionary'''
-    config_file = open(file_path).readlines()
-    # remove trailing whitespaces and linebreaks
-    lines = [line.strip() for line in config_file]
-    config = {}
-    for line in lines:
-        # avoid comments, empty and incorrect lines
-        if line.startswith('#') or not len(line) or '=' not in line:
+def parse_ion_file(source_path):
+    '''Parses *.ion data files and returns a dictionary'''
+    source_file = open(source_path, 'r')
+    page_data = {}
+    while True:
+        line = source_file.readline().strip()
+        if line.startswith('#'):
             continue
-        key, value = line.split('=')
-        config[key.strip()] = value.strip()
-    return config
+        # if reached end of file, exit loop
+        if len(line) == 0:
+            break
+        if(line == 'content'):
+            # read the rest of the file
+            key = line
+            value = source_file.read()
+        else:
+            # will avoid splitting blank lines
+            try:
+                key, value = list(map(str.strip, line.split('=')))
+            except:
+                continue
+        #setting values
+        page_data[key] = value
+    source_file.close()
+    return page_data
 
 def build_config():
     """Initializes config folder data"""
@@ -149,7 +160,7 @@ def build_config():
 def load_config():
     '''Loads the config file in system folder'''
     build_config()
-    config = parse_config_file(CFG['config_path'])
+    config = parse_ion_file(CFG['config_path'])
     # try to set a default value if it wasn't defined in config
     # add a trailing slash, if necessary
     CFG['base_url'] = os.path.join(config.get('base_url', CFG['base_url']), '')
@@ -185,28 +196,6 @@ def build_style_tags(filenames, permalink):
 def build_script_tags(filenames, permalink):
     tag = '<script src="{0}"></script>\n'
     return build_external_tags(filenames, permalink, tag, '.js')
-
-def get_page_data(source_path):
-    '''Parses *.ion data files and returns the values'''
-    source_file = open(source_path, 'r')
-    page_data = {}
-    while True:
-        line = source_file.readline()
-        # if reached end of file, exit loop
-        if len(line) == 0:
-            break
-        # will avoid splitting blank lines
-        try:
-            key, value = list(map(str.strip, line.split(':')))
-        except:
-            continue
-        # read the rest of the file
-        if(key == 'content'):
-            value = value + source_file.read()
-        #setting values
-        page_data[key] = value
-    source_file.close()
-    return page_data
 
 def save_json(dirname, page_data):
     json_filepath = os.path.join(dirname, 'index.json')
@@ -244,7 +233,7 @@ def ion_charge(path):
         if dirpath in CFG['blocked_dirs'] or not os.path.exists(source_file):
             continue
         # extracts data from this page
-        page_data = get_page_data(source_file)
+        page_data = parse_ion_file(source_file)
         # set common page data
         page_data['base_url'] = CFG['base_url']
         page_data['themes_url'] = CFG['themes_url']
