@@ -1,4 +1,3 @@
-
 # Íon - Shocking simple static (site) generator
 
 ## About
@@ -57,6 +56,8 @@ You can add new themes to **_ion/themes**, create and use optional variables wit
 
     title: My first post
     theme: mytheme
+    css: main.css, print.css
+    js: jquery.js, plugin.js
     date: 2012/05/20
     content:
     My page content
@@ -70,9 +71,6 @@ In theme file:
     {{author}}
 
 New themes must obey the same file structure of the default theme.
-
-### Javascript/CSS automatic detection
-Just put the files in the page folder and Íon will create the tags in your theme.
 
 ### And another thing...
 * All page content stay in its own folder - so each page is independent.
