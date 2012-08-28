@@ -40,9 +40,9 @@ If you're not in the site root, you have to pass a path as second parameter:
 
 This will create a *data.ion* model file. You're ready to start adding your own content:
 
-    title: My first post
-    date: 2012/05/20
-    content:
+    title = My first post
+    date = 2012/05/20
+    content
     My page content
 
 Now run the *charge* command:
@@ -54,17 +54,17 @@ This will create a HTML and a JSON file in the folder you specified. Done!
 ### Theming and page variables.
 You can add new themes to **_ion/themes**, create and use optional variables without having to edit all your previous *.ion* files. If you want a page to use a specific theme, just add the definition in *data.ion*:
 
-    title: My first post
-    theme: mytheme
-    css: main.css, print.css
-    js: jquery.js, plugin.js
-    date: 2012/05/20
-    content:
+    title = My first post
+    theme = mytheme
+    css = main.css, print.css
+    js = jquery.js, plugin.js
+    date = 2012/05/20
+    content
     My page content
 
 Defining new variables is as simple as that. Just add any new definition to your *data.ion* and make the theme render it:
 
-    author: Bob
+    author = Bob
 
 In theme file:
 
