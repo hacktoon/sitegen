@@ -16,12 +16,10 @@ And the disadvantages:
 So, static site generators are systems you can use for specific cases.
 
 ## Quickstart
+You only need Python 3 to run Íon.
 
-### Install Íon
-Íon comes with a **_ion** folder and a Python **ion.py** script. 
-Put these files in a new directory in your web root. If you want to create more than one site, move **ion.py** out of the directory created and put it in system PATH. Regardless of its location, **ion.py** must be run in the root folder of your site (i.e. the same where the folder **_ion** is).
-
-You need Python 3 to run Íon.
+### How to install
+Call **ion.py** in a directory in your web root. It will create the basic configuration to run your site.
 
 ### Configure
 Open the *config.ini* in **_ion** folder and define your settings.
@@ -34,14 +32,14 @@ Just run the *spark* command in the site root folder to create a new page:
 
     python3 ion.py spark
     
-If you're not in the site root, you have to pass a path as second parameter:
+If you want create a different page, you have to pass a path as second parameter:
 
     python3 ion.py spark path/to/folder
 
 This will create a *data.ion* model file. You're ready to start adding your own content:
 
     title = My first post
-    date = 2012/05/20
+    date = 2012-05-20
     content
     My page content
 
@@ -56,17 +54,17 @@ You can add new themes to **_ion/themes**, create and use optional variables wit
 
     title = My first post
     theme = mytheme
-    css = main.css, print.css
-    js = jquery.js, plugin.js
+    css = main.css
+    js = jquery.js, site.js
     date = 2012/05/20
     content
     My page content
 
-Defining new variables is as simple as that. Just add any new definition to your *data.ion* and make the theme render it:
+Defining new variables is as simple as that. Just add any new definition to your *data.ion*...
 
     author = Bob
 
-In theme file:
+... and get its value in the template:
 
     {{author}}
 
