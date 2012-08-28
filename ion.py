@@ -172,13 +172,9 @@ def load_config():
     for folder in blocked.split(','):
         CFG['blocked_dirs'].append(folder.strip())
 
-def update_pagelist(pagedir, all=False):
+def update_pagelist(path):
     '''Updates meta file containing list of all pages created'''
-    pages = open(CFG['pagelist_path'], 'r').readlines()
-    pages_file = open(CFG['pagelist_path'], 'w')
-    pages.insert(0, pagedir + '\n')
-    pages_file.writelines(pages)
-    pages_file.close()
+    open(CFG['pagelist_path'], 'a').write(path + '\n')
 
 def build_external_tags(filenames, permalink, tag, ext):
     tag_list = []
@@ -248,8 +244,6 @@ def ion_charge(path):
         page_data['css'] = build_style_tags(css, page_data['permalink'])
         js = page_data.get('js', '')
         page_data['js'] = build_script_tags(js, page_data['permalink'])
-        # saves data to file listing all pages created
-        update_pagelist(dirpath, page_data)
         # output
         save_json(dirpath, page_data)
         save_html(dirpath, page_data)
@@ -267,6 +261,8 @@ with a data.ion file.'.format(path))
         data_file = open(filepath, 'w')
         data_file.write(DATA_MODEL)
         data_file.close()
+        # saves data to file listing all pages created
+        update_pagelist(path)
         print('Page \'{0}\' successfully created.'.format(path))
         print('Edit the file {0} and call \'ion charge\'!'.format(filepath))
 
