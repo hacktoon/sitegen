@@ -75,7 +75,7 @@ blocked_dirs = com, mydir, teste
 
 # this is the model of files used to store content
 # it will be saved to a new file data.ion every
-# time 'ion spark' is called
+# time 'ion plug' is called
 DATA_MODEL = '''title = Write your title here
 date = {0}
 content
@@ -250,7 +250,7 @@ def ion_charge(path):
         save_json(dirpath, page_data)
         save_html(dirpath, page_data)
 
-def ion_spark(path):
+def ion_plug(path):
     '''Creates a new page in specified path'''
     if not os.path.exists(path):
         os.makedirs(path)
@@ -272,7 +272,7 @@ with a data.ion file.'.format(path))
 
 if __name__ == '__main__':
     help_message = '''Usage:
-    ion.py spark [path/to/folder] - Creates a empty page on path specified.
+    ion.py plug [path/to/folder] - Creates a empty page on path specified.
     ion.py charge [path/to/folder] - Generates HTML/JSON files of each \
 folder under the path specified and its subfolders, recursively.
     ion.py help - Shows this help message.
@@ -292,8 +292,8 @@ folder under the path specified and its subfolders, recursively.
     except IndexError:
         path = '.'
 
-    if command == 'spark':
-        ion_spark(path)
+    if command == 'plug':
+        ion_plug(path)
     elif command == 'charge':
         ion_charge(path)
     elif command == 'help':
