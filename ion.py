@@ -175,6 +175,8 @@ def load_config():
 
 def update_pagelist(path, date):
     '''Updates meta file containing list of all pages created'''
+    if path == '.':
+        return
     pageline = '{0} {1}\n'.format(path, date)
     open(CFG['pagelist_path'], 'a').write(pageline)
 
