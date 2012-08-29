@@ -16,6 +16,7 @@ import os
 import json
 import re
 import sys
+from datetime import datetime
 
 # obey the rules
 if sys.version_info.major < 3:
@@ -76,7 +77,7 @@ blocked_dirs = com, mydir, teste
 # it will be saved to a new file data.ion every
 # time 'ion spark' is called
 DATA_MODEL = '''title = Write your title here
-date = yyyy-mm-dd
+date = {0}
 content
 Write your content here
 '''
@@ -172,9 +173,10 @@ def load_config():
     for folder in blocked.split(','):
         CFG['blocked_dirs'].append(folder.strip())
 
-def update_pagelist(path):
+def update_pagelist(path, date):
     '''Updates meta file containing list of all pages created'''
-    open(CFG['pagelist_path'], 'a').write(path + '\n')
+    pageline = '{0} {1}\n'.format(path, date)
+    open(CFG['pagelist_path'], 'a').write(pageline)
 
 def build_external_tags(filenames, permalink, tag, ext):
     tag_list = []
@@ -257,12 +259,13 @@ def ion_spark(path):
         print('Zap! Page \'{0}\' already exists \
 with a data.ion file.'.format(path))
     else:
+        date = datetime.now().strftime('%Y-%m-%d')
         # copy source file to new path
         data_file = open(filepath, 'w')
-        data_file.write(DATA_MODEL)
+        data_file.write(DATA_MODEL.format(date))
         data_file.close()
         # saves data to file listing all pages created
-        update_pagelist(path)
+        update_pagelist(path, date)
         print('Page \'{0}\' successfully created.'.format(path))
         print('Edit the file {0} and call \'ion charge\'!'.format(filepath))
 
