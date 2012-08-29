@@ -23,18 +23,18 @@ Call **ion.py** in a directory in your web root. It will create the basic config
 
 ### Configure
 Open the *config.ini* in **_ion** folder and define your settings.
-* **base_url** - Will be used by for absolute linking.
+* **base_url** - Will be used for absolute linking.
 * **default_theme** - If a custom theme is not provided for a page, this theme will be used.
 * **blocked_dirs** - The directories you don't want Íon to read.
 
 ### Create your first page
-Just run the *spark* command in the site root folder to create a new page:
+Just run the *plug* command in the site root folder to create a new page:
 
-    python3 ion.py spark
+    python3 ion.py plug
     
 If you want create a different page, you have to pass a path as second parameter:
 
-    python3 ion.py spark path/to/folder
+    python3 ion.py plug path/to/folder
 
 This will create a *data.ion* model file. You're ready to start adding your own content:
 
@@ -56,7 +56,7 @@ You can add new themes to **_ion/themes**, create and use optional variables wit
     theme = mytheme
     css = main.css
     js = jquery.js, site.js
-    date = 2012/05/20
+    date = 2012-05-20
     content
     My page content
 
@@ -81,5 +81,5 @@ New themes must obey the same file structure of the default theme.
 
 ## Help
 
-* ion.py **spark** *[path/to/folder]* - Creates an empty page on path specified.
+* ion.py **plug** *[path/to/folder]* - Creates an empty page on path specified.
 * ion.py **charge** *[path/to/folder]* - Generates HTML/JSON files of each folder under the path specified and its subfolders, recursively.
