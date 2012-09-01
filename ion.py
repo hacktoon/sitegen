@@ -27,7 +27,6 @@ TEMPLATE_MODEL = '''<!DOCTYPE html>
 <html>
     <head>
         <meta charset="UTF-8" />
-        <link rel="stylesheet" href="{{theme_url}}main.css" type="text/css" />
         <link rel="stylesheet" href="{{themes_url}}bolt/main.css" type="text/css" />
         {{css}}
         <title>{{title}} | {{site_name}}</title>
@@ -173,7 +172,7 @@ def load_config():
     for folder in blocked.split(','):
         CFG['blocked_dirs'].append(folder.strip())
 
-def update_pagelist(path, date):
+def update_pagelog(path, date):
     '''Updates a log file containing list of all pages created'''
     if path == '.':
         return
@@ -246,7 +245,6 @@ def ion_charge(path):
         # if not using custom theme, use default
         page_data['theme'] = page_data.get('theme', CFG['default_theme'])
         # adds an end slash to url
-        page_data['theme_url'] = os.path.join(CFG['themes_url'], page_data['theme'], '')
         page_data['permalink'] = os.path.join(CFG['base_url'], dirpath, '')
         # output
         save_json(dirpath, page_data)
@@ -267,7 +265,7 @@ with a data.ion file.'.format(path))
         data_file.write(DATA_MODEL.format(date))
         data_file.close()
         # saves data to file listing all pages created
-        update_pagelist(path, date)
+        update_pagelog(path, date)
         print('Page \'{0}\' successfully created.'.format(path))
         print('Edit the file {0} and call \'ion charge\'!'.format(filepath))
 
