@@ -250,7 +250,6 @@ def get_page_data(path):
     # if not using custom theme, use default
     page_data['theme'] = page_data.get('theme', CFG['default_theme'])
     # adds an end slash to url
-    page_data['theme_url'] = os.path.join(CFG['themes_url'], page_data['theme'], '')
     page_data['permalink'] = os.path.join(CFG['base_url'], path, '')
     return page_data
 
