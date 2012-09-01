@@ -91,12 +91,11 @@ CFG = {
     'site_name': 'Ion',
     'base_url': 'http://localhost/',
     'themes_dir': 'themes',
-    'meta_dir': 'meta',
     'blocked_dirs': [],
-    'template_file': 'index.html',
+    'template_file': 'main.tpl',
     'source_file': 'data.ion',
     'config_file': 'config.ion',
-    'pagelist_file': 'pagelist',
+    'pagelog_file': 'pages.log',
     'default_theme': 'bolt',
 }
 
@@ -135,8 +134,7 @@ def build_config():
     CFG['default_template_path'] = os.path.join(CFG['default_theme_path'], CFG['template_file'])
     # adds an end slash to url if not provided
     CFG['themes_url'] = os.path.join(CFG['base_url'], CFG['system_dir'], CFG['themes_dir'], '')
-    CFG['meta_path'] = os.path.join(CFG['system_path'], CFG['meta_dir'])
-    CFG['pagelist_path'] = os.path.join(CFG['meta_path'], CFG['pagelist_file'])
+    CFG['pagelog_path'] = os.path.join(CFG['system_path'], CFG['pagelog_file'])
     # Creates system folder
     if not os.path.exists(CFG['system_path']):
         print('Generating system folder {0}...'.format(CFG['system_path']))
@@ -155,12 +153,9 @@ def build_config():
     # Creating default template file
     if not os.path.exists(CFG['default_template_path']):
         open(CFG['default_template_path'], 'w').write(TEMPLATE_MODEL)
-    # Create meta folder to keep cache files
-    if not os.path.exists(CFG['meta_path']):
-        os.makedirs(CFG['meta_path'])
-    # Recent pages meta file
-    if not os.path.exists(CFG['pagelist_path']):
-        open(CFG['pagelist_path'], 'w').write('')
+    # Recent pages log file
+    if not os.path.exists(CFG['pagelog_path']):
+        open(CFG['pagelog_path'], 'w').write('')
 
 def load_config():
     '''Loads the config file in system folder'''
@@ -179,11 +174,11 @@ def load_config():
         CFG['blocked_dirs'].append(folder.strip())
 
 def update_pagelist(path, date):
-    '''Updates meta file containing list of all pages created'''
+    '''Updates a log file containing list of all pages created'''
     if path == '.':
         return
     pageline = '{0} {1}\n'.format(path, date)
-    open(CFG['pagelist_path'], 'a').write(pageline)
+    open(CFG['pagelog_path'], 'a').write(pageline)
 
 def build_external_tags(filenames, permalink, tag, ext):
     tag_list = []
