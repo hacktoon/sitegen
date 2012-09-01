@@ -30,14 +30,15 @@ TEMPLATE_MODEL = '''<!DOCTYPE html>
         <link rel="stylesheet" href="{{theme_url}}main.css" type="text/css" />
         <link rel="stylesheet" href="{{themes_url}}bolt/main.css" type="text/css" />
         {{css}}
-        <title>{{title}}</title>
+        <title>{{title}} | {{site_name}}</title>
     </head>
     <body>
-        <h1><a href="{{permalink}}">Ionize</a></h1>
+        <h1><a href="{{base_url}}">{{site_name}}</a></h1>
         <ul>
-            <li><a href="{{base_url}}home">Home</a></li>
+            <li><a href="{{base_url}}">Home</a></li>
+            <li><a href="{{base_url}}about">About</a></li>
         </ul>
-        <h2>{{title}}</h2>
+        <h2><a href="{{permalink}}">{{title}}</a></h2>
         <span>{{date}}</span>
         <p>{{content}}</p>
         {{js}}
@@ -65,7 +66,9 @@ RSS_ITEM_MODEL = '''<item>
 '''
 
 # default configuration file
-CONFIG_MODEL = '''# base_url must have a trailing slash
+CONFIG_MODEL = '''#site name
+site_name = My Ion site
+# base_url must have a trailing slash
 base_url = http://localhost/
 # theme used by default if a custom theme is not provided in data files
 default_theme = bolt
@@ -85,6 +88,7 @@ Write your content here
 # pre-configuration values
 CFG = {
     'system_dir': '_ion',
+    'site_name': 'Ion',
     'base_url': 'http://localhost/',
     'themes_dir': 'themes',
     'meta_dir': 'meta',
@@ -162,6 +166,7 @@ def load_config():
     '''Loads the config file in system folder'''
     build_config()
     config = parse_ion_file(CFG['config_path'])
+    CFG['site_name'] = config.get('site_name', CFG['site_name'])
     # try to set a default value if it wasn't defined in config
     # add a trailing slash, if necessary
     CFG['base_url'] = os.path.join(config.get('base_url', CFG['base_url']), '')
@@ -214,6 +219,11 @@ found!'.format(theme_filepath))
     # fill template with page data
     html_filepath = os.path.join(dirname, 'index.html')
     html_file = open(html_filepath, 'w')
+    # get css and javascript found in the folder
+    css = page_data.get('css', '')
+    page_data['css'] = build_style_tags(css, page_data['permalink'])
+    js = page_data.get('js', '')
+    page_data['js'] = build_script_tags(js, page_data['permalink'])
     for key, value in page_data.items():
         regex = re.compile(r'\{\{\s*' + key + '\s*\}\}')
         html = re.sub(regex, value.strip(), html)
@@ -235,6 +245,7 @@ def ion_charge(path):
         # extracts data from this page
         page_data = parse_ion_file(source_file)
         # set common page data
+        page_data['site_name'] = CFG['site_name']
         page_data['base_url'] = CFG['base_url']
         page_data['themes_url'] = CFG['themes_url']
         # if not using custom theme, use default
@@ -242,12 +253,7 @@ def ion_charge(path):
             page_data['theme'] = CFG['default_theme']
         # adds an end slash to url
         page_data['theme_url'] = os.path.join(CFG['themes_url'], page_data['theme'], '')
-        page_data['permalink'] = os.path.join(CFG['base_url'], dirpath)
-        # get css and javascript found in the folder
-        css = page_data.get('css', '')
-        page_data['css'] = build_style_tags(css, page_data['permalink'])
-        js = page_data.get('js', '')
-        page_data['js'] = build_script_tags(js, page_data['permalink'])
+        page_data['permalink'] = os.path.join(CFG['base_url'], dirpath, '')
         # output
         save_json(dirpath, page_data)
         save_html(dirpath, page_data)
