@@ -244,8 +244,7 @@ def ion_charge(path):
         page_data['base_url'] = CFG['base_url']
         page_data['themes_url'] = CFG['themes_url']
         # if not using custom theme, use default
-        if 'theme' not in page_data.keys():
-            page_data['theme'] = CFG['default_theme']
+        page_data['theme'] = page_data.get('theme', CFG['default_theme'])
         # adds an end slash to url
         page_data['theme_url'] = os.path.join(CFG['themes_url'], page_data['theme'], '')
         page_data['permalink'] = os.path.join(CFG['base_url'], dirpath, '')
