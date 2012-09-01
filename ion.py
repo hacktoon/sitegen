@@ -186,6 +186,30 @@ def has_data_file(path):
     data_file = os.path.join(path, CFG['data_file'])
     return os.path.exists(data_file)
 
+def get_page_data(path):
+    data_file = os.path.join(path, CFG['data_file'])
+    # avoid directories that doesn't have a data file
+    if not has_data_file(path):
+        return
+    page_data = parse_ion_file(data_file)
+    # set common page data
+    page_data['site_name'] = CFG['site_name']
+    page_data['site_description'] = CFG['site_description']
+    page_data['base_url'] = CFG['base_url']
+    page_data['themes_url'] = CFG['themes_url']
+    # if not using custom theme, use default
+    page_data['theme'] = page_data.get('theme', CFG['default_theme'])
+    # adds an end slash to url
+    page_data['permalink'] = os.path.join(CFG['base_url'], path, '')
+    return page_data
+
+def fill_template(data, tpl):
+    '''Replaces the variables in the template'''
+    for key, value in data.items():
+        regex = re.compile(r'\{\{\s*' + key + '\s*\}\}')
+        tpl = re.sub(regex, value.strip(), tpl)
+    return tpl
+
 def build_external_tags(filenames, permalink, tag, ext):
     tag_list = []
     for filename in filenames.split(','):
@@ -209,27 +233,23 @@ def save_json(dirname, page_data):
     json_file.write(json.dumps(page_data))
     json_file.close()
 
-def save_html(dirname, page_data):
+def save_html(path, page_data):
     theme_dir = os.path.join(CFG['themes_path'], page_data['theme'])
-    theme_filepath = os.path.join(theme_dir, CFG['template_file'])
-    if not os.path.exists(theme_filepath):
+    tpl_filepath = os.path.join(theme_dir, CFG['template_file'])
+    if not os.path.exists(tpl_filepath):
         sys.exit('Zap! Template file {0} couldn\'t be \
-found!'.format(theme_filepath))
+found!'.format(tpl_filepath))
     #abrindo arquivo de template e extraindo o html
-    html = open(theme_filepath, 'r').read()
-    # fill template with page data
-    html_filepath = os.path.join(dirname, 'index.html')
-    html_file = open(html_filepath, 'w')
+    html_tpl = open(tpl_filepath, 'r').read()
     # get css and javascript found in the folder
     css = page_data.get('css', '')
     page_data['css'] = build_style_tags(css, page_data['permalink'])
     js = page_data.get('js', '')
     page_data['js'] = build_script_tags(js, page_data['permalink'])
-    for key, value in page_data.items():
-        regex = re.compile(r'\{\{\s*' + key + '\s*\}\}')
-        html = re.sub(regex, value.strip(), html)
-    html_file.write(html)
-    html_file.close()
+    # fill template with page data
+    html = fill_template(page_data, html_tpl)
+    html_filepath = os.path.join(path, 'index.html')
+    open(html_filepath, 'w').write(html)
     print('\'{0}\' generated.'.format(html_filepath))
 
 def save_rss():
@@ -240,22 +260,6 @@ def save_rss():
         if not has_data_file(path):
             continue
 
-def get_page_data(path):
-    data_file = os.path.join(path, CFG['data_file'])
-    # avoid directories that doesn't have a data file
-    if not has_data_file(path):
-        return
-    page_data = parse_ion_file(data_file)
-    # set common page data
-    page_data['site_name'] = CFG['site_name']
-    page_data['site_description'] = CFG['site_description']
-    page_data['base_url'] = CFG['base_url']
-    page_data['themes_url'] = CFG['themes_url']
-    # if not using custom theme, use default
-    page_data['theme'] = page_data.get('theme', CFG['default_theme'])
-    # adds an end slash to url
-    page_data['permalink'] = os.path.join(CFG['base_url'], path, '')
-    return page_data
 
 def ion_charge(path):
     '''Reads recursively every directory under path and
