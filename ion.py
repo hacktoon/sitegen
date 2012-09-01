@@ -167,8 +167,8 @@ def load_config():
     # get default theme, if it is defined in config
     CFG['default_theme'] = config.get('default_theme', CFG['default_theme'])
     # folders you don't want Ion to enter
-    # returns the system path by default
-    blocked = config.get('blocked_dirs', CFG['system_dir'])
+    blocked = config.get('blocked_dirs')
+    CFG['blocked_dirs'].append(CFG['system_dir'])
     for folder in blocked.split(','):
         CFG['blocked_dirs'].append(folder.strip())
 
