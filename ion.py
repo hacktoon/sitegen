@@ -154,7 +154,7 @@ def build_config():
         open(CFG['default_template_path'], 'w').write(TEMPLATE_MODEL)
     # Recent pages log file
     if not os.path.exists(CFG['pagelog_path']):
-        open(CFG['pagelog_path'], 'w').write('')
+        open(CFG['pagelog_path'], 'w')
 
 def load_config():
     '''Loads the config file in system folder'''
@@ -178,6 +178,10 @@ def update_pagelog(path, date):
         return
     pageline = '{0} {1}\n'.format(path, date)
     open(CFG['pagelog_path'], 'a').write(pageline)
+
+def has_data_file(path):
+    data_file = os.path.join(path, CFG['data_file'])
+    return os.path.exists(data_file)
 
 def build_external_tags(filenames, permalink, tag, ext):
     tag_list = []
@@ -226,16 +230,18 @@ found!'.format(theme_filepath))
     print('\'{0}\' generated.'.format(html_filepath))
 
 def save_rss():
-    pagelog = open(CFG['pagelog_path']).readlines().reverse()
+    pagelog = open(CFG['pagelog_path'], 'r').readlines()
+    pagelog.reverse() # start from the newest
     for page in pagelog:
         path, date = page.split()
+        if not has_data_file(path):
+            continue
 
 def get_page_data(path):
     data_file = os.path.join(path, CFG['data_file'])
-    # directories that doesn't have a data file
-    if not os.path.exists(data_file):
-        sys.exit('Zap! The "{0}" page doesn\'t have a data.ion \
-file!'.format(path))
+    # avoid directories that doesn't have a data file
+    if not has_data_file(path):
+        return
     page_data = parse_ion_file(data_file)
     # set common page data
     page_data['site_name'] = CFG['site_name']
@@ -254,7 +260,7 @@ def ion_charge(path):
     for dirpath, subdirs, filenames in os.walk(path):
         #removing '.' of the path in the case of root directory of site
         dirpath = re.sub('^\.$|\.\/', '', dirpath)
-        if dirpath in CFG['blocked_dirs']:
+        if dirpath in CFG['blocked_dirs'] or not has_data_file(dirpath):
             continue
         page_data = get_page_data(dirpath)
         save_json(dirpath, page_data)
