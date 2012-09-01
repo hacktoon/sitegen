@@ -50,18 +50,18 @@ TEMPLATE_MODEL = '''<!DOCTYPE html>
 RSS_MODEL = '''<?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0">
 <channel>
-    <title>{{title}}</title>
-    <link>{{link}}</link>
-    <pubDate>{{pubdate}}</pubDate>
+    <title>{{site_name}}</title>
+    <link>{{base_url}}</link>
     <description>{{description}}</description>
     {{item}}
 </channel>
 </rss>
 '''
 RSS_ITEM_MODEL = '''<item>
-    <title>{{item_title}}</title>
-    <link>{{item_link}}</link>
-    <description>{{item_description}}</description>
+    <title>{{title}}</title>
+    <link>{{permalink}}</link>
+    <pubDate>{{date}}</pubDate>
+    <description>{{content}}</description>
 </item>
 '''
 
@@ -98,6 +98,7 @@ CFG = {
     'config_file': 'config.ion',
     'pagelog_file': 'pages.log',
     'default_theme': 'bolt',
+    'rss_items': 8
 }
 
 def parse_ion_file(source_path):
