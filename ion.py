@@ -51,19 +51,19 @@ RSS_MODEL = '''<?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0">
 <channel>
     <title>{{site_name}}</title>
-    <link>{{base_url}}</link>
+    <link>{{link}}</link>
     <description>{{description}}</description>
-    {{item}}
+    {{items}}
 </channel>
 </rss>
 '''
-RSS_ITEM_MODEL = '''<item>
-    <title>{{title}}</title>
-    <link>{{permalink}}</link>
-    <pubDate>{{date}}</pubDate>
-    <description>{{content}}</description>
-</item>
-'''
+RSS_ITEM_MODEL = '''
+    <item>
+        <title>{{title}}</title>
+        <link>{{permalink}}</link>
+        <pubDate>{{date}}</pubDate>
+        <description>{{content}}</description>
+    </item>'''
 
 # default configuration file
 CONFIG_MODEL = '''#site name
@@ -253,13 +253,25 @@ found!'.format(tpl_filepath))
     print('\'{0}\' generated.'.format(html_filepath))
 
 def save_rss():
+    rss_data = {}
     pagelog = open(CFG['pagelog_path'], 'r').readlines()
+    if not len(pagelog):
+        return
     pagelog.reverse() # start from the newest
-    for page in pagelog:
+    rss_data['site_name'] = CFG['site_name']
+    rss_data['link'] = CFG['base_url']
+    rss_data['description'] = CFG['site_description']
+    items = []
+    # will get only the first n items
+    for page in pagelog[:CFG['rss_items']]:
         path, date = page.split()
         if not has_data_file(path):
             continue
-
+        page_data = get_page_data(path)
+        items.append(fill_template(page_data, RSS_ITEM_MODEL))
+    rss_data['items'] = '\n'.join(items)
+    rss = fill_template(rss_data, RSS_MODEL)
+    open('rss.xml', 'w').write(rss)
 
 def ion_charge(path):
     '''Reads recursively every directory under path and
