@@ -48,9 +48,12 @@ TEMPLATE_MODEL = '''<!DOCTYPE html>
 
 # model of RSS file for feed generation
 RSS_MODEL = '''<?xml version="1.0" encoding="utf-8"?>
-<rss version="2.0">
+<rss version="2.0"
+    xmlns:atom="http://www.w3.org/2005/Atom"
+    >
 <channel>
     <title>{{site_name}}</title>
+    <atom:link href="{{link}}rss.xml" rel="self" type="application/rss+xml" />
     <link>{{link}}</link>
     <description>{{description}}</description>
     {{items}}
@@ -63,6 +66,7 @@ RSS_ITEM_MODEL = '''
         <link>{{permalink}}</link>
         <pubDate>{{date}}</pubDate>
         <description>{{content}}</description>
+        <guid>{{permalink}}</guid>
     </item>'''
 
 # default configuration file
