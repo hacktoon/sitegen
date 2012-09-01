@@ -92,7 +92,7 @@ CFG = {
     'themes_dir': 'themes',
     'blocked_dirs': [],
     'template_file': 'main.tpl',
-    'source_file': 'data.ion',
+    'data_file': 'data.ion',
     'config_file': 'config.ion',
     'pagelog_file': 'pages.log',
     'default_theme': 'bolt',
@@ -100,10 +100,10 @@ CFG = {
 
 def parse_ion_file(source_path):
     '''Parses *.ion data files and returns a dictionary'''
-    source_file = open(source_path, 'r')
+    data_file = open(source_path, 'r')
     page_data = {}
     while True:
-        line = source_file.readline().strip()
+        line = data_file.readline().strip()
         if line.startswith('#'):
             continue
         # if reached end of file, exit loop
@@ -112,7 +112,7 @@ def parse_ion_file(source_path):
         if(line == 'content'):
             # read the rest of the file
             key = line
-            value = source_file.read()
+            value = data_file.read()
         else:
             # will avoid splitting blank lines
             try:
@@ -121,7 +121,7 @@ def parse_ion_file(source_path):
                 continue
         #setting values
         page_data[key] = value
-    source_file.close()
+    data_file.close()
     return page_data
 
 def build_config():
@@ -225,36 +225,48 @@ found!'.format(theme_filepath))
     html_file.close()
     print('\'{0}\' generated.'.format(html_filepath))
 
+def save_rss():
+    pagelog = open(CFG['pagelog_path']).readlines().reverse()
+    for page in pagelog:
+        path, date = page.split()
+
+def get_page_data(path):
+    data_file = os.path.join(path, CFG['data_file'])
+    # directories that doesn't have a data file
+    if not os.path.exists(data_file):
+        sys.exit('Zap! The "{0}" page doesn\'t have a data.ion \
+file!'.format(path))
+    page_data = parse_ion_file(data_file)
+    # set common page data
+    page_data['site_name'] = CFG['site_name']
+    page_data['base_url'] = CFG['base_url']
+    page_data['themes_url'] = CFG['themes_url']
+    # if not using custom theme, use default
+    page_data['theme'] = page_data.get('theme', CFG['default_theme'])
+    # adds an end slash to url
+    page_data['theme_url'] = os.path.join(CFG['themes_url'], page_data['theme'], '')
+    page_data['permalink'] = os.path.join(CFG['base_url'], path, '')
+    return page_data
+
 def ion_charge(path):
     '''Reads recursively every directory under path and
     outputs HTML/JSON for each data.ion file'''
     for dirpath, subdirs, filenames in os.walk(path):
         #removing '.' of the path in the case of root directory of site
         dirpath = re.sub('^\.$|\.\/', '', dirpath)
-        source_file = os.path.join(dirpath, CFG['source_file'])
-        # tests for blocked directories or
-        # directories that doesn't have a source file
-        if dirpath in CFG['blocked_dirs'] or not os.path.exists(source_file):
+        if dirpath in CFG['blocked_dirs']:
             continue
-        # extracts data from this page
-        page_data = parse_ion_file(source_file)
-        # set common page data
-        page_data['site_name'] = CFG['site_name']
-        page_data['base_url'] = CFG['base_url']
-        page_data['themes_url'] = CFG['themes_url']
-        # if not using custom theme, use default
-        page_data['theme'] = page_data.get('theme', CFG['default_theme'])
-        # adds an end slash to url
-        page_data['permalink'] = os.path.join(CFG['base_url'], dirpath, '')
-        # output
+        page_data = get_page_data(dirpath)
         save_json(dirpath, page_data)
         save_html(dirpath, page_data)
+    # after generating all pages, update feed
+    save_rss()
 
 def ion_plug(path):
     '''Creates a new page in specified path'''
     if not os.path.exists(path):
         os.makedirs(path)
-    filepath = os.path.join(path, CFG['source_file'])
+    filepath = os.path.join(path, CFG['data_file'])
     if os.path.exists(filepath):
         print('Zap! Page \'{0}\' already exists \
 with a data.ion file.'.format(path))
