@@ -13,9 +13,10 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 '''
 
 import os
-import json
-import re
 import sys
+import re
+import json
+import time
 from datetime import datetime
 
 # obey the rules
@@ -33,6 +34,7 @@ TEMPLATE_MODEL = '''<!DOCTYPE html>
     </head>
     <body>
         <h1><a href="{{base_url}}">{{site_name}}</a></h1>
+        <p>{{site_description}}</p>
         <ul>
             <li><a href="{{base_url}}">Home</a></li>
             <li><a href="{{base_url}}about">About</a></li>
@@ -47,22 +49,26 @@ TEMPLATE_MODEL = '''<!DOCTYPE html>
 
 # model of RSS file for feed generation
 RSS_MODEL = '''<?xml version="1.0" encoding="utf-8"?>
-<rss version="2.0">
+<rss version="2.0"
+    xmlns:atom="http://www.w3.org/2005/Atom"
+    >
 <channel>
-    <title>{{title}}</title>
+    <title>{{site_name}}</title>
+    <atom:link href="{{link}}rss.xml" rel="self" type="application/rss+xml" />
     <link>{{link}}</link>
-    <pubDate>{{pubdate}}</pubDate>
     <description>{{description}}</description>
-    {{item}}
+    {{items}}
 </channel>
 </rss>
 '''
-RSS_ITEM_MODEL = '''<item>
-    <title>{{item_title}}</title>
-    <link>{{item_link}}</link>
-    <description>{{item_description}}</description>
-</item>
-'''
+RSS_ITEM_MODEL = '''
+    <item>
+        <title>{{title}}</title>
+        <link>{{permalink}}</link>
+        <pubDate>{{date}}</pubDate>
+        <description>{{content}}</description>
+        <guid>{{permalink}}</guid>
+    </item>'''
 
 # default configuration file
 CONFIG_MODEL = '''#site name
@@ -86,24 +92,28 @@ Write your content here
 
 # pre-configuration values
 CFG = {
-    'system_dir': '_ion',
     'site_name': 'Ion',
+    'site_description': 'An electric site.',
     'base_url': 'http://localhost/',
-    'themes_dir': 'themes',
+    'system_dir': '_ion',
     'blocked_dirs': [],
+    'themes_dir': 'themes',
+    'default_theme': 'bolt',
     'template_file': 'main.tpl',
-    'source_file': 'data.ion',
+    'data_file': 'data.ion',
     'config_file': 'config.ion',
     'pagelog_file': 'pages.log',
-    'default_theme': 'bolt',
+    'rss_items': 8,
+    'utc_offset': '+0000',
+    'date_format': '%d/%m/%Y'
 }
 
 def parse_ion_file(source_path):
     '''Parses *.ion data files and returns a dictionary'''
-    source_file = open(source_path, 'r')
+    data_file = open(source_path, 'r')
     page_data = {}
     while True:
-        line = source_file.readline().strip()
+        line = data_file.readline().strip()
         if line.startswith('#'):
             continue
         # if reached end of file, exit loop
@@ -112,7 +122,7 @@ def parse_ion_file(source_path):
         if(line == 'content'):
             # read the rest of the file
             key = line
-            value = source_file.read()
+            value = data_file.read()
         else:
             # will avoid splitting blank lines
             try:
@@ -121,7 +131,7 @@ def parse_ion_file(source_path):
                 continue
         #setting values
         page_data[key] = value
-    source_file.close()
+    data_file.close()
     return page_data
 
 def build_config():
@@ -154,7 +164,7 @@ def build_config():
         open(CFG['default_template_path'], 'w').write(TEMPLATE_MODEL)
     # Recent pages log file
     if not os.path.exists(CFG['pagelog_path']):
-        open(CFG['pagelog_path'], 'w').write('')
+        open(CFG['pagelog_path'], 'w')
 
 def load_config():
     '''Loads the config file in system folder'''
@@ -172,12 +182,45 @@ def load_config():
     for folder in blocked.split(','):
         CFG['blocked_dirs'].append(folder.strip())
 
+def date_format(timestamp, fmt):
+    '''helper to convert a timestamp into a given date format'''
+    timestamp = float(timestamp)
+    return datetime.fromtimestamp(timestamp).strftime(fmt)
+
 def update_pagelog(path, date):
     '''Updates a log file containing list of all pages created'''
     if path == '.':
         return
     pageline = '{0} {1}\n'.format(path, date)
     open(CFG['pagelog_path'], 'a').write(pageline)
+
+def has_data_file(path):
+    data_file = os.path.join(path, CFG['data_file'])
+    return os.path.exists(data_file)
+
+def get_page_data(path):
+    data_file = os.path.join(path, CFG['data_file'])
+    # avoid directories that doesn't have a data file
+    if not has_data_file(path):
+        return
+    page_data = parse_ion_file(data_file)
+    # set common page data
+    page_data['site_name'] = CFG['site_name']
+    page_data['site_description'] = CFG['site_description']
+    page_data['base_url'] = CFG['base_url']
+    page_data['themes_url'] = CFG['themes_url']
+    # if not using custom theme, use default
+    page_data['theme'] = page_data.get('theme', CFG['default_theme'])
+    # adds an end slash to url
+    page_data['permalink'] = os.path.join(CFG['base_url'], path, '')
+    return page_data
+
+def fill_template(data, tpl):
+    '''Replaces the variables in the template'''
+    for key, value in data.items():
+        regex = re.compile(r'\{\{\s*' + key + '\s*\}\}')
+        tpl = re.sub(regex, value.strip(), tpl)
+    return tpl
 
 def build_external_tags(filenames, permalink, tag, ext):
     tag_list = []
@@ -202,28 +245,48 @@ def save_json(dirname, page_data):
     json_file.write(json.dumps(page_data))
     json_file.close()
 
-def save_html(dirname, page_data):
+def save_html(path, page_data):
     theme_dir = os.path.join(CFG['themes_path'], page_data['theme'])
-    theme_filepath = os.path.join(theme_dir, CFG['template_file'])
-    if not os.path.exists(theme_filepath):
+    tpl_filepath = os.path.join(theme_dir, CFG['template_file'])
+    if not os.path.exists(tpl_filepath):
         sys.exit('Zap! Template file {0} couldn\'t be \
-found!'.format(theme_filepath))
+found!'.format(tpl_filepath))
     #abrindo arquivo de template e extraindo o html
-    html = open(theme_filepath, 'r').read()
-    # fill template with page data
-    html_filepath = os.path.join(dirname, 'index.html')
-    html_file = open(html_filepath, 'w')
+    html_tpl = open(tpl_filepath, 'r').read()
     # get css and javascript found in the folder
     css = page_data.get('css', '')
     page_data['css'] = build_style_tags(css, page_data['permalink'])
     js = page_data.get('js', '')
     page_data['js'] = build_script_tags(js, page_data['permalink'])
-    for key, value in page_data.items():
-        regex = re.compile(r'\{\{\s*' + key + '\s*\}\}')
-        html = re.sub(regex, value.strip(), html)
-    html_file.write(html)
-    html_file.close()
+    # fill template with page data
+    html = fill_template(page_data, html_tpl)
+    html_filepath = os.path.join(path, 'index.html')
+    open(html_filepath, 'w').write(html)
     print('\'{0}\' generated.'.format(html_filepath))
+
+def save_rss():
+    rss_data = {}
+    pagelog = open(CFG['pagelog_path'], 'r').readlines()
+    if not len(pagelog):
+        return
+    pagelog.reverse() # start from the newest
+    rss_data['site_name'] = CFG['site_name']
+    rss_data['link'] = CFG['base_url']
+    rss_data['description'] = CFG['site_description']
+    items = []
+    # will get only the first n items
+    for page in pagelog[:CFG['rss_items']]:
+        path, date = page.split()
+        if not has_data_file(path):
+            continue
+        page_data = get_page_data(path)
+        # get timestamp and convert to rfc822 date format 
+        rfc822_fmt = '%a, %d %b %Y %H:%M:%S ' + CFG['utc_offset'] 
+        page_data['date'] = date_format(page_data['date'], rfc822_fmt)
+        items.append(fill_template(page_data, RSS_ITEM_MODEL))
+    rss_data['items'] = '\n'.join(items)
+    rss = fill_template(rss_data, RSS_MODEL)
+    open('rss.xml', 'w').write(rss)
 
 def ion_charge(path):
     '''Reads recursively every directory under path and
@@ -231,35 +294,27 @@ def ion_charge(path):
     for dirpath, subdirs, filenames in os.walk(path):
         #removing '.' of the path in the case of root directory of site
         dirpath = re.sub('^\.$|\.\/', '', dirpath)
-        source_file = os.path.join(dirpath, CFG['source_file'])
-        # tests for blocked directories or
-        # directories that doesn't have a source file
-        if dirpath in CFG['blocked_dirs'] or not os.path.exists(source_file):
+        if dirpath in CFG['blocked_dirs'] or not has_data_file(dirpath):
             continue
-        # extracts data from this page
-        page_data = parse_ion_file(source_file)
-        # set common page data
-        page_data['site_name'] = CFG['site_name']
-        page_data['base_url'] = CFG['base_url']
-        page_data['themes_url'] = CFG['themes_url']
-        # if not using custom theme, use default
-        page_data['theme'] = page_data.get('theme', CFG['default_theme'])
-        # adds an end slash to url
-        page_data['permalink'] = os.path.join(CFG['base_url'], dirpath, '')
-        # output
+        page_data = get_page_data(dirpath)
+        # get timestamp and convert to date format set in config
+        page_data['date'] = date_format(page_data['date'], CFG['date_format'])
         save_json(dirpath, page_data)
         save_html(dirpath, page_data)
+    # after generating all pages, update feed
+    save_rss()
 
 def ion_plug(path):
     '''Creates a new page in specified path'''
     if not os.path.exists(path):
         os.makedirs(path)
-    filepath = os.path.join(path, CFG['source_file'])
+    filepath = os.path.join(path, CFG['data_file'])
     if os.path.exists(filepath):
         print('Zap! Page \'{0}\' already exists \
 with a data.ion file.'.format(path))
     else:
-        date = datetime.now().strftime('%Y-%m-%d')
+        # saving timestamp
+        date = time.mktime(datetime.now().timetuple())
         # copy source file to new path
         data_file = open(filepath, 'w')
         data_file.write(DATA_MODEL.format(date))
