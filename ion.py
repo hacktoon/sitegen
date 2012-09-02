@@ -13,9 +13,10 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 '''
 
 import os
-import json
-import re
 import sys
+import re
+import json
+import time
 from datetime import datetime
 
 # obey the rules
@@ -91,18 +92,20 @@ Write your content here
 
 # pre-configuration values
 CFG = {
-    'system_dir': '_ion',
     'site_name': 'Ion',
     'site_description': 'An electric site.',
     'base_url': 'http://localhost/',
-    'themes_dir': 'themes',
+    'system_dir': '_ion',
     'blocked_dirs': [],
+    'themes_dir': 'themes',
+    'default_theme': 'bolt',
     'template_file': 'main.tpl',
     'data_file': 'data.ion',
     'config_file': 'config.ion',
     'pagelog_file': 'pages.log',
-    'default_theme': 'bolt',
-    'rss_items': 8
+    'rss_items': 8,
+    'utc_offset': '+0000',
+    'date_format': '%d/%m/%Y'
 }
 
 def parse_ion_file(source_path):
@@ -178,6 +181,11 @@ def load_config():
     CFG['blocked_dirs'].append(CFG['system_dir'])
     for folder in blocked.split(','):
         CFG['blocked_dirs'].append(folder.strip())
+
+def date_format(timestamp, fmt):
+    '''helper to convert a timestamp into a given date format'''
+    timestamp = float(timestamp)
+    return datetime.fromtimestamp(timestamp).strftime(fmt)
 
 def update_pagelog(path, date):
     '''Updates a log file containing list of all pages created'''
@@ -272,6 +280,9 @@ def save_rss():
         if not has_data_file(path):
             continue
         page_data = get_page_data(path)
+        # get timestamp and convert to rfc822 date format 
+        rfc822_fmt = '%a, %d %b %Y %H:%M:%S ' + CFG['utc_offset'] 
+        page_data['date'] = date_format(page_data['date'], rfc822_fmt)
         items.append(fill_template(page_data, RSS_ITEM_MODEL))
     rss_data['items'] = '\n'.join(items)
     rss = fill_template(rss_data, RSS_MODEL)
@@ -286,6 +297,8 @@ def ion_charge(path):
         if dirpath in CFG['blocked_dirs'] or not has_data_file(dirpath):
             continue
         page_data = get_page_data(dirpath)
+        # get timestamp and convert to date format set in config
+        page_data['date'] = date_format(page_data['date'], CFG['date_format'])
         save_json(dirpath, page_data)
         save_html(dirpath, page_data)
     # after generating all pages, update feed
@@ -300,7 +313,8 @@ def ion_plug(path):
         print('Zap! Page \'{0}\' already exists \
 with a data.ion file.'.format(path))
     else:
-        date = datetime.now().strftime('%Y-%m-%d')
+        # saving timestamp
+        date = time.mktime(datetime.now().timetuple())
         # copy source file to new path
         data_file = open(filepath, 'w')
         data_file.write(DATA_MODEL.format(date))
