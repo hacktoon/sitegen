@@ -23,6 +23,24 @@ from datetime import datetime
 if sys.version_info.major < 3:
     sys.exit('Zap! Ion requires Python 3!')
 
+# configuration customizable values
+CFG = {
+    'site_name': 'My Ion site',
+    'site_description': 'An electric site',
+    'base_url': 'http://localhost/',
+    'themes_dir': 'themes',
+    'default_theme': 'bolt',
+    'template_file': 'main.tpl',
+    'data_file': 'data.ion',
+    'pagelog_file': 'pages.log',
+    'rss_items': 8,
+    'utc_offset': '+0000',
+    'date_format': '%d/%m/%Y'
+}
+
+SYSTEM_DIR = '_ion'
+CONFIG_FILE = 'config.ion'
+
 # default template with all basic template variables
 TEMPLATE_MODEL = '''<!DOCTYPE html>
 <html>
@@ -78,25 +96,6 @@ date = {0}
 content
 Write your content here
 '''
-
-SYSTEM_DIR = '_ion'
-CONFIG_FILE = 'config.ion'
-
-# configuration customizable values
-CFG = {
-    'site_name': 'My Ion site',
-    'site_description': 'An electric site',
-    'base_url': 'http://localhost/',
-    'blocked_dirs': 'com, mydir, test',
-    'themes_dir': 'themes',
-    'default_theme': 'bolt',
-    'template_file': 'main.tpl',
-    'data_file': 'data.ion',
-    'pagelog_file': 'pages.log',
-    'rss_items': 8,
-    'utc_offset': '+0000',
-    'date_format': '%d/%m/%Y'
-}
 
 def parse_ion_file(source_path):
     data_file = open(source_path, 'r')
@@ -169,12 +168,6 @@ def load_config():
     # Recent pages log file
     if not os.path.exists(CFG['pagelog_path']):
         open(CFG['pagelog_path'], 'w')
-    # folders you don't want Ion to enter
-    blocked = [] 
-    for folder in CFG['blocked_dirs'].split(','):
-        blocked.append(folder.strip())
-    blocked.append(SYSTEM_DIR)
-    CFG['blocked_dirs'] = blocked
 
 def date_format(timestamp, fmt):
     '''helper to convert a timestamp into a given date format'''
@@ -254,9 +247,8 @@ found!'.format(tpl_filepath))
     page_data['js'] = build_script_tags(js, page_data['permalink'])
     # fill template with page data
     html = fill_template(page_data, html_tpl)
-    html_filepath = os.path.join(path, 'index.html')
-    open(html_filepath, 'w').write(html)
-    print('\'{0}\' generated.'.format(html_filepath))
+    open(os.path.join(path, 'index.html'), 'w').write(html)
+    print('\'{0}\' generated.'.format(path))
 
 def save_rss():
     rss_data = {}
@@ -269,7 +261,8 @@ def save_rss():
     rss_data['description'] = CFG['site_description']
     items = []
     # will get only the first n items
-    for page in pagelog[:CFG['rss_items']]:
+    max_items = int(CFG['rss_items'])
+    for page in pagelog[:max_items]:
         path, date = page.split()
         if not has_data_file(path):
             continue
@@ -288,7 +281,7 @@ def ion_charge(path):
     for dirpath, subdirs, filenames in os.walk(path):
         #removing '.' of the path in the case of root directory of site
         dirpath = re.sub('^\.$|\.\/', '', dirpath)
-        if dirpath in CFG['blocked_dirs'] or not has_data_file(dirpath):
+        if not has_data_file(dirpath):
             continue
         page_data = get_page_data(dirpath)
         # get timestamp and convert to date format set in config
