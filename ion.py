@@ -70,17 +70,6 @@ RSS_ITEM_MODEL = '''
         <guid>{{permalink}}</guid>
     </item>'''
 
-# default configuration file
-CONFIG_MODEL = '''#site name
-site_name = My Ion site
-# base_url must have a trailing slash
-base_url = http://localhost/
-# theme used by default if a custom theme is not provided in data files
-default_theme = bolt
-# directories Ion should not enter, comma separated
-blocked_dirs = com, mydir, teste
-'''
-
 # this is the model of files used to store content
 # it will be saved to a new file data.ion every
 # time 'ion plug' is called
@@ -90,18 +79,19 @@ content
 Write your content here
 '''
 
-# pre-configuration values
+SYSTEM_DIR = '_ion'
+CONFIG_FILE = 'config.ion'
+
+# configuration customizable values
 CFG = {
-    'site_name': 'Ion',
-    'site_description': 'An electric site.',
+    'site_name': 'My Ion site',
+    'site_description': 'An electric site',
     'base_url': 'http://localhost/',
-    'system_dir': '_ion',
-    'blocked_dirs': [],
+    'blocked_dirs': 'com, mydir, test',
     'themes_dir': 'themes',
     'default_theme': 'bolt',
     'template_file': 'main.tpl',
     'data_file': 'data.ion',
-    'config_file': 'config.ion',
     'pagelog_file': 'pages.log',
     'rss_items': 8,
     'utc_offset': '+0000',
@@ -109,7 +99,6 @@ CFG = {
 }
 
 def parse_ion_file(source_path):
-    '''Parses *.ion data files and returns a dictionary'''
     data_file = open(source_path, 'r')
     page_data = {}
     while True:
@@ -134,24 +123,39 @@ def parse_ion_file(source_path):
     data_file.close()
     return page_data
 
-def build_config():
-    """Initializes config folder data"""
-    CFG['system_path'] = os.path.join(os.getcwd(), CFG['system_dir'])
-    CFG['config_path'] = os.path.join(CFG['system_path'], CFG['config_file'])
+def load_config():
+    '''Loads the config file in system folder'''
+    system_path = os.path.join(os.getcwd(), SYSTEM_DIR)
+    config_path = os.path.join(system_path, CONFIG_FILE)
+    # Creates system folder
+    if not os.path.exists(system_path):
+        print('Generating system folder {0}...'.format(system_path))
+        os.makedirs(system_path)
+    if os.path.exists(config_path):
+        # get custom configuration from config file
+        config = parse_ion_file(config_path)
+        for key in config.keys():
+            if key in CFG:
+                CFG[key] = config[key]
+    else:
+        # Creates config file from CFG dictionary
+        config_file_content = ''
+        for key, value in CFG.items():
+            config_file_content += '{0} = {1}\n'.format(key, value)
+        print('Generating config file {0}...'.format(config_path))
+        open(config_path, 'w').write(config_file_content)
+
+    # start setting values to be used by the system
+    CFG['system_path'] = system_path
+    CFG['config_path'] = config_path
+    # add a trailing slash to base url, if necessary
+    CFG['base_url'] = os.path.join(CFG['base_url'], '')
     CFG['themes_path'] = os.path.join(CFG['system_path'], CFG['themes_dir'])
     CFG['default_theme_path'] = os.path.join(CFG['themes_path'], CFG['default_theme'])
     CFG['default_template_path'] = os.path.join(CFG['default_theme_path'], CFG['template_file'])
     # adds an end slash to url if not provided
-    CFG['themes_url'] = os.path.join(CFG['base_url'], CFG['system_dir'], CFG['themes_dir'], '')
+    CFG['themes_url'] = os.path.join(CFG['base_url'], SYSTEM_DIR, CFG['themes_dir'], '')
     CFG['pagelog_path'] = os.path.join(CFG['system_path'], CFG['pagelog_file'])
-    # Creates system folder
-    if not os.path.exists(CFG['system_path']):
-        print('Generating system folder {0}...'.format(CFG['system_path']))
-        os.makedirs(CFG['system_path'])
-    # Creates config file
-    if not os.path.exists(CFG['config_path']):
-        print('Generating config file {0}...'.format(CFG['config_path']))
-        open(CFG['config_path'], 'w').write(CONFIG_MODEL)
     # Creating themes directory
     if not os.path.exists(CFG['themes_path']):
         os.makedirs(CFG['themes_path'])
@@ -165,22 +169,12 @@ def build_config():
     # Recent pages log file
     if not os.path.exists(CFG['pagelog_path']):
         open(CFG['pagelog_path'], 'w')
-
-def load_config():
-    '''Loads the config file in system folder'''
-    build_config()
-    config = parse_ion_file(CFG['config_path'])
-    CFG['site_name'] = config.get('site_name', CFG['site_name'])
-    # try to set a default value if it wasn't defined in config
-    # add a trailing slash, if necessary
-    CFG['base_url'] = os.path.join(config.get('base_url', CFG['base_url']), '')
-    # get default theme, if it is defined in config
-    CFG['default_theme'] = config.get('default_theme', CFG['default_theme'])
     # folders you don't want Ion to enter
-    blocked = config.get('blocked_dirs')
-    CFG['blocked_dirs'].append(CFG['system_dir'])
-    for folder in blocked.split(','):
-        CFG['blocked_dirs'].append(folder.strip())
+    blocked = [] 
+    for folder in CFG['blocked_dirs'].split(','):
+        blocked.append(folder.strip())
+    blocked.append(SYSTEM_DIR)
+    CFG['blocked_dirs'] = blocked
 
 def date_format(timestamp, fmt):
     '''helper to convert a timestamp into a given date format'''
@@ -308,22 +302,19 @@ def ion_plug(path):
     '''Creates a new page in specified path'''
     if not os.path.exists(path):
         os.makedirs(path)
-    filepath = os.path.join(path, CFG['data_file'])
-    if os.path.exists(filepath):
-        print('Zap! Page \'{0}\' already exists \
+    data_file = os.path.join(path, CFG['data_file'])
+    if os.path.exists(data_file):
+        sys.exit('Zap! Page \'{0}\' already exists \
 with a data.ion file.'.format(path))
     else:
         # saving timestamp
         date = time.mktime(datetime.now().timetuple())
         # copy source file to new path
-        data_file = open(filepath, 'w')
-        data_file.write(DATA_MODEL.format(date))
-        data_file.close()
+        open(data_file, 'w').write(DATA_MODEL.format(date))
         # saves data to file listing all pages created
         update_pagelog(path, date)
         print('Page \'{0}\' successfully created.'.format(path))
-        print('Edit the file {0} and call \'ion charge\'!'.format(filepath))
-
+        print('Edit the file {0} and call \'ion charge\'!'.format(data_file))
 
 if __name__ == '__main__':
     help_message = '''Usage:
