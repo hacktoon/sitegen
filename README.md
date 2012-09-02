@@ -74,11 +74,6 @@ New themes must obey the same file structure of the default theme.
 * All page content stay in its own folder - so each page is independent.
 * Uses the file system hierarchy to simulate pages and sub-pages.
 
-## Roadmap
-* Generate RSS feeds
-* Page listings with parameters
-* Template fragments
-
 ## Help
 
 * ion.py **plug** *[path/to/folder]* - Creates an empty page on path specified.
