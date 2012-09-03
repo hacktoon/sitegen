@@ -84,7 +84,7 @@ RSS_ITEM_MODEL = '''
         <title>{{title}}</title>
         <link>{{permalink}}</link>
         <pubDate>{{date}}</pubDate>
-        <description>{{content}}</description>
+        <description><![CDATA[{{content}}]]></description>
         <guid>{{permalink}}</guid>
     </item>'''
 
