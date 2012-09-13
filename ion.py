@@ -98,29 +98,23 @@ Write your content here
 '''
 
 def parse_ion_file(source_path):
-    data_file = open(source_path, 'r')
-    page_data = {}
-    while True:
-        line = data_file.readline().strip()
-        if line.startswith('#'):
+    ion_data = {}
+    lines = open(source_path, 'r').readlines()
+    for num, line in enumerate(lines):
+        line = line.strip()
+        # avoids empty lines and comments
+        if not line or line.startswith('#'):
             continue
-        # if reached end of file, exit loop
-        if len(line) == 0:
-            break
         if(line == 'content'):
             # read the rest of the file
-            key = line
-            value = data_file.read()
-        else:
-            # will avoid splitting blank lines
-            try:
-                key, value = list(map(str.strip, line.split('=')))
-            except:
-                continue
-        #setting values
-        page_data[key] = value
-    data_file.close()
-    return page_data
+            ion_data['content'] = ''.join(lines[num+1:])
+            break
+        try:
+            key, value = list(map(str.strip, line.split('=')))
+            ion_data[key] = value
+        except:
+            continue
+    return ion_data
 
 def load_config():
     '''Loads the config file in system folder'''
