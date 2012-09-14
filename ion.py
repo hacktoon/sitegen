@@ -99,7 +99,8 @@ Write your content here
 
 def parse_ion_file(source_path):
     ion_data = {}
-    lines = open(source_path, 'r').readlines()
+    with open(source_path, 'r') as f:
+        lines = f.readlines()
     for num, line in enumerate(lines):
         line = line.strip()
         # avoids empty lines and comments
@@ -136,7 +137,8 @@ def load_config():
         for key, value in CFG.items():
             config_file_content += '{0} = {1}\n'.format(key, value)
         print('Generating config file {0}...'.format(config_path))
-        open(config_path, 'w').write(config_file_content)
+        with open(config_path, 'w') as f:
+            f.write(config_file_content)
 
     # start setting values to be used by the system
     CFG['system_path'] = system_path
@@ -158,10 +160,12 @@ def load_config():
         os.makedirs(CFG['default_theme_path'])
     # Creating default template file
     if not os.path.exists(CFG['default_template_path']):
-        open(CFG['default_template_path'], 'w').write(TEMPLATE_MODEL)
+        with open(CFG['default_template_path'], 'w')as f:
+            f.write(TEMPLATE_MODEL)
     # Recent pages log file
     if not os.path.exists(CFG['pagelog_path']):
-        open(CFG['pagelog_path'], 'w')
+        with open(CFG['pagelog_path'], 'w') as f:
+            f.close()
 
 def date_format(timestamp, fmt):
     '''helper to convert a timestamp into a given date format'''
@@ -173,7 +177,8 @@ def update_pagelog(path, date):
     if path == '.':
         return
     pageline = '{0} {1}\n'.format(path, date)
-    open(CFG['pagelog_path'], 'a').write(pageline)
+    with open(CFG['pagelog_path'], 'a') as f:
+        f.write(pageline)
 
 def has_data_file(path):
     data_file = os.path.join(path, CFG['data_file'])
@@ -222,9 +227,8 @@ def build_script_tags(filenames, permalink):
 
 def save_json(dirname, page_data):
     json_filepath = os.path.join(dirname, 'index.json')
-    json_file = open(json_filepath, 'w')
-    json_file.write(json.dumps(page_data))
-    json_file.close()
+    with open(json_filepath, 'w') as f:
+        f.write(json.dumps(page_data))
 
 def save_html(path, page_data):
     theme_dir = os.path.join(CFG['themes_path'], page_data['theme'])
@@ -233,7 +237,8 @@ def save_html(path, page_data):
         sys.exit('Zap! Template file {0} couldn\'t be \
 found!'.format(tpl_filepath))
     #abrindo arquivo de template e extraindo o html
-    html_tpl = open(tpl_filepath, 'r').read()
+    with open(tpl_filepath, 'r') as f:
+        html_tpl = f.read()
     # get css and javascript found in the folder
     css = page_data.get('css', '')
     page_data['css'] = build_style_tags(css, page_data['permalink'])
@@ -241,12 +246,14 @@ found!'.format(tpl_filepath))
     page_data['js'] = build_script_tags(js, page_data['permalink'])
     # fill template with page data
     html = fill_template(page_data, html_tpl)
-    open(os.path.join(path, 'index.html'), 'w').write(html)
+    with open(os.path.join(path, 'index.html'), 'w') as f:
+        f.write(html)
     print('\'{0}\' generated.'.format(path))
 
 def save_rss():
     rss_data = {}
-    pagelog = open(CFG['pagelog_path'], 'r').readlines()
+    with open(CFG['pagelog_path'], 'r') as f:
+        pagelog = f.readlines()
     if not len(pagelog):
         return
     pagelog.reverse() # start from the newest
@@ -267,7 +274,8 @@ def save_rss():
         items.append(fill_template(page_data, RSS_ITEM_MODEL))
     rss_data['items'] = '\n'.join(items)
     rss = fill_template(rss_data, RSS_MODEL)
-    open('rss.xml', 'w').write(rss)
+    with open('rss.xml', 'w') as f:
+        f.write(rss)
 
 def ion_charge(path):
     '''Reads recursively every directory under path and
@@ -297,7 +305,8 @@ with a data.ion file.'.format(path))
         # saving timestamp
         date = time.mktime(datetime.now().timetuple())
         # copy source file to new path
-        open(data_file, 'w').write(DATA_MODEL.format(date))
+        with open(data_file, 'w') as f:
+            f.write(DATA_MODEL.format(date))
         # saves data to file listing all pages created
         update_pagelog(path, date)
         print('Page \'{0}\' successfully created.'.format(path))
