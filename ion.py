@@ -172,11 +172,11 @@ def date_format(timestamp, fmt):
     timestamp = float(timestamp)
     return datetime.fromtimestamp(timestamp).strftime(fmt)
 
-def update_pagelog(path, date):
+def update_pagelog(path):
     '''Updates a log file containing list of all pages created'''
     if path == '.':
         return
-    pageline = '{0} {1}\n'.format(path, date)
+    pageline = '{0}\n'.format(path)
     with open(CFG['pagelog_path'], 'a') as f:
         f.write(pageline)
 
@@ -264,10 +264,9 @@ def save_rss():
     # will get only the first n items
     max_items = int(CFG['rss_items'])
     for page in pagelog[:max_items]:
-        path, date = page.split()
-        if not has_data_file(path):
+        if not has_data_file(page):
             continue
-        page_data = get_page_data(path)
+        page_data = get_page_data(page)
         # get timestamp and convert to rfc822 date format 
         rfc822_fmt = '%a, %d %b %Y %H:%M:%S ' + CFG['utc_offset'] 
         page_data['date'] = date_format(page_data['date'], rfc822_fmt)
@@ -308,7 +307,7 @@ with a data.ion file.'.format(path))
         with open(data_file, 'w') as f:
             f.write(DATA_MODEL.format(date))
         # saves data to file listing all pages created
-        update_pagelog(path, date)
+        update_pagelog(path)
         print('Page \'{0}\' successfully created.'.format(path))
         print('Edit the file {0} and call \'ion charge\'!'.format(data_file))
 
