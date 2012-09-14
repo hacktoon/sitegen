@@ -21,6 +21,10 @@ Write your content here'''
         }
         self.assertEqual(ion_data, data_dict)
 
+    def test_date_format(self):
+        formated_date = ion.date_format('1347640769.0', '%d/%m/%Y')
+        self.assertEqual('14/09/2012', formated_date)
+
     def tearDown(self):
         pass
 
