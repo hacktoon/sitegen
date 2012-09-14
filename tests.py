@@ -9,7 +9,8 @@ class IonTest(unittest.TestCase):
 date = 12/09/2012
 content
 Write your content here'''
-        open('/tmp/data.ion', 'w').write(self.data_ion_file)
+        with open('/tmp/data.ion', 'w') as f:
+            f.write(self.data_ion_file)
 
     def test_ion_parser(self):
         ion_data = ion.parse_ion_file('/tmp/data.ion')
