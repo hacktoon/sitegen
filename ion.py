@@ -201,9 +201,9 @@ def get_page_data(path):
     page_data['permalink'] = os.path.join(CFG['base_url'], path, '')
     return page_data
 
-def fill_template(data, tpl):
-    '''Replaces the variables in the template'''
-    for key, value in data.items():
+def fill_template(variables, tpl):
+    '''Replaces the page variables in the given template'''
+    for key, value in variables.items():
         regex = re.compile(r'\{\{\s*' + key + '\s*\}\}')
         tpl = re.sub(regex, value.strip(), tpl)
     return tpl
