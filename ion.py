@@ -26,6 +26,7 @@ if sys.version_info.major < 3:
 # configuration customizable values
 CFG = {
     'site_name': 'My Ion site',
+    'site_author': 'Electric Joe',
     'site_description': 'An electric site',
     'base_url': 'http://localhost/',
     'themes_dir': 'themes',
@@ -45,6 +46,9 @@ CONFIG_FILE = 'config.ion'
 TEMPLATE_MODEL = '''<!DOCTYPE html>
 <html>
     <head>
+        <meta name="author" content="{{site_author}}" />
+        <meta name="description" content="{{site_description}}" />
+        <meta name="keywords" content="{{tags}}" />
         <meta charset="UTF-8" />
         <link rel="stylesheet" href="{{themes_url}}bolt/main.css" type="text/css" />
         {{css}}
@@ -94,6 +98,7 @@ RSS_ITEM_MODEL = '''
 # time 'ion plug' is called
 DATA_MODEL = '''title = Write your title here
 date = {0}
+tags = proton, neutron, electron
 content
 Write your content here
 '''
@@ -193,6 +198,7 @@ def get_page_data(path):
     page_data = parse_ion_file(data_file)
     # set common page data
     page_data['site_name'] = CFG['site_name']
+    page_data['site_author'] = CFG['site_author']
     page_data['site_description'] = CFG['site_description']
     page_data['base_url'] = CFG['base_url']
     page_data['themes_url'] = CFG['themes_url']
