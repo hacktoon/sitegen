@@ -75,6 +75,7 @@ RSS_MODEL = '''<?xml version="1.0" encoding="utf-8"?>
     <atom:link href="{{link}}rss.xml" rel="self" type="application/rss+xml" />
     <link>{{link}}</link>
     <description>{{description}}</description>
+    <lastBuildDate>{{build_date}}</lastBuildDate>
     {{items}}
 </channel>
 </rss>
@@ -256,7 +257,6 @@ def save_rss():
         pagelog = f.readlines()
     if not len(pagelog):
         return
-    pagelog.reverse() # start from the newest
     rss_data['site_name'] = CFG['site_name']
     rss_data['link'] = CFG['base_url']
     rss_data['description'] = CFG['site_description']
@@ -264,13 +264,17 @@ def save_rss():
     # will get only the first n items
     max_items = int(CFG['rss_items'])
     for page in pagelog[:max_items]:
+        page = page.strip() # remove newlines
         if not has_data_file(page):
             continue
         page_data = get_page_data(page)
         # get timestamp and convert to rfc822 date format 
         rfc822_fmt = '%a, %d %b %Y %H:%M:%S ' + CFG['utc_offset'] 
         page_data['date'] = date_format(page_data['date'], rfc822_fmt)
+        # get last page date to fill lastBuildDate
+        rss_data['build_date'] = page_data['date']
         items.append(fill_template(page_data, RSS_ITEM_MODEL))
+    items.reverse() # the last inserted must be the first in rss
     rss_data['items'] = '\n'.join(items)
     rss = fill_template(rss_data, RSS_MODEL)
     with open('rss.xml', 'w') as f:
