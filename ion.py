@@ -23,25 +23,6 @@ from datetime import datetime
 if sys.version_info.major < 3:
     sys.exit('Zap! Ion requires Python 3!')
 
-# configuration customizable values
-CFG = {
-    'site_name': 'My Ion site',
-    'site_author': 'Electric Joe',
-    'site_description': 'An electric site',
-    'base_url': 'http://localhost/',
-    'themes_dir': 'themes',
-    'default_theme': 'bolt',
-    'template_file': 'main.tpl',
-    'data_file': 'data.ion',
-    'pagelog_file': 'pages.log',
-    'rss_items': 8,
-    'utc_offset': '+0000',
-    'date_format': '%d/%m/%Y'
-}
-
-SYSTEM_DIR = '_ion'
-CONFIG_FILE = 'config.ion'
-
 # default template with all basic template variables
 TEMPLATE_MODEL = '''<!DOCTYPE html>
 <html>
@@ -103,6 +84,30 @@ content
 Write your content here
 '''
 
+# customizable configuration values
+CFG_MODEL = '''# main config file
+site_name = My Ion site
+site_author = Electric Joe
+site_description = An electric site
+base_url = http://localhost/
+default_theme = bolt
+# max number of items to list in RSS feed
+rss_items = 8
+# dd/mm/yyyy
+date_format = %d/%m/%Y
+utc_offset = +0000
+'''
+
+# system config values
+CFG = {
+    'system_dir': '_ion',
+    'config_file': 'config.ion',
+    'template_file': 'main.tpl',
+    'data_file': 'data.ion',
+    'index_file': 'index.log',
+    'themes_dir': 'themes'
+}
+
 def parse_ion_file(source_path):
     ion_data = {}
     with open(source_path, 'r') as f:
@@ -125,52 +130,44 @@ def parse_ion_file(source_path):
 
 def load_config():
     '''Loads the config file in system folder'''
-    system_path = os.path.join(os.getcwd(), SYSTEM_DIR)
-    config_path = os.path.join(system_path, CONFIG_FILE)
+    system_path = os.path.join(os.getcwd(), CFG['system_dir'])
+    config_path = os.path.join(system_path, CFG['config_file'])
     # Creates system folder
     if not os.path.exists(system_path):
         print('Generating system folder {0}...'.format(system_path))
         os.makedirs(system_path)
-    if os.path.exists(config_path):
-        # get custom configuration from config file
-        config = parse_ion_file(config_path)
-        for key in config.keys():
-            if key in CFG:
-                CFG[key] = config[key]
-    else:
-        # Creates config file from CFG dictionary
-        config_file_content = ''
-        for key, value in CFG.items():
-            config_file_content += '{0} = {1}\n'.format(key, value)
+    if not os.path.exists(config_path):
+        # Creates config file from CFG_MODEL
         print('Generating config file {0}...'.format(config_path))
         with open(config_path, 'w') as f:
-            f.write(config_file_content)
+            f.write(CFG_MODEL)
+    for key, value in parse_ion_file(config_path).items():
+        CFG[key] = value
 
-    # start setting values to be used by the system
-    CFG['system_path'] = system_path
-    CFG['config_path'] = config_path
     # add a trailing slash to base url, if necessary
     CFG['base_url'] = os.path.join(CFG['base_url'], '')
-    CFG['themes_path'] = os.path.join(CFG['system_path'], CFG['themes_dir'])
-    CFG['default_theme_path'] = os.path.join(CFG['themes_path'], CFG['default_theme'])
-    CFG['default_template_path'] = os.path.join(CFG['default_theme_path'], CFG['template_file'])
-    # adds an end slash to url if not provided
-    CFG['themes_url'] = os.path.join(CFG['base_url'], SYSTEM_DIR, CFG['themes_dir'], '')
-    CFG['pagelog_path'] = os.path.join(CFG['system_path'], CFG['pagelog_file'])
+    system_url = os.path.join(CFG['base_url'], CFG['system_dir'])
+    CFG['themes_url'] = os.path.join(system_url, CFG['themes_dir'], '')
+    
     # Creating themes directory
+    CFG['themes_path'] = os.path.join(system_path, CFG['themes_dir'])
     if not os.path.exists(CFG['themes_path']):
         os.makedirs(CFG['themes_path'])
+    dft_themepath = os.path.join(CFG['themes_path'], CFG['default_theme'])
+    dft_tplpath = os.path.join(dft_themepath, CFG['template_file'])
     # Creating default theme directory
-    if not os.path.exists(CFG['default_theme_path']):
-        print('Generating default theme {0}...'.format(CFG['default_theme_path']))
-        os.makedirs(CFG['default_theme_path'])
+    if not os.path.exists(dft_themepath):
+        print('Generating default theme {0}...'.format(dft_themepath))
+        os.makedirs(dft_themepath)
     # Creating default template file
-    if not os.path.exists(CFG['default_template_path']):
-        with open(CFG['default_template_path'], 'w')as f:
+    if not os.path.exists(dft_tplpath):
+        with open(dft_tplpath, 'w') as f:
             f.write(TEMPLATE_MODEL)
-    # Recent pages log file
-    if not os.path.exists(CFG['pagelog_path']):
-        with open(CFG['pagelog_path'], 'w') as f:
+    
+    # Index log file with list of recent pages
+    CFG['index_path'] = os.path.join(system_path, CFG['index_file'])
+    if not os.path.exists(CFG['index_path']):
+        with open(CFG['index_path'], 'w') as f:
             f.close()
 
 def date_format(timestamp, fmt):
@@ -178,12 +175,12 @@ def date_format(timestamp, fmt):
     timestamp = float(timestamp)
     return datetime.fromtimestamp(timestamp).strftime(fmt)
 
-def update_pagelog(path):
+def update_index(path):
     '''Updates a log file containing list of all pages created'''
     if path == '.':
         return
     pageline = '{0}\n'.format(path)
-    with open(CFG['pagelog_path'], 'a') as f:
+    with open(CFG['index_path'], 'a') as f:
         f.write(pageline)
 
 def has_data_file(path):
@@ -259,9 +256,9 @@ found!'.format(tpl_filepath))
 
 def save_rss():
     rss_data = {}
-    with open(CFG['pagelog_path'], 'r') as f:
-        pagelog = f.readlines()
-    if not len(pagelog):
+    with open(CFG['index_path'], 'r') as f:
+        index = f.readlines()
+    if not len(index):
         return
     rss_data['site_name'] = CFG['site_name']
     rss_data['link'] = CFG['base_url']
@@ -269,7 +266,7 @@ def save_rss():
     items = []
     # will get only the first n items
     max_items = int(CFG['rss_items'])
-    for page in pagelog[:max_items]:
+    for page in index[:max_items]:
         page = page.strip() # remove newlines
         if not has_data_file(page):
             continue
@@ -296,7 +293,8 @@ def ion_charge(path):
             continue
         page_data = get_page_data(dirpath)
         # get timestamp and convert to date format set in config
-        page_data['date'] = date_format(page_data['date'], CFG['date_format'])
+        page_data['date'] = date_format(page_data['date'], \
+            CFG['date_format'])
         save_json(dirpath, page_data)
         save_html(dirpath, page_data)
     # after generating all pages, update feed
@@ -317,9 +315,10 @@ with a data.ion file.'.format(path))
         with open(data_file, 'w') as f:
             f.write(DATA_MODEL.format(date))
         # saves data to file listing all pages created
-        update_pagelog(path)
+        update_index(path)
         print('Page \'{0}\' successfully created.'.format(path))
-        print('Edit the file {0} and call \'ion charge\'!'.format(data_file))
+        print('Edit the file {0} and call\
+\'ion charge\'!'.format(data_file))
 
 if __name__ == '__main__':
     help_message = '''Usage:
