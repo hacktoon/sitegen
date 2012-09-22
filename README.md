@@ -1,4 +1,4 @@
-# Íon - Shocking simple static (site) generator
+# Ion - Shocking simple static (site) generator
 
 ## About
 Static site generators are softwares that produces HTML and other static web formats like JSON as output. This output is then served just like the early years of web, what makes it fast. Content and templates are kept separated in different files, so changes are easy to make.
@@ -11,39 +11,45 @@ The advantages of static site generators are:
 
 And the disadvantages:
 * No comments, pingbacks, search, contact forms or anything dynamic (although most of this itens can be implemented with third party services like Disqus)
-* Not very user-friendly.
+* Not very user-friendly, but we are working on that.
 
-So, static site generators are systems you can use for specific cases.
+Given these facts, static site generators are systems you can use for specific cases.
 
 ## Quickstart
-You only need Python 3 to run Íon.
+You only need Python 3 to run Ion.
 
 ### How to install
-Call **ion.py** in a directory in your web root. It will create the basic configuration to run your site.
+Call **ion.py plug** in a directory in your web root. It will create the basic configuration to run your site.
 
 ### Configure
-Open the *config.ini* in **_ion** folder and define your settings.
+After installing, Ion will setup some basic configuration to you, but you can change these values.
+
+Open the *config.ini* in **_ion** folder and define your settings. Here are some examples:
 * **base_url** - Will be used for absolute linking.
 * **default_theme** - If a custom theme is not provided for a page, this theme will be used.
 * **blocked_dirs** - The directories you don't want Íon to read.
+* **rss_items** - The max number of posts to be listed on RSS feed.
+* **date_format** - A standard [date format](http://docs.python.org/library/datetime.html#strftime-and-strptime-behavior) used by Python language.
+* **utc_offset** - The UTC offset to specify your time zone.
 
 ### Create your first page
-Just run the *plug* command in the site root folder to create a new page:
+Just run the *spark* command in the site root folder to create a new page:
 
-    python3 ion.py plug
+    python3 ion.py spark
     
-If you want create a different page, you have to pass a path as second parameter:
+To create a different page, you have to pass a path as second parameter:
 
-    python3 ion.py plug path/to/folder
+    python3 ion.py spark path/to/folder
 
 This will create a *data.ion* model file. You're ready to start adding your own content:
 
     title = My first post
-    date = 2012-05-20
+    date = 20/05/2012
+    tags = proton, neutron, electron
     content
     My page content
 
-Now run the *charge* command:
+Now run the *charge* command. The *charge* command accepts a path parameter just like the *spark*.
     
     python3 ion.py charge
 
@@ -57,6 +63,7 @@ You can add new themes to **_ion/themes**, create and use optional variables wit
     css = main.css
     js = jquery.js, site.js
     date = 2012-05-20
+    tags = shocking, blue
     content
     My page content
 
@@ -76,5 +83,4 @@ New themes must obey the same file structure of the default theme.
 
 ## Help
 
-* ion.py **plug** *[path/to/folder]* - Creates an empty page on path specified.
-* ion.py **charge** *[path/to/folder]* - Generates HTML/JSON files of each folder under the path specified and its subfolders, recursively.
+Run **ion.py help**.
