@@ -45,6 +45,7 @@ TEMPLATE_MODEL = '''<!DOCTYPE html>
     <h2><a href="{{permalink}}">{{title}}</a></h2>
     <span>{{date}}</span>
     <p>{{content}}</p>
+    <p>{{pages:3}}</p>
     {{js}}
 </body>
 </html>
@@ -222,9 +223,21 @@ def get_page_data(path):
 
 def fill_template(variables, tpl):
     '''Replaces the page variables in the given template'''
+    # gets the last pages
+    index = []
+    with open(CFG['index_path'], 'r') as f:
+        index = f.readlines()
+    # first replace the variables
     for key, value in variables.items():
-        regex = re.compile(r'\{\{\s*' + key + '\s*\}\}')
-        tpl = re.sub(regex, value.strip(), tpl)
+        tag_re = re.compile(r'\{\{\s*' + key + '\s*\}\}')
+        tpl = re.sub(tag_re, value.strip(), tpl)
+    # include fragments
+    # page listings
+    page_re = re.compile(r'\{\{\s*pages:(?P<num_pages>\d+)\s*\}\}')
+    for number in re.findall(page_re, tpl):
+        page_list = index[:int(number)]
+        list_re = re.compile(r'\{\{\s*pages:'+number+'\s*\}\}')
+        tpl = re.sub(list_re, '\n'.join(page_list), tpl);
     return tpl
 
 
