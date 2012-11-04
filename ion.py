@@ -221,23 +221,53 @@ def get_page_data(path):
     return page_data
 
 
-def fill_template(variables, tpl):
-    '''Replaces the page variables in the given template'''
-    # gets the last pages
+def tag_regex_format(regex):
+    return r'\{\{\s*' + regex  + '\s*\}\}'
+
+
+def replace_page_tags(expr, tpl):
     index = []
+    cat = num = ''
+    tags = list(filter(None, expr.split(':')))
+    if len(tags) == 2:  # pages:3
+        num = tags[1].strip()
+    elif len(tags) == 3:  # pages:cat:4
+        cat = tags[1].strip()
+        num = tags[2].strip()
+    # loading recent pages index
     with open(CFG['index_path'], 'r') as f:
         index = f.readlines()
+        index.reverse()
+    # returns only the pages in the given category 
+    if cat:
+        index = [x for x in index if x.startswith(os.path.join(cat, ''))]
+    if num:
+        page_list = index[:int(num)]
+        replace_by = '\n'.join(page_list)
+    else:
+        replace_by = ''
+    list_re = re.compile(tag_regex_format('pages:(' + cat + ':)?' + num))
+    tpl = re.sub(list_re, replace_by, tpl)
+    return tpl
+
+
+def fill_template(variables, tpl):
+    '''Replaces the page variables in the given template'''
+    tags_re = re.compile(tag_regex_format('(.*?)'))
+    tags_matches = re.findall(tags_re, tpl)
     # first replace the variables
-    for key, value in variables.items():
-        tag_re = re.compile(r'\{\{\s*' + key + '\s*\}\}')
-        tpl = re.sub(tag_re, value.strip(), tpl)
-    # include fragments
-    # page listings
-    page_re = re.compile(r'\{\{\s*pages:(?P<num_pages>\d+)\s*\}\}')
-    for number in re.findall(page_re, tpl):
-        page_list = index[:int(number)]
-        list_re = re.compile(r'\{\{\s*pages:'+number+'\s*\}\}')
-        tpl = re.sub(list_re, '\n'.join(page_list), tpl);
+    for tag in tags_matches:
+        if tag.startswith('pages:'):
+            # page listings
+            tpl = replace_page_tags(tag, tpl)
+        elif tag.startswith('include:'):
+            # include fragments
+            pass
+        else:
+            # if tag doesnt exists, replace by nothing
+            value = variables.get(tag, '').strip()
+            tag_re = re.compile(tag_regex_format(tag))
+            tpl = re.sub(tag_re, value, tpl)
     return tpl
 
 
