@@ -56,4 +56,5 @@ Write your content here'''
         pass
 
 if __name__ == '__main__':
-    unittest.main()
+    suite = unittest.TestLoader().loadTestsFromTestCase(TestHelpers)
+    unittest.TextTestRunner(verbosity=2).run(suite)

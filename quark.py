@@ -105,7 +105,7 @@ def parse_ion_file(source_path):
             ion_data['content'] = ''.join(lines[num + 1:])
             break
         try:
-            key, value = list(map(str.strip, line.split('=')))
+            key, value = [l.strip() for l in line.split('=')]
             ion_data[key] = value
         except:
             continue

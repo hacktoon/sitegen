@@ -16,13 +16,15 @@ class TagParser:
         self.index = index
 
     def print(self, key):
+        '''Prints a variable value'''
         return self.variables.get(key, '')
-    
+   
     def pagelist(self, num, category = None, tpl_file = None):
+        '''Prints a list of recent pages'''
         if not self.index:
             return ''
         index = self.index[:]
-        if num != '*':
+        if num != 'all':
             try:
                 num = int(num)
             except ValueError:
@@ -30,10 +32,10 @@ class TagParser:
             # listing order
             if num > 0:
                 index.reverse()
-            index = index[:num]
+            index = index[:abs(num)]
         if category:
-            f = lambda c: c.startswith(os.path.join(category, ''))
-            index = filter(f, index)
+            tmpf = lambda c: c.startswith(os.path.join(category, ''))
+            index = filter(tmpf, index)
         pagelist = ''
         for page in index:
             page_data = quark.get_page_data(page)
@@ -55,6 +57,7 @@ def parse(variables, tpl, index=None):
     for tag in tags_matched:
         cmd, args = tag
         value = getattr(tag_parser, cmd)(*args.split())
-        tag_re = re.compile(RE_START + cmd + '\s+' + args + RE_END)
+        regex = RE_START + cmd + '\s+' + re.escape(args) + RE_END
+        tag_re = re.compile(r'{0}'.format(regex))
         tpl = re.sub(tag_re, value, tpl)
     return tpl
