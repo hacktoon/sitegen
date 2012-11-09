@@ -103,6 +103,11 @@ def read_file(path):
         return f.read()
 
 
+def list_read_file(path):
+    with open(path, 'r') as f:
+        return [l.strip() for l in f.readlines()]
+
+
 def parse_ion_file(source_path):
     ion_data = {}
     with open(source_path, 'r') as f:
@@ -135,6 +140,10 @@ def get_pagelist_preset(theme, name):
         print('pagelist preset file not present')
         return DEFAULT_PAGELIST_PRESET
     return read_file(path)
+
+
+def get_page_index():
+    return list_read_file(CFG['index_path'])
 
 
 def get_page_data(path):

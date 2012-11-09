@@ -29,19 +29,6 @@ if sys.version_info.major < 3:
     sys.exit('Zap! Ion requires Python 3!')
 
 
-def is_string(value):
-    return isinstance(value, str)
-
-
-def is_int(value):
-    return isinstance(value, int)
-
-
-def list_read_file(filename):
-    with open(filename, 'r') as f:
-        return [l.strip() for l in f.readlines()]
-
-
 def system_pathinfo():
     system_path = os.path.join(os.getcwd(), quark.CFG['system_dir'])
     config_path = os.path.join(system_path, quark.CFG['config_file'])
@@ -150,7 +137,7 @@ found!'.format(tpl_filepath))
     page_data['js'] = build_script_tags(js, page_data['permalink'])
     # fill template with page data
     # loading recent pages index
-    index = list_read_file(quark.CFG['index_path'])
+    index = quark.get_page_index()
     html = photon.parse(page_data, html_tpl, index)
     with open(os.path.join(path, 'index.html'), 'w') as f:
         f.write(html)
@@ -160,7 +147,7 @@ found!'.format(tpl_filepath))
 def save_rss():
     rss_data = {}
     # loading recent pages index
-    index = list_read_file(quark.CFG['index_path'])
+    index = quark.get_page_index()
     if not len(index):
         return
     rss_data['site_name'] = quark.CFG['site_name']
