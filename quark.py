@@ -80,6 +80,13 @@ date_format = %d/%m/%Y
 utc_offset = +0000
 '''
 
+DEFAULT_PAGELIST_PRESET = '''<li>
+    <a title="{title}" href="{permalink}">
+        {title}
+    </a>
+</li>
+'''
+
 # system config values
 CFG = {
     'system_dir': '_ion',
@@ -89,6 +96,11 @@ CFG = {
     'index_file': 'index.log',
     'themes_dir': 'themes'
 }
+
+
+def read_file(path):
+    with open(path, 'r') as f:
+        return f.read()
 
 
 def parse_ion_file(source_path):
@@ -115,6 +127,14 @@ def parse_ion_file(source_path):
 def has_data_file(path):
     data_file = os.path.join(path, CFG['data_file'])
     return os.path.exists(data_file)
+
+
+def get_pagelist_preset(theme, name):
+    path = os.path.join(CFG['themes_path'], theme, name + '.preset')
+    if not os.path.exists(path):
+        print('pagelist preset file not present')
+        return DEFAULT_PAGELIST_PRESET
+    return read_file(path)
 
 
 def get_page_data(path):

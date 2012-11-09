@@ -19,12 +19,12 @@ class TagParser:
         '''Prints a variable value'''
         return self.variables.get(key, '')
    
-    def pagelist(self, num, category = None, tpl_file = None):
+    def pagelist(self, num, category = None, preset = 'default'):
         '''Prints a list of recent pages'''
         if not self.index:
             return ''
         index = self.index[:]
-        if num != 'all':
+        if num != 'all' or num != '*':
             try:
                 num = int(num)
             except ValueError:
@@ -39,9 +39,8 @@ class TagParser:
         pagelist = ''
         for page in index:
             page_data = quark.get_page_data(page)
-            permalink = page_data['permalink']
-            title = page_data['title']
-            pagelist += '<a href="{0}">{1}</a>\n'.format(permalink, title)
+            tpl = quark.get_pagelist_preset(page_data['theme'], preset)
+            pagelist += tpl.format(**page_data)
         return pagelist
     
     def include(self, tpl_file):
