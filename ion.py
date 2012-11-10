@@ -15,7 +15,6 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 import os
 import sys
 import re
-import json
 import time
 from datetime import datetime
 
@@ -80,98 +79,12 @@ def config_load():
     quark.CFG['index_path'] = os.path.join(system_path, quark.CFG['index_file'])
 
 
-def date_format(timestamp, fmt):
-    '''helper to convert a timestamp into a given date format'''
-    timestamp = float(timestamp)
-    return datetime.fromtimestamp(timestamp).strftime(fmt)
-
-
 def update_index(path):
     '''Updates a log file containing list of all pages created'''
     if path == '.':
         return
     pageline = '{0}\n'.format(path)
-    with open(quark.CFG['index_path'], 'a') as f:
-        f.write(pageline)
-
-
-def build_external_tags(filenames, permalink, tag, ext):
-    tag_list = []
-    for filename in filenames.split(','):
-        filename = filename.strip()
-        url = os.path.join(permalink, filename)
-        if filename.endswith(ext):
-            tag_list.append(tag.format(url))
-    return ''.join(tag_list)
-
-
-def build_style_tags(filenames, permalink):
-    tag = '<link rel="stylesheet" type="text/css" href="{0}" />\n'
-    return build_external_tags(filenames, permalink, tag, '.css')
-
-
-def build_script_tags(filenames, permalink):
-    tag = '<script src="{0}"></script>\n'
-    return build_external_tags(filenames, permalink, tag, '.js')
-
-
-def save_json(dirname, page_data):
-    json_filepath = os.path.join(dirname, 'index.json')
-    with open(json_filepath, 'w') as f:
-        f.write(json.dumps(page_data))
-
-
-def save_html(path, page_data):
-    theme_dir = os.path.join(quark.CFG['themes_path'], page_data['theme'])
-    tpl_filepath = os.path.join(theme_dir, quark.CFG['template_file'])
-    if not os.path.exists(tpl_filepath):
-        sys.exit('Zap! Template file {0} couldn\'t be \
-found!'.format(tpl_filepath))
-    #abrindo arquivo de template e extraindo o html
-    with open(tpl_filepath, 'r') as f:
-        html_tpl = f.read()
-    # get css and javascript found in the folder
-    css = page_data.get('css', '')
-    page_data['css'] = build_style_tags(css, page_data['permalink'])
-    js = page_data.get('js', '')
-    page_data['js'] = build_script_tags(js, page_data['permalink'])
-    # fill template with page data
-    # loading recent pages index
-    index = quark.get_page_index()
-    html = photon.parse(page_data, html_tpl, index)
-    with open(os.path.join(path, 'index.html'), 'w') as f:
-        f.write(html)
-    print('\'{0}\' generated.'.format(path))
-
-
-def save_rss():
-    rss_data = {}
-    # loading recent pages index
-    index = quark.get_page_index()
-    if not len(index):
-        return
-    rss_data['site_name'] = quark.CFG['site_name']
-    rss_data['link'] = quark.CFG['base_url']
-    rss_data['description'] = quark.CFG['site_description']
-    items = []
-    # will get only the first n items
-    max_items = int(quark.CFG['rss_items'])
-    for page in index[:max_items]:
-        page = page.strip()  # remove newlines
-        if not quark.has_data_file(page):
-            continue
-        page_data = quark.get_page_data(page)
-        # get timestamp and convert to rfc822 date format
-        rfc822_fmt = '%a, %d %b %Y %H:%M:%S ' + quark.CFG['utc_offset']
-        page_data['date'] = date_format(page_data['date'], rfc822_fmt)
-        # get last page date to fill lastBuildDate
-        rss_data['build_date'] = page_data['date']
-        items.append(photon.parse(page_data, quark.RSS_ITEM_MODEL))
-    items.reverse()  # the last inserted must be the first in rss
-    rss_data['items'] = '\n'.join(items)
-    rss = photon.parse(rss_data, quark.RSS_MODEL)
-    with open('rss.xml', 'w') as f:
-        f.write(rss)
+    quark.append_file(quark.CFG['index_path'], pageline)
 
 
 def ion_charge(path):
@@ -186,12 +99,12 @@ def ion_charge(path):
             continue
         page_data = quark.get_page_data(dirpath)
         # get timestamp and convert to date format set in config
-        page_data['date'] = date_format(page_data['date'], \
+        page_data['date'] = quark.date_format(page_data['date'], \
             quark.CFG['date_format'])
-        save_json(dirpath, page_data)
-        save_html(dirpath, page_data)
+        photon.save_json(dirpath, page_data)
+        photon.save_html(dirpath, page_data)
     # after generating all pages, update feed
-    save_rss()
+    photon.save_rss()
 
 
 def ion_spark(path):
@@ -208,8 +121,7 @@ with a data.ion file.'.format(path))
         # saving timestamp
         date = time.mktime(datetime.now().timetuple())
         # copy source file to new path
-        with open(data_file, 'w') as f:
-            f.write(quark.DATA_MODEL.format(date))
+        quark.write_file(data_file, quark.DATA_MODEL.format(date))
         # saves data to file listing all pages created
         update_index(path)
         print('Page \'{0}\' successfully created.'.format(path))
@@ -228,8 +140,7 @@ def ion_plug():
     if not os.path.exists(config_path):
         # Creates config file from quark.CFG_MODEL
         print('Config file:\t{0}'.format(config_path))
-        with open(config_path, 'w') as f:
-            f.write(quark.CFG_MODEL)
+        quark.write_file(config_path, quark.CFG_MODEL)
     # load the config after creating the system folder
     config_load()
     # Creating themes directory
@@ -244,13 +155,11 @@ def ion_plug():
     # Creating default template file
     if not os.path.exists(dft_tplpath):
         print('Default template file:\t{0}'.format(dft_tplpath))
-        with open(dft_tplpath, 'w') as f:
-            f.write(quark.TEMPLATE_MODEL)
+        quark.write_file(dft_tplpath, quark.TEMPLATE_MODEL)
     # Index log file with list of recent pages
     if not os.path.exists(quark.CFG['index_path']):
         print('Index file:\t{0}'.format(quark.CFG['index_path']))
-        with open(quark.CFG['index_path'], 'w') as f:
-            f.close()
+        quark.write_file(quark.CFG['index_path'])
     sys.exit('\nIon is ready! Run "ion spark [path]" to create pages!\n')
 
 
