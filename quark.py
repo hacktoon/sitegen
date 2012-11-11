@@ -1,5 +1,17 @@
 # coding: utf-8
 
+'''
+===============================================================================
+Ion - A shocking simple static (site) generator
+
+Author: Karlisson M. Bezerra
+E-mail: contact@hacktoon.com
+URL: https://github.com/karlisson/ion
+License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
+
+===============================================================================
+'''
+
 import os
 from datetime import datetime
 
@@ -28,7 +40,7 @@ TEMPLATE_MODEL = '''<!DOCTYPE html>
     <p>{{print content}}</p>
     <h2>Included menu</h2>
     <p>{{include footer}}</p>
-    {{ print js}}
+    {{print js}}
 </body>
 </html>
 '''
@@ -39,23 +51,23 @@ RSS_MODEL = '''<?xml version="1.0" encoding="utf-8"?>
     xmlns:atom="http://www.w3.org/2005/Atom"
 >
 <channel>
-    <title>{{ print site_name}}</title>
-    <atom:link href="{{ print link}}rss.xml" rel="self" type="application/rss+xml" />
-    <link>{{ print link}}</link>
-    <description>{{ print description}}</description>
-    <lastBuildDate>{{ print build_date}}</lastBuildDate>
-    {{ print items}}
+    <title>{{print site_name}}</title>
+    <atom:link href="{{print link}}rss.xml" rel="self" type="application/rss+xml" />
+    <link>{{print link}}</link>
+    <description>{{print description}}</description>
+    <lastBuildDate>{{print build_date}}</lastBuildDate>
+    {{print items}}
 </channel>
 </rss>
 '''
 
 RSS_ITEM_MODEL = '''
     <item>
-        <title>{{ print title}}</title>
-        <link>{{ print permalink}}</link>
-        <pubDate>{{ print date}}</pubDate>
-        <description><![CDATA[{{ print content}}]]></description>
-        <guid>{{ print permalink}}</guid>
+        <title>{{print title}}</title>
+        <link>{{print permalink}}</link>
+        <pubDate>{{print date}}</pubDate>
+        <description><![CDATA[{{print content}}]]></description>
+        <guid>{{print permalink}}</guid>
     </item>'''
 
 # this is the model of files used to store content
@@ -155,9 +167,12 @@ def has_data_file(path):
 def get_pagelist_preset(theme, name):
     path = os.path.join(CFG['themes_path'], theme, name + '.preset')
     if not os.path.exists(path):
-        print('pagelist preset file not present')
         return DEFAULT_PAGELIST_PRESET
     return read_file(path)
+
+
+def get_current_theme_dir(theme):
+    return os.path.join(CFG['themes_path'], theme)
 
 
 def get_page_index():

@@ -156,6 +156,12 @@ def ion_plug():
     if not os.path.exists(dft_tplpath):
         print('Default template file:\t{0}'.format(dft_tplpath))
         quark.write_file(dft_tplpath, quark.TEMPLATE_MODEL)
+
+    dft_pagelist_preset = os.path.join(dft_themepath, 'pagelist.preset')
+    # Creating default pagelist preset file
+    if not os.path.exists(dft_pagelist_preset):
+        print('Default pagelist preset file:\t{0}'.format(dft_pagelist_preset))
+        quark.write_file(dft_pagelist_preset, quark.DEFAULT_PAGELIST_PRESET)
     # Index log file with list of recent pages
     if not os.path.exists(quark.CFG['index_path']):
         print('Index file:\t{0}'.format(quark.CFG['index_path']))

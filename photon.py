@@ -44,8 +44,14 @@ class TagParser:
             pagelist += tpl.format(**page_data)
         return pagelist
     
-    def include(self, tpl_file):
-        pass
+    def include(self, filename):
+        theme_dir = quark.get_current_theme_dir(self.variables['theme'])
+        path = os.path.join(theme_dir, filename + '.inc')
+        if os.path.exists(path):
+            return quark.read_file(path)
+        else:
+            print('Warning: Include file \'{0}\' doesn\'t exists.'.format(path))
+            return ''
 
 
 def parse(variables, tpl, index=None):
@@ -89,7 +95,7 @@ def save_json(dirname, page_data):
 
 
 def save_html(path, page_data):
-    theme_dir = os.path.join(quark.CFG['themes_path'], page_data['theme'])
+    theme_dir = quark.get_current_theme_dir(page_data['theme'])
     tpl_filepath = os.path.join(theme_dir, quark.CFG['template_file'])
     if not os.path.exists(tpl_filepath):
         sys.exit('Zap! Template file {0} couldn\'t be \
