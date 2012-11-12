@@ -28,15 +28,9 @@ if sys.version_info.major < 3:
     sys.exit('Zap! Ion requires Python 3!')
 
 
-def system_pathinfo():
-    system_path = os.path.join(os.getcwd(), quark.CFG['system_dir'])
-    config_path = os.path.join(system_path, quark.CFG['config_file'])
-    return system_path, config_path
-
-
 def config_check():
     '''Runs diagnostics on the system'''
-    system_path, config_path = system_pathinfo()
+    system_path, config_path = quark.system_pathinfo()
     exit_msg = 'Run "ion plug" to install Ion in this folder!'
     errors_found = False
     if not os.path.exists(config_path):
@@ -68,7 +62,7 @@ def config_check():
 
 def config_load():
     '''Loads the config file in system folder'''
-    system_path, config_path = system_pathinfo()
+    system_path, config_path = quark.system_pathinfo()
     for key, value in quark.parse_ion_file(config_path).items():
         quark.CFG[key] = value
     # add a trailing slash to base url, if necessary
@@ -131,7 +125,7 @@ with a data.ion file.'.format(path))
 
 def ion_plug():
     '''Installs Ion on the current folder'''
-    system_path, config_path = system_pathinfo()
+    system_path, config_path = quark.system_pathinfo()
     print('Installing Ion...')
     # Creates system folder
     if not os.path.exists(system_path):

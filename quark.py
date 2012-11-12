@@ -137,7 +137,6 @@ def date_format(timestamp, fmt):
     timestamp = float(timestamp)
     return datetime.fromtimestamp(timestamp).strftime(fmt)
 
-
 def parse_ion_file(source_path):
     ion_data = {}
     with open(source_path, 'r') as f:
@@ -162,6 +161,12 @@ def parse_ion_file(source_path):
 def has_data_file(path):
     data_file = os.path.join(path, CFG['data_file'])
     return os.path.exists(data_file)
+
+
+def system_pathinfo():
+    system_path = os.path.join(os.getcwd(), CFG['system_dir'])
+    config_path = os.path.join(system_path, CFG['config_file'])
+    return system_path, config_path
 
 
 def get_pagelist_preset(theme, name):

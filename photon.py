@@ -1,5 +1,17 @@
 # coding: utf-8
 
+'''
+===============================================================================
+Ion - A shocking simple static (site) generator
+
+Author: Karlisson M. Bezerra
+E-mail: contact@hacktoon.com
+URL: https://github.com/karlisson/ion
+License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
+
+===============================================================================
+'''
+
 import re
 import os
 import sys
