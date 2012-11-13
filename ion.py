@@ -18,15 +18,22 @@ import re
 import time
 from datetime import datetime
 
-# templating language
-import photon
-# IO module, basic bricks
-import quark
+import photon  # templating language
+import quark  # low level module, basic bricks
 
 # obey the rules
 if sys.version_info.major < 3:
     sys.exit('Zap! Ion requires Python 3!')
 
+# system config values
+CFG = {
+    'system_dir': '_ion',
+    'config_file': 'config.ion',
+    'template_file': 'main.tpl',
+    'data_file': 'data.ion',
+    'index_file': 'index.log',
+    'themes_dir': 'themes'
+}
 
 def config_check():
     '''Runs diagnostics on the system'''

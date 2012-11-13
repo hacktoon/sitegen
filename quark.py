@@ -15,102 +15,6 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 import os
 from datetime import datetime
 
-# default template with all basic template variables
-TEMPLATE_MODEL = '''<!DOCTYPE html>
-<html>
-<head>
-    <meta name="author" content="{{print site_author}}" />
-    <meta name="description" content="{{print site_description}}" />
-    <meta name="keywords" content="{{print tags}}" />
-    <meta charset="UTF-8" />
-    <link rel="stylesheet" href="{{print themes_url}}bolt/ion.css" type="text/css" />
-    {{print css}}
-    <title>{{print title}} | {{print site_name}}</title>
-</head>
-<body>
-    <h1><a href="{{print base_url}}">{{print site_name}}</a></h1>
-    <p>{{print site_description}}</p>
-    <ul>
-        <li><a href="{{print base_url}}">Home</a></li>
-        <li><a href="{{print base_url}}about">About</a></li>
-        {{pagelist 3}}
-    </ul>
-    <h2><a href="{{print permalink}}">{{print title}}</a></h2>
-    <span>{{print date}}</span>
-    <p>{{print content}}</p>
-    <h2>Included menu</h2>
-    <p>{{include footer}}</p>
-    {{print js}}
-</body>
-</html>
-'''
-
-# model of RSS file for feed generation
-RSS_MODEL = '''<?xml version="1.0" encoding="utf-8"?>
-<rss version="2.0"
-    xmlns:atom="http://www.w3.org/2005/Atom"
->
-<channel>
-    <title>{{print site_name}}</title>
-    <atom:link href="{{print link}}rss.xml" rel="self" type="application/rss+xml" />
-    <link>{{print link}}</link>
-    <description>{{print description}}</description>
-    <lastBuildDate>{{print build_date}}</lastBuildDate>
-    {{print items}}
-</channel>
-</rss>
-'''
-
-RSS_ITEM_MODEL = '''
-    <item>
-        <title>{{print title}}</title>
-        <link>{{print permalink}}</link>
-        <pubDate>{{print date}}</pubDate>
-        <description><![CDATA[{{print content}}]]></description>
-        <guid>{{print permalink}}</guid>
-    </item>'''
-
-# this is the model of files used to store content
-# it will be saved to a new file data.ion every
-# time 'ion plug' is called
-DATA_MODEL = '''title = Write your title here
-date = {0}
-tags = proton, neutron, electron
-content
-Write your content here
-'''
-
-# customizable configuration values
-CFG_MODEL = '''# main config file
-site_name = My Ion site
-site_author = Electric Joe
-site_description = An electric site
-base_url = http://localhost/
-default_theme = bolt
-# max number of items to list in RSS feed
-rss_items = 8
-# dd/mm/yyyy
-date_format = %d/%m/%Y
-utc_offset = +0000
-'''
-
-DEFAULT_PAGELIST_PRESET = '''<li>
-    <a title="{title}" href="{permalink}">
-        {title}
-    </a>
-</li>
-'''
-
-# system config values
-CFG = {
-    'system_dir': '_ion',
-    'config_file': 'config.ion',
-    'template_file': 'main.tpl',
-    'data_file': 'data.ion',
-    'index_file': 'index.log',
-    'themes_dir': 'themes'
-}
-
 
 def read_file(path):
     with open(path, 'r') as f:
@@ -136,6 +40,7 @@ def date_format(timestamp, fmt):
     '''helper to convert a timestamp into a given date format'''
     timestamp = float(timestamp)
     return datetime.fromtimestamp(timestamp).strftime(fmt)
+
 
 def parse_ion_file(source_path):
     ion_data = {}

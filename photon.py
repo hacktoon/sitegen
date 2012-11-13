@@ -154,5 +154,3 @@ def save_rss():
     rss_data['items'] = '\n'.join(items)
     rss = parse(rss_data, quark.RSS_MODEL)
     quark.write_file('rss.xml', rss)
-
-
