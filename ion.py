@@ -14,7 +14,6 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 
 import os
 import sys
-import re
 
 import photon  # templating language
 import quark  # low level module, basic bricks
@@ -27,19 +26,13 @@ if sys.version_info.major < 3:
 def ion_charge(path):
     '''Reads recursively every directory under path and
     outputs HTML/JSON for each data.ion file'''
-    config_check()
-    config_load()
+    # config_check()
     for dirpath, subdirs, filenames in os.walk(path):
-        #removing '.' of the path in the case of root directory of site
-        dirpath = re.sub('^\.$|\.\/', '', dirpath)
-        if not quark.has_data_file(dirpath):
-            continue
         page_data = quark.get_page_data(dirpath)
-        # get timestamp and convert to date format set in config
-        page_data['date'] = quark.date_format(page_data['date'], \
-            quark.CFG['date_format'])
+        if not page_data:
+            continue
         photon.save_json(dirpath, page_data)
-        photon.save_html(dirpath, page_data)
+        #photon.save_html(dirpath, page_data)
     # after generating all pages, update feed
     photon.save_rss()
 

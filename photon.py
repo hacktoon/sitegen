@@ -16,6 +16,7 @@ import re
 import os
 import sys
 import json
+from datetime import datetime
 
 import quark
 
@@ -28,10 +29,12 @@ class TagParser:
         self.variables = variables
         self.index = index
 
+
     def print(self, key):
         '''Prints a variable value'''
         return self.variables.get(key, '')
-   
+
+
     def pagelist(self, num, category = None, preset = 'default'):
         '''Prints a list of recent pages'''
         if not self.index:
@@ -55,9 +58,10 @@ class TagParser:
             tpl = quark.get_pagelist_preset(page_data['theme'], preset)
             pagelist += tpl.format(**page_data)
         return pagelist
-    
+
+
     def include(self, filename):
-        theme_dir = quark.get_current_theme_dir(self.variables['theme'])
+        theme_dir = quark.get_page_theme_dir(self.variables['theme'])
         path = os.path.join(theme_dir, filename + '.inc')
         if os.path.exists(path):
             return quark.read_file(path)
@@ -88,17 +92,17 @@ def build_external_tags(filenames, permalink, tag, ext):
         url = os.path.join(permalink, filename)
         if filename.endswith(ext):
             tag_list.append(tag.format(url))
-    return ''.join(tag_list)
+    return '\n'.join(tag_list)
 
 
 def build_style_tags(filenames, permalink):
-    tag = '<link rel="stylesheet" type="text/css" href="{0}" />\n'
-    return build_external_tags(filenames, permalink, tag, '.css')
+    tag = '<link rel="stylesheet" type="text/css" href="{0}" />'
+    return build_external_tags(filenames, permalink, tag, 'css')
 
 
 def build_script_tags(filenames, permalink):
-    tag = '<script src="{0}"></script>\n'
-    return build_external_tags(filenames, permalink, tag, '.js')
+    tag = '<script src="{0}"></script>'
+    return build_external_tags(filenames, permalink, tag, 'js')
 
 
 def save_json(dirname, page_data):
@@ -107,21 +111,14 @@ def save_json(dirname, page_data):
 
 
 def save_html(path, page_data):
-    theme_dir = quark.get_current_theme_dir(page_data['theme'])
-    tpl_filepath = os.path.join(theme_dir, quark.CFG['template_file'])
-    if not os.path.exists(tpl_filepath):
-        sys.exit('Zap! Template file {0} couldn\'t be \
-found!'.format(tpl_filepath))
-    #abrindo arquivo de template e extraindo o html
-    html_tpl = quark.read_file(tpl_filepath)
+    html_tpl = quark.read_html_template(page_data['theme'])
     # get css and javascript found in the folder
-    css = page_data.get('css', '')
-    page_data['css'] = build_style_tags(css, page_data['permalink'])
-    js = page_data.get('js', '')
-    page_data['js'] = build_script_tags(js, page_data['permalink'])
-    # fill template with page data
+    permalink = page_data['permalink']
+    page_data['css'] = build_style_tags(page_data.get('css', ''), permalink)
+    page_data['js'] = build_script_tags(page_data.get('js', ''), permalink)
     # loading recent pages index
     index = quark.get_page_index()
+    # replace template with page data and listings
     html = parse(page_data, html_tpl, index)
     quark.write_file(os.path.join(path, 'index.html'), html)
     print('\'{0}\' generated.'.format(path))
@@ -133,24 +130,26 @@ def save_rss():
     index = quark.get_page_index()
     if not len(index):
         return
-    rss_data['site_name'] = quark.CFG['site_name']
-    rss_data['link'] = quark.CFG['base_url']
-    rss_data['description'] = quark.CFG['site_description']
+    site_config = quark.get_site_config()
+    rss_data['site_name'] =site_config.get('site_name')
+    rss_data['link'] = site_config.get('base_url')
+    rss_data['description'] = site_config.get('site_description')
     items = []
     # will get only the first n items
-    max_items = int(quark.CFG['rss_items'])
+    max_items = int(site_config.get('rss_items'))
+    # get the templates: full rss document and rss item snippets
+    rss_tpl, rss_item_tpl = quark.read_rss_templates()
+    # populate RSS items with the page index
     for page in index[:max_items]:
-        page = page.strip()  # remove newlines
-        if not quark.has_data_file(page):
-            continue
         page_data = quark.get_page_data(page)
-        # get timestamp and convert to rfc822 date format
-        rfc822_fmt = '%a, %d %b %Y %H:%M:%S ' + quark.CFG['utc_offset']
-        page_data['date'] = quark.date_format(page_data['date'], rfc822_fmt)
+        # get date and convert to rfc822 date format
+        rfc822_fmt = '%a, %d %b %Y %H:%M:%S ' + site_config.get('utc_offset')
+        date = datetime.strptime(page_data['date'], site_config['date_format'])
+        page_data['date'] = date.strftime(rfc822_fmt)
         # get last page date to fill lastBuildDate
         rss_data['build_date'] = page_data['date']
-        items.append(parse(page_data, quark.RSS_ITEM_MODEL))
+        items.append(parse(page_data, rss_item_tpl))
     items.reverse()  # the last inserted must be the first in rss
     rss_data['items'] = '\n'.join(items)
-    rss = parse(rss_data, quark.RSS_MODEL)
-    quark.write_file('rss.xml', rss)
+    rss_doc = parse(rss_data, rss_tpl)
+    quark.write_file('rss.xml', rss_doc)

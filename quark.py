@@ -14,6 +14,7 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 
 import os
 import sys
+import re
 import shutil
 import time
 from datetime import datetime
@@ -21,11 +22,17 @@ import config
 
 
 def read_file(path):
+    if not os.path.exists(path):
+        sys.exit('Zap! File "{0}" couldn\'t be \
+found!'.format(path))
     with open(path, 'r') as f:
         return f.read()
 
 
 def list_read_file(path):
+    if not os.path.exists(path):
+        sys.exit('Zap! File "{0}" couldn\'t be \
+found!'.format(path))
     with open(path, 'r') as f:
         return [l.strip() for l in f.readlines()]
 
@@ -34,12 +41,6 @@ def write_file(path, content='', append=False):
     mode = 'a' if append else 'w'
     with open(path, mode) as f:
         f.write(content)
-
-
-def date_format(timestamp, fmt):
-    '''helper to convert a timestamp into a given date format'''
-    timestamp = float(timestamp)
-    return datetime.fromtimestamp(timestamp).strftime(fmt)
 
 
 def parse_ion_file(source_path):
@@ -51,7 +52,7 @@ def parse_ion_file(source_path):
             continue
         if(line == config.CONTENT_KEY):
             # read the rest of the file
-            ion_data[CONTENT_KEY] = ''.join(lines[num + 1:])
+            ion_data[config.CONTENT_KEY] = ''.join(lines[num + 1:])
             break
         try:
             key, value = [l.strip() for l in line.split('=')]
@@ -59,6 +60,12 @@ def parse_ion_file(source_path):
         except:
             continue
     return ion_data
+
+
+def get_skeldata_dirpath():
+    '''Gets the skeleton data folder in the Ion installation folder'''
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(script_dir, config.SKEL_DATA_DIRNAME)
 
 
 def get_siteconf_dirpath():
@@ -73,33 +80,39 @@ def get_siteconf_filepath():
     return config_path
 
 
-def get_page_index():
-    '''Returns the list of pages created'''
-    system_path = get_siteconf_dirpath()
-    index = os.path.join(system_path, config.INDEX_FILENAME)
-    return list_read_file(index)
-
-
 def get_themes_path():
+    '''Returns the path of the themes folder'''
     system_path = get_siteconf_dirpath()
     return os.path.join(system_path, config.THEMES_DIRNAME)
 
 
 def get_themes_url(base_url):
-    system_path = get_siteconf_dirpath()
-    system_url = os.path.join(base_url, system_path)
-    return os.path.join(system_url, config['themes_dir'], '')
+    '''Returns the URL of the themes folder'''
+    system_url = os.path.join(base_url, config.SITECONF_DIRNAME)
+    return os.path.join(system_url, config.THEMES_DIRNAME, '')
 
 
-def get_site_config():
-    '''Returns a dict containing the current site config'''
-    conf = {}
-    config_path = get_siteconf_filepath()
-    for key, value in parse_ion_file(config_path).items():
-        conf[key] = value
-    # add a trailing slash to base url, if necessary
-    conf['base_url'] = os.path.join(config.get('base_url', ''), '')
-    return conf
+def get_page_theme_dir(theme):
+    '''Returns the folder path of the theme'''
+    return os.path.join(get_themes_path(), theme)
+
+
+def read_html_template(theme_name):
+    '''Returns a HTML template string from the current theme folder'''
+    theme_dir = get_page_theme_dir(theme_name)
+    tpl_filepath = os.path.join(theme_dir, config.THEMES_MAIN_TEMPL)
+    if not os.path.exists(tpl_filepath):
+        sys.exit('Zap! Template file "{0}" couldn\'t be \
+found!'.format(tpl_filepath))
+    return read_file(tpl_filepath)
+
+
+def read_rss_templates():
+    '''Returns a tuple containing the rss and rss items models'''
+    data_dir = get_skeldata_dirpath()
+    rss_filepath = os.path.join(data_dir, config.SKEL_RSS_FILENAME)
+    rssitem_filepath = os.path.join(data_dir, config.SKEL_RSSITEM_FILENAME)
+    return (read_file(rss_filepath), read_file(rssitem_filepath))
 
 
 def get_pagedata_filepath(path):
@@ -107,13 +120,57 @@ def get_pagedata_filepath(path):
     return os.path.join(path, config.PAGE_DATA_FILENAME)
 
 
-def get_skeldata_dirpath():
-    '''get the skeleton data folder in the ion.py installation folder'''
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(script_dir, config.SKEL_DATA_DIRNAME)
+def get_site_config():
+    '''Returns a dict containing the current site config'''
+    config_path = get_siteconf_filepath()
+    site_config = parse_ion_file(config_path)
+    # add a trailing slash to base url, if necessary
+    site_config['base_url'] = os.path.join(site_config.get('base_url', ''), '')
+    site_config['themes_url'] = get_themes_url(site_config['base_url'])
+    return site_config
+
+
+def get_page_data(path):
+    '''Returns a dictionary with the page data'''
+    #removing '.' of the path in the case of root directory of site
+    path = re.sub('^\.$|\.\/', '', path)
+    data_file = get_pagedata_filepath(path)
+    # avoid directories that doesn't have a data file
+    if not os.path.exists(data_file):
+        return {}
+    page_data = parse_ion_file(data_file)
+    site_config = get_site_config()
+    # set common page data
+    config_keys = ['site_name', 'site_author', 'site_description',
+    'base_url', 'themes_url']
+    for key in config_keys:
+        page_data[key] = site_config.get(key, '')
+    # if not using custom theme, use default
+    default_theme = site_config.get('default_theme')
+    page_data['theme'] = page_data.get('theme', default_theme)
+    page_data['permalink'] = os.path.join(page_data['base_url'], path)
+    return page_data
+
+
+def update_index(path):
+    '''Updates a log file containing list of all pages created'''
+    if path == '.':
+        return
+    entry = '{0}\n'.format(path)
+    system_path = get_siteconf_dirpath()
+    index_path = os.path.join(system_path, config.INDEX_FILENAME)
+    write_file(index_path, entry, append=True)
+
+
+def get_page_index():
+    '''Returns the list of pages created'''
+    system_path = get_siteconf_dirpath()
+    index = os.path.join(system_path, config.INDEX_FILENAME)
+    return list_read_file(index)
 
 
 def create_site():
+    '''Copies the skel _ion folder to the current dir'''
     script_datadir = get_skeldata_dirpath()
     # copying the skeleton _ion folder to new site folder
     orig_dir = os.path.join(script_datadir, config.SITECONF_DIRNAME)
@@ -125,15 +182,18 @@ def create_site():
 
 
 def create_page(path):
+    '''Creates a data.ion file in the folder passed as parameter'''
     if not os.path.exists(path):
         os.makedirs(path)
+    # full path of page data file
     dest_filepath = get_pagedata_filepath(path)
     if os.path.exists(dest_filepath):
         sys.exit('Zap! Page "{0}" already exists.'.format(path))
     # copy the skel page data file to new page
     src_path = get_pagedata_filepath(get_skeldata_dirpath())
-    # saving timestamp
-    date = time.mktime(datetime.now().timetuple())
+    site_config = get_site_config()
+    # saving date in the format configured
+    date = datetime.today().strftime(site_config['date_format'])
     # need to write file contents to insert creation date
     write_file(dest_filepath, read_file(src_path).format(date))
     return dest_filepath
@@ -170,47 +230,3 @@ def create_page(path):
     if errors_found:
         sys.exit(exit_msg)
 '''
-
-def update_index(path):
-    '''Updates a log file containing list of all pages created'''
-    if path == '.':
-        return
-    pageline = '{0}\n'.format(path)
-    system_path = get_siteconf_dirpath()
-    index_path = os.path.join(system_path, config.INDEX_FILENAME)
-    write_file(index_path, pageline, append=True)
-
-
-def has_data_file(path):
-    data_file = os.path.join(path, CFG['data_file'])
-    return os.path.exists(data_file)
-
-
-def get_pagelist_preset(theme, name):
-    path = os.path.join(CFG['themes_path'], theme, name + '.preset')
-    if not os.path.exists(path):
-        return DEFAULT_PAGELIST_PRESET
-    return read_file(path)
-
-
-def get_current_theme_dir(theme):
-    return os.path.join(CFG['themes_path'], theme)
-
-
-def get_page_data(path):
-    data_file = get_pagedata_filepath(path)
-    # avoid directories that doesn't have a data file
-    if not has_data_file(path):
-        return
-    page_data = parse_ion_file(data_file)
-    # set common page data
-    page_data['site_name'] = CFG['site_name']
-    page_data['site_author'] = CFG['site_author']
-    page_data['site_description'] = CFG['site_description']
-    page_data['base_url'] = CFG['base_url']
-    page_data['themes_url'] = CFG['themes_url']
-    # if not using custom theme, use default
-    page_data['theme'] = page_data.get('theme', CFG['default_theme'])
-    # adds an end slash to url
-    page_data['permalink'] = os.path.join(CFG['base_url'], path, '')
-    return page_data

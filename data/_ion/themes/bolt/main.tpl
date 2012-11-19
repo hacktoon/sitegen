@@ -22,6 +22,10 @@
     <p>{{print content}}</p>
     <h2>Included menu</h2>
     <p>{{include footer}}</p>
+
+    <h2>Lista de paginas</h2>
+    <p>{{pagelist 3 blog }}</p>
+
     {{print js}}
 </body>
 </html>
