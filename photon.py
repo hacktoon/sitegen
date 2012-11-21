@@ -53,7 +53,7 @@ def tag_pagelist(page_data, num, category='*', tpl='pagelist-item'):
 
 def tag_include(page_data, filename):
     theme_dir = quark.get_page_theme_dir(page_data['theme'])
-    if not filename.endswith('.inc'):
+    if not filename.endswith('.tpl'):
         filename = '{0}.tpl'.format(filename)
     path = os.path.join(theme_dir, filename)
     if os.path.exists(path):
