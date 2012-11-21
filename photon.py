@@ -20,89 +20,95 @@ from datetime import datetime
 
 import quark
 
-RE_START = '\{\{\s*'
-RE_END = '\s*\}\}'
-CMD_LIST = 'print|pagelist|include'
 
-class TagParser:
-    def __init__(self, variables, index):
-        self.variables = variables
-        self.index = index
+def tag_print(page_data, key):
+    '''Prints a variable value, returns nothing if inexistent'''
+    return page_data.get(key, '')
 
 
-    def print(self, key):
-        '''Prints a variable value'''
-        return self.variables.get(key, '')
+def tag_pagelist(page_data, num, category='*', tpl='pagelist-item'):
+    '''Prints a list of recent pages'''
+    # pagelist *|x|-x [*|cat_name [tpl_name]]
+    # loading recent pages index
+    page_index = quark.get_page_index()
+    if num != '*':
+        try:
+            num = int(num)
+        except ValueError:
+            sys.exit('Zap! Bad argument at template tag!')
+        # listing order
+        if num > 0:
+            page_index.reverse()
+        page_index = page_index[:abs(num)]
+    if category and category != '*':
+        tmp_func = lambda c: c.startswith(os.path.join(category, ''))
+        page_index = filter(tmp_func, page_index)
+    pagelist = ''
+    for page in page_index:
+        item_data = quark.get_page_data(page)
+        list_tpl = quark.read_html_template(page_data['theme'], tpl)
+        pagelist += render_template(list_tpl, item_data)
+    return pagelist
 
 
-    def pagelist(self, num, category = None, preset = 'default'):
-        '''Prints a list of recent pages'''
-        if not self.index:
-            return ''
-        index = self.index[:]
-        if num != 'all' or num != '*':
-            try:
-                num = int(num)
-            except ValueError:
-                return ''
-            # listing order
-            if num > 0:
-                index.reverse()
-            index = index[:abs(num)]
-        if category:
-            tmpf = lambda c: c.startswith(os.path.join(category, ''))
-            index = filter(tmpf, index)
-        pagelist = ''
-        for page in index:
-            page_data = quark.get_page_data(page)
-            tpl = quark.get_pagelist_preset(page_data['theme'], preset)
-            pagelist += tpl.format(**page_data)
-        return pagelist
+def tag_include(page_data, filename):
+    theme_dir = quark.get_page_theme_dir(page_data['theme'])
+    if not filename.endswith('.inc'):
+        filename = '{0}.tpl'.format(filename)
+    path = os.path.join(theme_dir, filename)
+    if os.path.exists(path):
+        return quark.read_file(path)
+    else:
+        print('Warning: Include file \'{0}\' doesn\'t exists.'.format(path))
+        return ''
 
 
-    def include(self, filename):
-        theme_dir = quark.get_page_theme_dir(self.variables['theme'])
-        path = os.path.join(theme_dir, filename + '.inc')
-        if os.path.exists(path):
-            return quark.read_file(path)
-        else:
-            print('Warning: Include file \'{0}\' doesn\'t exists.'.format(path))
-            return ''
-
-
-def parse(variables, tpl, index=None):
+def render_template(tpl, page_data):
     '''Replaces the page variables in the given template'''
-    regex = RE_START + '(' + CMD_LIST + ')' + '\s+(.*?)' + RE_END
+    re_start = '\{\{\s*'
+    re_end = '\s*\}\}'
+    # this will match with {{cmd arg1 arg2 ...}}
+    regex = re_start + '(.*?)' + '\s+(.*?)' + re_end
+    # returns: [('print', 'x'), ('pagelist', '4 blog')]
     tags_matched = re.findall(re.compile(regex), tpl)
-    # variables format: [('print', 'x'), ('pagelist', '4 blog')]
-    tag_parser = TagParser(variables, index)
+    # tag command list mapped to functions
+    commands = {
+        'print': tag_print,
+        'pagelist': tag_pagelist,
+        'include': tag_include
+    }
     for tag in tags_matched:
-        cmd, args = tag
-        value = getattr(tag_parser, cmd)(*args.split())
-        regex = RE_START + cmd + '\s+' + re.escape(args) + RE_END
+        cmd_name, args = tag
+        value = '' # if the tag isn't in the hash, replace by nothing
+        if cmd_name in commands:
+            # calls a function and passes a expanded parameter list
+            value = commands[cmd_name](page_data, *args.split())
+        # replaces the given value in the tag
+        regex = re_start + cmd_name + '\s+' + re.escape(args) + re_end
         tag_re = re.compile(r'{0}'.format(regex))
         tpl = re.sub(tag_re, value, tpl)
     return tpl
 
 
-def build_external_tags(filenames, permalink, tag, ext):
+def build_external_tags(filenames, permalink, tpl):
     tag_list = []
-    for filename in filenames.split(','):
+    for filename in filenames:
         filename = filename.strip()
         url = os.path.join(permalink, filename)
-        if filename.endswith(ext):
-            tag_list.append(tag.format(url))
+        tag_list.append(tpl.format(url))
     return '\n'.join(tag_list)
 
 
 def build_style_tags(filenames, permalink):
-    tag = '<link rel="stylesheet" type="text/css" href="{0}" />'
-    return build_external_tags(filenames, permalink, tag, 'css')
+    tpl = '<link rel="stylesheet" type="text/css" href="{0}" />'
+    filenames = [f for f in filenames.split(',') if f.endswith('css')]
+    return build_external_tags(filenames, permalink, tpl)
 
 
 def build_script_tags(filenames, permalink):
-    tag = '<script src="{0}"></script>'
-    return build_external_tags(filenames, permalink, tag, 'js')
+    tpl = '<script src="{0}"></script>'
+    filenames = [f for f in filenames.split(',') if f.endswith('js')]
+    return build_external_tags(filenames, permalink, tpl)
 
 
 def save_json(dirname, page_data):
@@ -116,10 +122,8 @@ def save_html(path, page_data):
     permalink = page_data['permalink']
     page_data['css'] = build_style_tags(page_data.get('css', ''), permalink)
     page_data['js'] = build_script_tags(page_data.get('js', ''), permalink)
-    # loading recent pages index
-    index = quark.get_page_index()
     # replace template with page data and listings
-    html = parse(page_data, html_tpl, index)
+    html = render_template(html_tpl, page_data)
     quark.write_file(os.path.join(path, 'index.html'), html)
     print('\'{0}\' generated.'.format(path))
 
@@ -136,7 +140,7 @@ def save_rss():
     rss_data['description'] = site_config.get('site_description')
     items = []
     # will get only the first n items
-    max_items = int(site_config.get('rss_items'))
+    max_items = int(site_config.get('rss_items', 0))
     # get the templates: full rss document and rss item snippets
     rss_tpl, rss_item_tpl = quark.read_rss_templates()
     # populate RSS items with the page index
@@ -148,8 +152,9 @@ def save_rss():
         page_data['date'] = date.strftime(rfc822_fmt)
         # get last page date to fill lastBuildDate
         rss_data['build_date'] = page_data['date']
-        items.append(parse(page_data, rss_item_tpl))
+        items.append(render_template(rss_item_tpl, page_data))
     items.reverse()  # the last inserted must be the first in rss
     rss_data['items'] = '\n'.join(items)
-    rss_doc = parse(rss_data, rss_tpl)
+    rss_doc = render_template(rss_tpl, rss_data)
     quark.write_file('rss.xml', rss_doc)
+    print('Feed "rss.xml" generated.')

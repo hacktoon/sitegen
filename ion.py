@@ -32,7 +32,7 @@ def ion_charge(path):
         if not page_data:
             continue
         photon.save_json(dirpath, page_data)
-        #photon.save_html(dirpath, page_data)
+        photon.save_html(dirpath, page_data)
     # after generating all pages, update feed
     photon.save_rss()
 

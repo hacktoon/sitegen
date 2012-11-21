@@ -97,10 +97,14 @@ def get_page_theme_dir(theme):
     return os.path.join(get_themes_path(), theme)
 
 
-def read_html_template(theme_name):
+def read_html_template(theme_name, tpl_filename=None):
     '''Returns a HTML template string from the current theme folder'''
     theme_dir = get_page_theme_dir(theme_name)
-    tpl_filepath = os.path.join(theme_dir, config.THEMES_MAIN_TEMPL)
+    if not tpl_filename:
+        tpl_filename = config.THEMES_MAIN_TEMPL
+    if not tpl_filename.endswith('.tpl'):
+        tpl_filename = '{0}.tpl'.format(tpl_filename)
+    tpl_filepath = os.path.join(theme_dir, tpl_filename)
     if not os.path.exists(tpl_filepath):
         sys.exit('Zap! Template file "{0}" couldn\'t be \
 found!'.format(tpl_filepath))
