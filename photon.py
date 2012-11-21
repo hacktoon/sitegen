@@ -57,7 +57,8 @@ def tag_include(page_data, filename):
         filename = '{0}.tpl'.format(filename)
     path = os.path.join(theme_dir, filename)
     if os.path.exists(path):
-        return quark.read_file(path)
+        include_tpl = quark.read_file(path)
+        return render_template(include_tpl, page_data)
     else:
         print('Warning: Include file \'{0}\' doesn\'t exists.'.format(path))
         return ''
