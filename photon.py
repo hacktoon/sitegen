@@ -1,7 +1,7 @@
 # coding: utf-8
 
 '''
-===============================================================================
+==============================================================================
 Ion - A shocking simple static (site) generator
 
 Author: Karlisson M. Bezerra
@@ -9,7 +9,7 @@ E-mail: contact@hacktoon.com
 URL: https://github.com/karlisson/ion
 License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 
-===============================================================================
+==============================================================================
 '''
 
 import re
@@ -86,7 +86,8 @@ def render_template(tpl, page_data):
             try:
                 value = commands[cmd_name](page_data, *args.split())
             except TypeError:
-                sys.exit('Zap! A template tag "{0}" is incorrect!'.format(cmd_name))
+                sys.exit('Zap! A template tag "{0}" \
+                    is incorrect!'.format(cmd_name))
         # replaces the given value in the tag
         regex = re_start + cmd_name + '\s+' + re.escape(args) + re_end
         tag_re = re.compile(r'{0}'.format(regex))
@@ -121,7 +122,8 @@ def save_json(dirname, page_data):
 
 
 def save_html(path, page_data):
-    html_tpl = quark.read_html_template(page_data['theme'])
+    html_tpl = quark.read_html_template(page_data['theme'], \
+        page_data['template'])
     # get css and javascript found in the folder
     permalink = page_data['permalink']
     page_data['css'] = build_style_tags(page_data.get('css', ''), permalink)

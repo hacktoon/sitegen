@@ -5,7 +5,7 @@
 
 body {
 	background: #DDD;
-	font: 12px Arial, sans-serif;
+	font: 13px Arial, sans-serif;
 	color: #333;
 }
 
@@ -24,7 +24,7 @@ header {
 }
 
 header h1 {
-	font-size: 28px;
+	font-size: 32px;
 	font-weight: bold;
 }
 
@@ -34,7 +34,7 @@ header h1 a {
 }
 
 #description {
-	font-size: 13px;
+	font-size: 15px;
 }
 
 #content, #sidebar {
@@ -45,6 +45,24 @@ header h1 a {
 #content {
 	width: 800px;
 }
+article h2 {
+	font-weight: bold;
+}
+article h2 a {
+	color: #444;
+}
+
+.date {
+	font-size: 11px;
+	color: #069;
+}
+.entry {
+	margin: 20px 0;
+}
+.tags {
+	font-size: 11px;
+	color: #069;
+}
 
 #sidebar {
 	width: 180px;
@@ -54,6 +72,5 @@ footer {
 	border-top: 1px solid #CCC;
 	padding-top: 20px;
 	clear: both;
-	font-size: 15px;
-	
+	font-size: 15px;	
 }

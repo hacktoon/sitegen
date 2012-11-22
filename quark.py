@@ -101,7 +101,7 @@ def read_html_template(theme_name, tpl_filename=None):
     '''Returns a HTML template string from the current theme folder'''
     theme_dir = get_page_theme_dir(theme_name)
     if not tpl_filename:
-        tpl_filename = config.THEMES_MAIN_TEMPL
+        tpl_filename = config.THEMES_DEFAULT_TEMPL
     if not tpl_filename.endswith('.tpl'):
         tpl_filename = '{0}.tpl'.format(tpl_filename)
     tpl_filepath = os.path.join(theme_dir, tpl_filename)
@@ -152,6 +152,7 @@ def get_page_data(path):
     # if not using custom theme, use default
     default_theme = site_config.get('default_theme')
     page_data['theme'] = page_data.get('theme', default_theme)
+    page_data['template'] = page_data.get('template')
     page_data['permalink'] = os.path.join(page_data['base_url'], path)
     return page_data
 

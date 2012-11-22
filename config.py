@@ -9,7 +9,7 @@ CONFIG_FILENAME = 'config.ion'
 
 INDEX_FILENAME = 'index.log'
 THEMES_DIRNAME = 'themes'
-THEMES_MAIN_TEMPL = 'main.tpl'
+THEMES_DEFAULT_TEMPL = 'main.tpl'
 
 # the start of content section in an Ion data file
 CONTENT_KEY = 'content'

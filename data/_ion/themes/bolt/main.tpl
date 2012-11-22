@@ -20,12 +20,18 @@
                 <h2><a href="{{print permalink}}">{{print title}}</a></h2>
                 <span class="date">{{print date}}</span>
                 <div class="entry">{{print content}}</div>
-                Tags: <div class="tags">{{print tags}}</div>
+                Tags: <span class="tags">{{print tags}}</span>
             </article>
         </section>
         <section id="sidebar">
-            <h2>Lista de paginas</h2>
-            <ul>{{pagelist *}}</ul>
+            <div class="widget">
+                <h2>Last pages</h2>
+                <ul>{{pagelist 15}}</ul>
+            </div>
+            <div class="widget">
+                <h2>Last posts in blog</h2>
+                <ul>{{pagelist 10 blog}}</ul>
+            </div>
         </section>
         <footer>
             Bolt theme - by {{print site_author}}
