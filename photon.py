@@ -83,7 +83,10 @@ def render_template(tpl, page_data):
         value = '' # if the tag isn't in the hash, replace by nothing
         if cmd_name in commands:
             # calls a function and passes a expanded parameter list
-            value = commands[cmd_name](page_data, *args.split())
+            try:
+                value = commands[cmd_name](page_data, *args.split())
+            except TypeError:
+                sys.exit('Zap! A template tag "{0}" is incorrect!'.format(cmd_name))
         # replaces the given value in the tag
         regex = re_start + cmd_name + '\s+' + re.escape(args) + re_end
         tag_re = re.compile(r'{0}'.format(regex))
@@ -101,7 +104,7 @@ def build_external_tags(filenames, permalink, tpl):
 
 
 def build_style_tags(filenames, permalink):
-    tpl = '<link rel="stylesheet" type="text/css" href="{0}" />'
+    tpl = '<link rel="stylesheet" type="text/css" href="{0}"/>'
     filenames = [f for f in filenames.split(',') if f.endswith('css')]
     return build_external_tags(filenames, permalink, tpl)
 
@@ -126,7 +129,11 @@ def save_html(path, page_data):
     # replace template with page data and listings
     html = render_template(html_tpl, page_data)
     quark.write_file(os.path.join(path, 'index.html'), html)
-    print('\'{0}\' generated.'.format(path))
+    path = re.sub(r'[.\/]', '', path)
+    if path:
+        print('Page "{0}" generated.'.format(path))
+    else:
+        print('Root page generated.')
 
 
 def save_rss():

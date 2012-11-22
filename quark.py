@@ -201,36 +201,3 @@ def create_page(path):
     # need to write file contents to insert creation date
     write_file(dest_filepath, read_file(src_path).format(date))
     return dest_filepath
-
-
-'''def config_check():
-    #Runs diagnostics on the system
-    system_path, config_path = quark.system_pathinfo()
-    exit_msg = 'Run "ion plug" to install Ion in this folder!'
-    errors_found = False
-    if not os.path.exists(config_path):
-        print('Zap! Ion config file doesn\'t exists!')
-        sys.exit(exit_msg)
-    # load config file to test its values
-    config_load()
-    themes_path = os.path.join(system_path, quark.CFG['themes_dir'])
-    if not os.path.exists(themes_path):
-        print('Zap! Themes folder doesn\'t exists!')
-        errors_found = True
-    dft_themepath = os.path.join(themes_path, quark.CFG['default_theme'])
-    dft_tplpath = os.path.join(dft_themepath, quark.CFG['template_file'])
-    # Checking default theme directory
-    if not os.path.exists(dft_themepath):
-        print('Zap! Default theme folder doesn\'t exists!')
-        errors_found = True
-    # Checking default template file
-    if not os.path.exists(dft_tplpath):
-        print('Zap! Default template file doesn\'t exists!')
-        errors_found = True
-    index_path = os.path.join(system_path, quark.CFG['index_file'])
-    if not os.path.exists(index_path):
-        print('Zap! Index file doesn\'t exists!')
-        errors_found = True
-    if errors_found:
-        sys.exit(exit_msg)
-'''

@@ -1,5 +1,5 @@
 <li>
-    <a title="{title}" href="{permalink}">
-        {title}
+    <a title="{{print title}" href="{{print permalink}}">
+        {{print date}} - {{print title}}
     </a>
 </li>
