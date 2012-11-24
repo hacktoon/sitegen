@@ -21,6 +21,35 @@ from datetime import datetime
 import config
 
 
+def get_datetime(page_data=None):
+    '''If page_data is not provided, returns current datetime'''
+    if page_data:
+        return page_data['date'], page_data['time']
+    site_config = get_site_config()
+    pdate = datetime.today().strftime(site_config['date_format'])
+    ptime =time.strftime(site_config['time_format'])
+    return pdate, ptime
+
+
+def date_to_rfc822(pdate, ptime):
+    site_config = get_site_config()
+    # get local timezone with daylight saving time
+    daylight = time.localtime().tm_isdst
+    utc_offset = time.altzone if daylight else time.timezone
+    # offset comes in seconds - convert to RFC822 format: +0000
+    utc_offset = '{:+06.2f}'.format(utc_offset / 60 / 60 * -1)
+    # get date and convert to rfc822 date format
+    rfc822_fmt = '%a, %d %b %Y %H:%M:%S ' + utc_offset.replace('.', '')
+    datetime_fmt = '{} {}'.format(site_config['date_format'],
+        site_config['time_format'])
+    page_datetime = '{} {}'.format(pdate, ptime)
+    try:
+        date = datetime.strptime(page_datetime, datetime_fmt)
+    except ValueError:
+        sys.exit('Zap! Wrong date/time format detected!');
+    return date.strftime(rfc822_fmt)
+
+
 def read_file(path):
     if not os.path.exists(path):
         sys.exit('Zap! File "{0}" couldn\'t be \
@@ -30,6 +59,7 @@ found!'.format(path))
 
 
 def list_read_file(path):
+    '''Reads a file and returns a list of its lines'''
     if not os.path.exists(path):
         sys.exit('Zap! File "{0}" couldn\'t be \
 found!'.format(path))
@@ -143,8 +173,14 @@ def get_page_data(path):
     if not os.path.exists(data_file):
         return {}
     page_data = parse_ion_file(data_file)
+    # verify missing required keys in page data
+    required_keys = ['title', 'date', 'time', 'content']
+    for key in required_keys:
+        if not key in page_data:
+            sys.exit('Zap! The value {!r} is missing \
+in {!r}!'.format(key, os.path.join(path, config.PAGE_DATA_FILENAME)));
+    # get whole site config and set to page data
     site_config = get_site_config()
-    # set common page data
     config_keys = ['site_name', 'site_author', 'site_description',
     'base_url', 'themes_url']
     for key in config_keys:
@@ -196,9 +232,9 @@ def create_page(path):
         sys.exit('Zap! Page "{0}" already exists.'.format(path))
     # copy the skel page data file to new page
     src_path = get_pagedata_filepath(get_skeldata_dirpath())
-    site_config = get_site_config()
-    # saving date in the format configured
-    date = datetime.today().strftime(site_config['date_format'])
+    content = read_file(src_path)
+    # saving date & time in the formats configured
+    pdate, ptime = quark.get_datetime() 
     # need to write file contents to insert creation date
-    write_file(dest_filepath, read_file(src_path).format(date))
+    write_file(dest_filepath, content.format(pdate, ptime))
     return dest_filepath

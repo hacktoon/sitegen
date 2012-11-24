@@ -16,7 +16,6 @@ import re
 import os
 import sys
 import json
-from datetime import datetime
 
 import quark
 
@@ -31,18 +30,21 @@ def tag_pagelist(page_data, num, category='*', tpl='pagelist-item'):
     # pagelist *|x|-x [*|cat_name [tpl_name]]
     # loading recent pages index
     page_index = quark.get_page_index()
+    # limit the category first
+    if category and category != '*':
+        tmp_func = lambda c: c.startswith(os.path.join(category, ''))
+        page_index = list(filter(tmp_func, page_index))
+        #print(page_index, abs(num), page_index[:abs(num)])
+    # limit number of pages to show
     if num != '*':
         try:
             num = int(num)
         except ValueError:
-            sys.exit('Zap! Bad argument at template tag!')
+            sys.exit('Zap! Bad argument "{0}" at template tag!'.format(num))
         # listing order
         if num > 0:
             page_index.reverse()
         page_index = page_index[:abs(num)]
-    if category and category != '*':
-        tmp_func = lambda c: c.startswith(os.path.join(category, ''))
-        page_index = filter(tmp_func, page_index)
     pagelist = ''
     for page in page_index:
         item_data = quark.get_page_data(page)
@@ -131,7 +133,8 @@ def save_html(path, page_data):
     # replace template with page data and listings
     html = render_template(html_tpl, page_data)
     quark.write_file(os.path.join(path, 'index.html'), html)
-    path = re.sub(r'[.\/]', '', path)
+    # remove ./ and . from path names
+    path = re.sub(r'\./|\.', '', path)
     if path:
         print('Page "{0}" generated.'.format(path))
     else:
@@ -156,12 +159,11 @@ def save_rss():
     # populate RSS items with the page index
     for page in index[:max_items]:
         page_data = quark.get_page_data(page)
-        # get date and convert to rfc822 date format
-        rfc822_fmt = '%a, %d %b %Y %H:%M:%S ' + site_config.get('utc_offset')
-        date = datetime.strptime(page_data['date'], site_config['date_format'])
-        page_data['date'] = date.strftime(rfc822_fmt)
+        pdate, ptime = quark.get_datetime(page_data)
+        page_data['date'] = quark.date_to_rfc822(pdate, ptime)
         # get last page date to fill lastBuildDate
-        rss_data['build_date'] = page_data['date']
+        rdate, rtime = quark.get_datetime()
+        rss_data['build_date'] = quark.date_to_rfc822(rdate, rtime)
         items.append(render_template(rss_item_tpl, page_data))
     items.reverse()  # the last inserted must be the first in rss
     rss_data['items'] = '\n'.join(items)

@@ -8,4 +8,4 @@ default_theme = bolt
 rss_items = 8
 # dd/mm/yyyy
 date_format = %d/%m/%Y
-utc_offset = +0000
+time_format = %H:%M:%S
