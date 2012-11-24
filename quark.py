@@ -158,6 +158,13 @@ def get_site_config():
     '''Returns a dict containing the current site config'''
     config_path = get_siteconf_filepath()
     site_config = parse_ion_file(config_path)
+    # check for missing keys
+    required_keys = ['site_name', 'site_author', 'site_description',
+    'base_url', 'default_theme', 'rss_items', 'date_format', 'time_format']
+    for key in required_keys:
+        if not key in site_config:
+            sys.exit('Zap! The value {!r} is missing \
+in {!r}!'.format(key, config_path));
     # add a trailing slash to base url, if necessary
     site_config['base_url'] = os.path.join(site_config.get('base_url', ''), '')
     site_config['themes_url'] = get_themes_url(site_config['base_url'])
