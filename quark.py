@@ -40,8 +40,10 @@ def date_to_rfc822(pdate, ptime):
     utc_offset = '{:+06.2f}'.format(utc_offset / 60 / 60 * -1)
     # get date and convert to rfc822 date format
     rfc822_fmt = '%a, %d %b %Y %H:%M:%S ' + utc_offset.replace('.', '')
+    # build a format string date time: Ex: %year/%month %hour:%min
     datetime_fmt = '{} {}'.format(site_config['date_format'],
         site_config['time_format'])
+    # gets the date & time of the page
     page_datetime = '{} {}'.format(pdate, ptime)
     try:
         date = datetime.strptime(page_datetime, datetime_fmt)
