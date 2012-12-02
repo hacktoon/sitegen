@@ -26,11 +26,19 @@
         <section id="sidebar">
             <div class="widget">
                 <h2>Last pages</h2>
-                <ul>{{pagelist 15}}</ul>
+                <ul>
+                    {{pagelist 4}}
+                    <li>
+                        <a title="{{print title}" href="{{print permalink}}">
+                            {{print date}} - {{print title}}
+                        </a>
+                    </li>
+                    {{end pagelist}}
+                </ul>
             </div>
             <div class="widget">
                 <h2>Last posts in blog</h2>
-                <ul>{{pagelist 10 blog}}</ul>
+                <ul>{{pagelist 4 blog}}</ul>
             </div>
         </section>
         <footer>

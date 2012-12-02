@@ -65,6 +65,7 @@ folder under the path specified and its subfolders, recursively.
     '''
     sys.exit(help_message)
 
+
 if __name__ == '__main__':
     # first parameter - command
     try:

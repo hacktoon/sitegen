@@ -65,6 +65,14 @@ def tag_include(page_data, filename):
         print('Warning: Include file \'{0}\' doesn\'t exists.'.format(path))
         return ''
 
+'''def tag_breadcrumb(page_data):
+    path = page_data['path'].strip('/')
+    crumbs = []
+    for page in path.split('/'):
+        page_crumb = quark.get_page_data(page)
+        crumbs.append(page_crumb['permalink'])
+    return '/'.join(crumbs)
+'''
 
 def render_template(tpl, page_data):
     '''Replaces the page variables in the given template'''
@@ -88,8 +96,8 @@ def render_template(tpl, page_data):
             try:
                 value = commands[cmd_name](page_data, *args.split())
             except TypeError:
-                sys.exit('Zap! A template tag "{0}" \
-                    is incorrect!'.format(cmd_name))
+                sys.exit('Zap! The template tag "{0}" \
+is incorrect with args "{1}"!'.format(cmd_name, args))
         # replaces the given value in the tag
         regex = re_start + cmd_name + '\s+' + re.escape(args) + re_end
         tag_re = re.compile(r'{0}'.format(regex))

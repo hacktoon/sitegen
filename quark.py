@@ -196,6 +196,7 @@ in {!r}!'.format(key, os.path.join(path, config.PAGE_DATA_FILENAME)));
         page_data[key] = site_config.get(key, '')
     # if not using custom theme, use default
     default_theme = site_config.get('default_theme')
+    page_data['path'] = path
     page_data['theme'] = page_data.get('theme', default_theme)
     page_data['template'] = page_data.get('template')
     page_data['permalink'] = os.path.join(page_data['base_url'], path)
@@ -243,7 +244,7 @@ def create_page(path):
     src_path = get_pagedata_filepath(get_skeldata_dirpath())
     content = read_file(src_path)
     # saving date & time in the formats configured
-    pdate, ptime = quark.get_datetime() 
+    pdate, ptime = get_datetime() 
     # need to write file contents to insert creation date
     write_file(dest_filepath, content.format(pdate, ptime))
     return dest_filepath
