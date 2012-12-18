@@ -20,21 +20,31 @@ import json
 import quark
 
 
-def tag_print(page_data, key):
-    '''Prints a variable value, returns nothing if inexistent'''
-    return page_data.get(key, '')
+def tag_print(tags, page_data, tpl, tpl_name):
+    '''Returns a variable value and instructions to replace'''
+    # example tag: ('print', ['variable'], (7, 19))
+    tag = tags[0] # takes the first print command
+    key = tag[1][0] # takes the variable name
+    return (page_data.get(key, ''), tag[2], 1)
 
 
-def tag_pagelist(page_data, num, category='*', tpl='pagelist-item'):
-    '''Prints a list of recent pages'''
-    # pagelist *|x|-x [*|cat_name [tpl_name]]
-    # loading recent pages index
+def tag_pagelist(tags, page_data, tpl, tpl_name):
+    '''Prints a list of objects within a given template'''
+    # example tag: ('pagelist', ['variable'], (7, 19))
+    args = tags[1]
+    num = category = None
+    args = args.split()
+    arg_length = len(args)
+    if arg_length == 2:
+        num, category = args
+    elif arg_length == 1:
+        num = args[0]
+    # get the list of page data
     page_index = quark.get_page_index()
     # limit the category first
     if category and category != '*':
         tmp_func = lambda c: c.startswith(os.path.join(category, ''))
-        page_index = list(filter(tmp_func, page_index))
-        #print(page_index, abs(num), page_index[:abs(num)])
+        data_list = list(filter(tmp_func, page_index))
     # limit number of pages to show
     if num != '*':
         try:
@@ -45,12 +55,16 @@ def tag_pagelist(page_data, num, category='*', tpl='pagelist-item'):
         if num > 0:
             page_index.reverse()
         page_index = page_index[:abs(num)]
-    pagelist = ''
-    for page in page_index:
-        item_data = quark.get_page_data(page)
-        list_tpl = quark.read_html_template(page_data['theme'], tpl)
-        pagelist += render_template(list_tpl, item_data)
-    return pagelist
+    page_list = []
+    # replace page. prefix from variable names
+    tpl = tpl.replace('page.', '')
+    if page_index:
+        for page in page_index:
+            item_data = quark.get_page_data(page)
+            page_list.append(render_template(tpl, item_data))
+    else:
+        return render_template(tpl_empty, page_data)
+    return '\n'.join(page_list)
 
 
 def tag_include(page_data, filename):
@@ -65,43 +79,62 @@ def tag_include(page_data, filename):
         print('Warning: Include file \'{0}\' doesn\'t exists.'.format(path))
         return ''
 
-'''def tag_breadcrumb(page_data):
-    path = page_data['path'].strip('/')
-    crumbs = []
-    for page in path.split('/'):
-        page_crumb = quark.get_page_data(page)
-        crumbs.append(page_crumb['permalink'])
-    return '/'.join(crumbs)
-'''
 
-def render_template(tpl, page_data):
+def tag_breadcrumbs(page_data, tpl):
+    levels = os.path.split(page_data['path'])
+    breadcrumbs = ''
+    for page in levels:
+        render_template(tpl, page_data)
+    
+    return breadcrumbs
+
+
+def parse_tags(tpl):
+    # returns [('print', ['variavel'], (7, 19)), 
+    # ('pagelist', ['4', 'blog'], (20, 39))]
+    tag_start = tag_end = 0
+    cmd_end = cmd_start = 0
+    in_tag = False
+    tags = []
+    for m in re.finditer(r'\{\{|\}\}', tpl):
+        match = m.group(0)
+        if match == '{{' and in_tag:
+            sys.exit('error')
+        if match == '}}' and not in_tag:
+            sys.exit('error')
+        if match == '{{':
+            in_tag = True
+            tag_start = m.start()
+            cmd_start = m.end()
+        else:
+            in_tag = False
+            cmd_end = m.start()
+            tag_end = m.end()
+            cmd = tpl[cmd_start:cmd_end].strip()
+            tag_string = re.split(r'\s+', cmd)
+            cmd, args = tag_string[0], tag_string[1:]
+            tags.append((cmd, args, (tag_start, tag_end)))
+    return tags
+
+
+def render_template(tpl, page_data, tpl_name=None):
     '''Replaces the page variables in the given template'''
-    re_start = '\{\{\s*'
-    re_end = '\s*\}\}'
-    # this will match with {{cmd arg1 arg2 ...}}
-    regex = re_start + '(.*?)' + '\s+(.*?)' + re_end
-    # returns: [('print', 'x'), ('pagelist', '4 blog')]
-    tags_matched = re.findall(re.compile(regex), tpl)
-    # tag command list mapped to functions
-    commands = {
-        'print': tag_print,
-        'pagelist': tag_pagelist,
-        'include': tag_include
-    }
-    for tag in tags_matched:
-        cmd_name, args = tag
-        value = '' # if the tag isn't in the hash, replace by nothing
-        if cmd_name in commands:
-            # calls a function and passes a expanded parameter list
-            try:
-                value = commands[cmd_name](page_data, *args.split())
-            except TypeError:
-                sys.exit('Zap! The template tag "{0}" \
-is incorrect with args "{1}"!'.format(cmd_name, args))
-        # replaces the given value in the tag
-        regex = re_start + cmd_name + '\s+' + re.escape(args) + re_end
-        tag_re = re.compile(r'{0}'.format(regex))
-        tpl = re.sub(tag_re, value, tpl)
+    replacements = []
+    tags = parse_tags(tpl)
+    idx = 0
+    while idx < len(tags):
+        tag = tags[idx]
+        # sample return data in get_tags:
+        # cmd, args & position of tag in tpl string
+        # sample data: [('print', ['variavel'], (7, 19)),
+        # ('pagelist', ['4', 'blog'], (20, 39))]
+        cmd_name = 'tag_'+tag[0]
+        if not cmd_name in globals():
+            sys.exit('Zap! Command "{0}" does not exists!'.format(cmd_name))
+        replaces = globals()[cmd_name](tags[idx:], page_data, tpl, tpl_name)
+        replacements.append(replaces)
+        idx += replace_info
+
     return tpl
 
 

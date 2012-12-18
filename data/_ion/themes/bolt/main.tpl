@@ -16,6 +16,15 @@
             <p id="description">{{print site_description}}</p>
         </header>
         <section id="content">
+            <ul>
+                {{breadcrumbs}}
+                    <li>
+                        <a title="{{print title}}" href="{{print permalink}}">
+                            {{print title}}
+                        </a>
+                    </li>
+                {{end}}
+            </ul>
             <article>
                 <h2><a href="{{print permalink}}">{{print title}}</a></h2>
                 <span class="date">{{print date}}</span>
@@ -27,18 +36,26 @@
             <div class="widget">
                 <h2>Last pages</h2>
                 <ul>
-                    {{pagelist 4}}
-                    <li>
-                        <a title="{{print title}" href="{{print permalink}}">
-                            {{print date}} - {{print title}}
-                        </a>
-                    </li>
-                    {{end pagelist}}
+                    {{pagelist 5}}
+                        <li>
+                            <a title="{{print title}}" href="{{print permalink}}">
+                                {{print date}} - {{print title}}
+                            </a>
+                        </li>
+                    {{end}}
                 </ul>
             </div>
             <div class="widget">
                 <h2>Last posts in blog</h2>
-                <ul>{{pagelist 4 blog}}</ul>
+                <ul>
+                    {{pagelist 6 blog}}
+                        <li>
+                            <a title="{{print title}}" href="{{print permalink}}">
+                                {{print date}} - {{print title}}
+                            </a>
+                        </li>
+                    {{end}}
+                </ul>
             </div>
         </section>
         <footer>
