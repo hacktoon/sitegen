@@ -138,8 +138,8 @@ def read_html_template(theme_name, tpl_filename=None):
         tpl_filename = '{0}.tpl'.format(tpl_filename)
     tpl_filepath = os.path.join(theme_dir, tpl_filename)
     if not os.path.exists(tpl_filepath):
-        sys.exit('Zap! Template file "{0}" couldn\'t be \
-found!'.format(tpl_filepath))
+        sys.exit('Zap! Template file "{0}" '
+                 'couldn\'t be found!'.format(tpl_filepath))
     return read_file(tpl_filepath)
 
 
@@ -165,11 +165,15 @@ def get_site_config():
     'base_url', 'default_theme', 'rss_items', 'date_format', 'time_format']
     for key in required_keys:
         if not key in site_config:
-            sys.exit('Zap! The value {!r} is missing \
-in {!r}!'.format(key, config_path));
+            sys.exit('Zap! The value {!r} is'
+                     'missing in {!r}!'.format(key, config_path));
+    base_url = site_config.get('base_url')
     # add a trailing slash to base url, if necessary
-    site_config['base_url'] = os.path.join(site_config.get('base_url', ''), '')
+    if not base_url.endswith('/'):
+        base_url += '/'
+    site_config['base_url'] = base_url
     site_config['themes_url'] = get_themes_url(site_config['base_url'])
+    site_config['feed_url'] = ''.join([site_config['base_url'], config.FEED_URL])
     return site_config
 
 
@@ -191,7 +195,7 @@ in {!r}!'.format(key, os.path.join(path, config.PAGE_DATA_FILENAME)));
     # get whole site config and set to page data
     site_config = get_site_config()
     config_keys = ['site_name', 'site_author', 'site_description',
-    'base_url', 'themes_url']
+    'base_url', 'themes_url', 'feed_url']
     for key in config_keys:
         page_data[key] = site_config.get(key, '')
     # if not using custom theme, use default

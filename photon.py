@@ -17,6 +17,7 @@ import os
 import sys
 import json
 
+import config
 import quark
 
 
@@ -36,7 +37,7 @@ def tag_list(page_data, src, num, category, tpl):
     page_index = quark.get_page_index()
     # limit the category first
     if category and category != '*':
-        bycat_func = lambda c: c.startswith(os.path.join(category, ''))
+        bycat_func = lambda c: c.startswith(category)
         page_index = list(filter(bycat_func, page_index))
     # limit number of pages to show
     if num != '*':
@@ -167,5 +168,5 @@ def save_rss():
     items.reverse()  # the last inserted must be the first in rss
     rss_data['items'] = '\n'.join(items)
     rss_doc = render_template(rss_tpl, rss_data)
-    quark.write_file('rss.xml', rss_doc)
+    quark.write_file(config.FEED_URL, rss_doc)
     print('Feed "rss.xml" generated.')

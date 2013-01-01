@@ -10,3 +10,5 @@ CONFIG_FILENAME = 'config.ion'
 INDEX_FILENAME = 'index.log'
 THEMES_DIRNAME = 'themes'
 THEMES_DEFAULT_TEMPL = 'main.tpl'
+
+FEED_URL = 'rss.xml'

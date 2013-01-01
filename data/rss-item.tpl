@@ -1,7 +1,7 @@
 <item>
-    <title>{{print title}}</title>
-    <link>{{print permalink}}</link>
-    <pubDate>{{print date}}</pubDate>
-    <description><![CDATA[{{print content}}]]></description>
-    <guid>{{print permalink}}</guid>
+    <title>{{title}}</title>
+    <link>{{permalink}}</link>
+    <pubDate>{{date}}</pubDate>
+    <description><![CDATA[{{content}}]]></description>
+    <guid>{{permalink}}</guid>
 </item>

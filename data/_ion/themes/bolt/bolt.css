@@ -49,6 +49,16 @@ header h1 a {
 #content {
 	width: 800px;
 }
+#breadcrumbs {
+	margin: 0 0 20px;
+}
+#breadcrumbs li {
+	display: inline;
+}
+#breadcrumbs li:before {
+	content: '/';
+}
+
 article h2 {
 	font-weight: bold;
 }
