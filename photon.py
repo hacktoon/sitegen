@@ -20,31 +20,24 @@ import json
 import quark
 
 
-def tag_print(tags, page_data, tpl, tpl_name):
-    '''Returns a variable value and instructions to replace'''
-    # example tag: ('print', ['variable'], (7, 19))
-    tag = tags[0] # takes the first print command
-    key = tag[1][0] # takes the variable name
-    return (page_data.get(key, ''), tag[2], 1)
+tag_exprs = (
+    r'\{\{\s*(list)\s+'
+        r'([-a-z0-9_]+)(?:\s+(\d+|\*)(?:\s+([-a-z0-9/_]+|\*))?)?'
+        r'\s*\}\}(.+?)\{\{\s*end\s*\}\}',
+    r'\{\{\s*(include)\s+([-a-z0-9]+)\s*\}\}',
+    r'\{\{\s*(breadcrumbs)\s*\}\}(.+?)\{\{\s*end\s*\}\}',
+    r'\{\{\s*([-a-z0-9_]+)\s*\}\}'
+)
 
 
-def tag_pagelist(tags, page_data, tpl, tpl_name):
+def tag_list(page_data, src, num, category, tpl):
     '''Prints a list of objects within a given template'''
-    # example tag: ('pagelist', ['variable'], (7, 19))
-    args = tags[1]
-    num = category = None
-    args = args.split()
-    arg_length = len(args)
-    if arg_length == 2:
-        num, category = args
-    elif arg_length == 1:
-        num = args[0]
     # get the list of page data
     page_index = quark.get_page_index()
     # limit the category first
     if category and category != '*':
-        tmp_func = lambda c: c.startswith(os.path.join(category, ''))
-        data_list = list(filter(tmp_func, page_index))
+        bycat_func = lambda c: c.startswith(os.path.join(category, ''))
+        page_index = list(filter(bycat_func, page_index))
     # limit number of pages to show
     if num != '*':
         try:
@@ -56,14 +49,10 @@ def tag_pagelist(tags, page_data, tpl, tpl_name):
             page_index.reverse()
         page_index = page_index[:abs(num)]
     page_list = []
-    # replace page. prefix from variable names
-    tpl = tpl.replace('page.', '')
     if page_index:
         for page in page_index:
             item_data = quark.get_page_data(page)
             page_list.append(render_template(tpl, item_data))
-    else:
-        return render_template(tpl_empty, page_data)
     return '\n'.join(page_list)
 
 
@@ -81,60 +70,29 @@ def tag_include(page_data, filename):
 
 
 def tag_breadcrumbs(page_data, tpl):
-    levels = os.path.split(page_data['path'])
-    breadcrumbs = ''
-    for page in levels:
-        render_template(tpl, page_data)
-    
-    return breadcrumbs
-
-
-def parse_tags(tpl):
-    # returns [('print', ['variavel'], (7, 19)), 
-    # ('pagelist', ['4', 'blog'], (20, 39))]
-    tag_start = tag_end = 0
-    cmd_end = cmd_start = 0
-    in_tag = False
-    tags = []
-    for m in re.finditer(r'\{\{|\}\}', tpl):
-        match = m.group(0)
-        if match == '{{' and in_tag:
-            sys.exit('error')
-        if match == '}}' and not in_tag:
-            sys.exit('error')
-        if match == '{{':
-            in_tag = True
-            tag_start = m.start()
-            cmd_start = m.end()
-        else:
-            in_tag = False
-            cmd_end = m.start()
-            tag_end = m.end()
-            cmd = tpl[cmd_start:cmd_end].strip()
-            tag_string = re.split(r'\s+', cmd)
-            cmd, args = tag_string[0], tag_string[1:]
-            tags.append((cmd, args, (tag_start, tag_end)))
-    return tags
+    path = page_data['path']
+    breadcrumbs = []
+    while path:
+        item_data = quark.get_page_data(path)
+        breadcrumbs.insert(0, render_template(tpl, item_data))
+        path, page = os.path.split(path)
+    return '\n'.join(breadcrumbs)
 
 
 def render_template(tpl, page_data, tpl_name=None):
     '''Replaces the page variables in the given template'''
-    replacements = []
-    tags = parse_tags(tpl)
-    idx = 0
-    while idx < len(tags):
-        tag = tags[idx]
-        # sample return data in get_tags:
-        # cmd, args & position of tag in tpl string
-        # sample data: [('print', ['variavel'], (7, 19)),
-        # ('pagelist', ['4', 'blog'], (20, 39))]
-        cmd_name = 'tag_'+tag[0]
-        if not cmd_name in globals():
-            sys.exit('Zap! Command "{0}" does not exists!'.format(cmd_name))
-        replaces = globals()[cmd_name](tags[idx:], page_data, tpl, tpl_name)
-        replacements.append(replaces)
-        idx += replace_info
-
+    for expr in tag_exprs:
+        for match in re.finditer(expr, tpl, re.DOTALL):
+            tag_string, tag_data = match.group(0), match.groups()
+            cmd_name = "tag_" + tag_data[0]
+            if cmd_name in globals():
+                tag_value = globals()[cmd_name](page_data, *tag_data[1:])
+            elif tag_data[0] in page_data:
+                tag_value = page_data[tag_data[0]]
+            else:
+                sys.exit('Zap! Tag "{}" '
+                'could not be parsed!'.format(cmd_name))
+            tpl = tpl.replace(tag_string, tag_value)
     return tpl
 
 

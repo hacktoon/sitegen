@@ -1,67 +1,42 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta name="author" content="{{print site_author}}" />
-    <meta name="description" content="{{print site_description}}" />
-    <meta name="keywords" content="{{print tags}}" />
+    <meta name="author" content="{{site_author}}" />
+    <meta name="description" content="{{site_description}}" />
+    <meta name="keywords" content="{{tags}}" />
     <meta charset="UTF-8" />
-    <link rel="stylesheet" href="{{print themes_url}}bolt/bolt.css" type="text/css" />
-    {{print css}}
-    <title>{{print title}} | {{print site_name}}</title>
+    <link rel="stylesheet" href="{{themes_url}}bolt/bolt.css" type="text/css" />
+    {{css}}
+    <title>{{title}} | {{site_name}}</title>
 </head>
 <body>
     <div id="wrapper">
         <header>
-            <h1><a href="{{print base_url}}">{{print site_name}}</a></h1>
-            <p id="description">{{print site_description}}</p>
+            <h1><a href="{{base_url}}">{{site_name}}</a></h1>
+            <p id="description">{{site_description}}</p>
         </header>
         <section id="content">
-            <ul>
+            <ul id="breadcrumbs">
                 {{breadcrumbs}}
                     <li>
-                        <a title="{{print title}}" href="{{print permalink}}">
-                            {{print title}}
+                        <a title="{{title}}" href="{{permalink}}">
+                            {{title}}
                         </a>
                     </li>
                 {{end}}
             </ul>
             <article>
-                <h2><a href="{{print permalink}}">{{print title}}</a></h2>
-                <span class="date">{{print date}}</span>
-                <div class="entry">{{print content}}</div>
-                Tags: <span class="tags">{{print tags}}</span>
+                <h2><a href="{{permalink}}">{{title}}</a></h2>
+                <span class="date">{{date}}</span>
+                <div class="entry">{{content}}</div>
+                Tags: <span class="tags">{{tags}}</span>
             </article>
         </section>
-        <section id="sidebar">
-            <div class="widget">
-                <h2>Last pages</h2>
-                <ul>
-                    {{pagelist 5}}
-                        <li>
-                            <a title="{{print title}}" href="{{print permalink}}">
-                                {{print date}} - {{print title}}
-                            </a>
-                        </li>
-                    {{end}}
-                </ul>
-            </div>
-            <div class="widget">
-                <h2>Last posts in blog</h2>
-                <ul>
-                    {{pagelist 6 blog}}
-                        <li>
-                            <a title="{{print title}}" href="{{print permalink}}">
-                                {{print date}} - {{print title}}
-                            </a>
-                        </li>
-                    {{end}}
-                </ul>
-            </div>
-        </section>
+        {{include menu}}
         <footer>
-            Bolt theme - by {{print site_author}}
+            Bolt theme - by {{site_author}}
         </footer>
     </div>
-    {{print js}}
+    {{js}}
 </body>
 </html>

@@ -82,9 +82,9 @@ def parse_ion_file(source_path):
         # avoids empty lines and comments
         if not line or line.startswith('#'):
             continue
-        if(line == config.CONTENT_KEY):
+        if(line == 'content'):
             # read the rest of the file
-            ion_data[config.CONTENT_KEY] = ''.join(lines[num + 1:])
+            ion_data['content'] = ''.join(lines[num + 1:])
             break
         try:
             key, value = [l.strip() for l in line.split('=')]
