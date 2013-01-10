@@ -5,7 +5,8 @@
     <meta name="description" content="{{site_description}}" />
     <meta name="keywords" content="{{site_tags}} {{tags}}" />
     <meta charset="UTF-8" />
-    <link rel="stylesheet" href="{{themes_url}}bolt/bolt.css" type="text/css" />
+    <link rel="stylesheet" href="{{themes_url}}another_theme/main.css" type="text/css" />
+    <link rel="stylesheet" href="{{page_theme_url}}/bolt.css" type="text/css" />
     <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="{{feed_url}}" />
     {{css}}
     <title>{{title}} | {{site_name}}</title>
