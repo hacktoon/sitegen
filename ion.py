@@ -15,7 +15,7 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 import os
 import sys
 
-import photon  # templating language
+import photon  # rendering functions
 import quark  # low level module, basic bricks
 
 # obey the rules
@@ -27,13 +27,13 @@ def ion_charge(path):
     '''Reads recursively every directory under path and
     outputs HTML/JSON for each data.ion file'''
     env = quark.get_env()
-    for path in env['pages'].keys():
-        page_data = env['pages'][path].copy()
+    for page in env['pages'].values():
+        page_data = page.copy()
         photon.save_json(env, page_data)
         photon.save_html(env, page_data)
     # after generating all pages, update feed
     photon.save_rss(env)
-    # gerar json do env e disponibilizar na url /_ion/data
+
 
 def ion_spark(path):
     '''Creates a new page in specified path'''
