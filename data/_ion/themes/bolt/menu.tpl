@@ -3,7 +3,7 @@
     <div class="widget">
         <h2>Last pages</h2>
         <ul>
-            {{list pages 5}}
+            {{list src=pages num=5}}
                 <li>
                     <a title="{{title}}" href="{{permalink}}">
                         {{date}} - {{title}}
@@ -15,7 +15,7 @@
     <div class="widget">
         <h2>Last posts in blog</h2>
         <ul>
-            {{list pages 6 blog}}
+            {{list src=pages num=6 cat=blog}}
                 <li>
                     <a title="{{title}}" href="{{permalink}}">
                         {{date}} - {{title}}

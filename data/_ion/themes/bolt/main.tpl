@@ -3,7 +3,7 @@
 <head>
     <meta name="author" content="{{site_author}}" />
     <meta name="description" content="{{site_description}}" />
-    <meta name="keywords" content="{{tags}}" />
+    <meta name="keywords" content="{{site_tags}} {{tags}}" />
     <meta charset="UTF-8" />
     <link rel="stylesheet" href="{{themes_url}}bolt/bolt.css" type="text/css" />
     <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="{{feed_url}}" />
@@ -28,7 +28,7 @@
             </ul>
             <article>
                 <h2><a href="{{permalink}}">{{title}}</a></h2>
-                <span class="date">{{date}}</span>
+                <span class="date">{{date | fmt=%Y-%m-%d %H:%M:%S}}</span>
                 <div class="entry">{{content}}</div>
                 Tags: <span class="tags">{{tags}}</span>
             </article>

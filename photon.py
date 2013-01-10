@@ -158,7 +158,7 @@ def render_variable(env, page, var_name, args):
     if isinstance(tag_value, datetime):
         return date_to_string(tag_value, args.get('fmt'))
     elif isinstance(tag_value, list):
-        return ', '.join(tag_value)
+        return ' '.join(tag_value)
     else:
         return tag_value
 
