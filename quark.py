@@ -17,7 +17,7 @@ import sys
 import re
 import shutil
 import time
-from datetime import datetime, tzinfo, timedelta
+from datetime import datetime
 from collections import OrderedDict
 
 import config
