@@ -2,10 +2,6 @@
 site_name = My Ion site
 site_author = Electric Joe
 site_description = An electric site
+site_tags = ion, joe, bolt
 base_url = http://localhost/
 default_theme = bolt
-# max number of items to list in RSS feed
-rss_items = 8
-# dd/mm/yyyy
-date_format = %d/%m/%Y
-time_format = %H:%M:%S

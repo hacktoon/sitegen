@@ -17,39 +17,19 @@ import sys
 import re
 import shutil
 import time
-from datetime import datetime
+from datetime import datetime, tzinfo, timedelta
+from collections import OrderedDict
+
 import config
 
 
-def get_datetime(page_data=None):
-    '''If page_data is not provided, returns current datetime'''
-    if page_data:
-        return page_data['date'], page_data['time']
-    site_config = get_site_config()
-    pdate = datetime.today().strftime(site_config['date_format'])
-    ptime =time.strftime(site_config['time_format'])
-    return pdate, ptime
-
-
-def date_to_rfc822(pdate, ptime):
-    site_config = get_site_config()
-    # get local timezone with daylight saving time
-    daylight = time.localtime().tm_isdst
-    utc_offset = time.altzone if daylight else time.timezone
-    # offset comes in seconds - convert to RFC822 format: +0000
-    utc_offset = '{:+06.2f}'.format(utc_offset / 60 / 60 * -1)
-    # get date and convert to rfc822 date format
-    rfc822_fmt = '%a, %d %b %Y %H:%M:%S ' + utc_offset.replace('.', '')
-    # build a format string date time: Ex: %year/%month %hour:%min
-    datetime_fmt = '{} {}'.format(site_config['date_format'],
-        site_config['time_format'])
-    # gets the date & time of the page
-    page_datetime = '{} {}'.format(pdate, ptime)
-    try:
-        date = datetime.strptime(page_datetime, datetime_fmt)
-    except ValueError:
-        sys.exit('Zap! Wrong date/time format detected!');
-    return date.strftime(rfc822_fmt)
+def url_join(start, end=''):
+    start = start.strip('/')
+    end = end.strip('/')
+    url = '/'.join([start, end])
+    if end:
+        url += '/'
+    return url
 
 
 def read_file(path):
@@ -94,6 +74,22 @@ def parse_ion_file(source_path):
     return ion_data
 
 
+def check_keys(keys, container, src):
+    '''Checks for missing keys in a data container'''
+    for key in keys:
+        if not key in container:
+            sys.exit('Zap! The key {!r} is missing in {!r}!'.format(key, src))
+
+
+def extract_tags(tag_string):
+    '''Converts a comma separated list of tags into a list'''
+    tag_list = []
+    if tag_string:
+        tags = tag_string.strip(',').split(',')
+        tag_list = [tag.strip() for tag in tags]
+    return tag_list
+
+
 def get_skeldata_dirpath():
     '''Gets the skeleton data folder in the Ion installation folder'''
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -120,8 +116,8 @@ def get_themes_path():
 
 def get_themes_url(base_url):
     '''Returns the URL of the themes folder'''
-    system_url = os.path.join(base_url, config.SITECONF_DIRNAME)
-    return os.path.join(system_url, config.THEMES_DIRNAME, '')
+    system_url = url_join(base_url, config.SITECONF_DIRNAME)
+    return url_join(system_url, config.THEMES_DIRNAME)
 
 
 def get_page_theme_dir(theme):
@@ -129,11 +125,9 @@ def get_page_theme_dir(theme):
     return os.path.join(get_themes_path(), theme)
 
 
-def read_html_template(theme_name, tpl_filename=None):
+def read_html_template(theme_name, tpl_filename):
     '''Returns a HTML template string from the current theme folder'''
     theme_dir = get_page_theme_dir(theme_name)
-    if not tpl_filename:
-        tpl_filename = config.THEMES_DEFAULT_TEMPL
     if not tpl_filename.endswith('.tpl'):
         tpl_filename = '{0}.tpl'.format(tpl_filename)
     tpl_filepath = os.path.join(theme_dir, tpl_filename)
@@ -143,85 +137,16 @@ def read_html_template(theme_name, tpl_filename=None):
     return read_file(tpl_filepath)
 
 
-def read_rss_templates():
+def read_rss_template():
     '''Returns a tuple containing the rss and rss items models'''
     data_dir = get_skeldata_dirpath()
     rss_filepath = os.path.join(data_dir, config.SKEL_RSS_FILENAME)
-    rssitem_filepath = os.path.join(data_dir, config.SKEL_RSSITEM_FILENAME)
-    return (read_file(rss_filepath), read_file(rssitem_filepath))
+    return read_file(rss_filepath)
 
 
 def get_pagedata_filepath(path):
     '''Returns the path of the data source file of a page'''
     return os.path.join(path, config.PAGE_DATA_FILENAME)
-
-
-def get_site_config():
-    '''Returns a dict containing the current site config'''
-    config_path = get_siteconf_filepath()
-    site_config = parse_ion_file(config_path)
-    # check for missing keys
-    required_keys = ['site_name', 'site_author', 'site_description',
-    'base_url', 'default_theme', 'rss_items', 'date_format', 'time_format']
-    for key in required_keys:
-        if not key in site_config:
-            sys.exit('Zap! The value {!r} is'
-                     'missing in {!r}!'.format(key, config_path));
-    base_url = site_config.get('base_url')
-    # add a trailing slash to base url, if necessary
-    if not base_url.endswith('/'):
-        base_url += '/'
-    site_config['base_url'] = base_url
-    site_config['themes_url'] = get_themes_url(site_config['base_url'])
-    site_config['feed_url'] = ''.join([site_config['base_url'], config.FEED_URL])
-    return site_config
-
-
-def get_page_data(path):
-    '''Returns a dictionary with the page data'''
-    #removing '.' of the path in the case of root directory of site
-    path = re.sub('^\.$|\.\/', '', path)
-    data_file = get_pagedata_filepath(path)
-    # avoid directories that doesn't have a data file
-    if not os.path.exists(data_file):
-        return {}
-    page_data = parse_ion_file(data_file)
-    # verify missing required keys in page data
-    required_keys = ['title', 'date', 'time', 'content']
-    for key in required_keys:
-        if not key in page_data:
-            sys.exit('Zap! The value {!r} is missing \
-in {!r}!'.format(key, os.path.join(path, config.PAGE_DATA_FILENAME)));
-    # get whole site config and set to page data
-    site_config = get_site_config()
-    config_keys = ['site_name', 'site_author', 'site_description',
-    'base_url', 'themes_url', 'feed_url']
-    for key in config_keys:
-        page_data[key] = site_config.get(key, '')
-    # if not using custom theme, use default
-    default_theme = site_config.get('default_theme')
-    page_data['path'] = path
-    page_data['theme'] = page_data.get('theme', default_theme)
-    page_data['template'] = page_data.get('template')
-    page_data['permalink'] = os.path.join(page_data['base_url'], path)
-    return page_data
-
-
-def update_index(path):
-    '''Updates a log file containing list of all pages created'''
-    if path == '.':
-        return
-    entry = '{0}\n'.format(path)
-    system_path = get_siteconf_dirpath()
-    index_path = os.path.join(system_path, config.INDEX_FILENAME)
-    write_file(index_path, entry, append=True)
-
-
-def get_page_index():
-    '''Returns the list of pages created'''
-    system_path = get_siteconf_dirpath()
-    index = os.path.join(system_path, config.INDEX_FILENAME)
-    return list_read_file(index)
 
 
 def create_site():
@@ -247,8 +172,66 @@ def create_page(path):
     # copy the skel page data file to new page
     src_path = get_pagedata_filepath(get_skeldata_dirpath())
     content = read_file(src_path)
-    # saving date & time in the formats configured
-    pdate, ptime = get_datetime() 
+    # saving date in the format configured
+    date = datetime.today()
     # need to write file contents to insert creation date
-    write_file(dest_filepath, content.format(pdate, ptime))
+    write_file(dest_filepath, content.format(date))
     return dest_filepath
+
+
+def get_page_collection(env):
+    pages = {}
+    # running at the current dir
+    for dirpath, subdirs, filenames in os.walk('.'):
+        page_data = get_page_data(env, dirpath)
+        # if did not find a data file, ignores
+        if page_data:
+            pages[page_data['path']] = page_data
+    # orders pages by date
+    return sorted(pages.items(), key=lambda p: p[1]['date'])
+
+
+def get_page_data(env, path):
+    '''Returns a dictionary with the page data'''
+    #removing '.' of the path in the case of root directory of site
+    path = re.sub('^\.$|\./', '', path)
+    data_file = get_pagedata_filepath(path)
+    # avoid directories that doesn't have a data file
+    if not os.path.exists(data_file):
+        return
+    page_data = parse_ion_file(data_file)
+    # verify missing required keys in page data
+    check_keys(['title', 'date', 'content'], page_data, data_file)
+    # convert date string to datetime object
+    date = page_data['date']
+    try:
+        page_data['date'] = datetime.strptime(date, config.DATE_FORMAT)
+    except ValueError:
+        sys.exit('Zap! Wrong date format detected at {!r}!'.format(data_file))
+    # absolute link of the page
+    page_data['permalink'] = url_join(env['base_url'], path)
+    # if a theme is not provided, uses default
+    page_data['theme'] = page_data.get('theme', env['default_theme'])
+    # splits tags into a list
+    page_data['tags'] = extract_tags(page_data.get('tags'))
+    page_data['path'] = path
+    return page_data
+
+
+def get_env():
+    '''Returns a dict containing the site data'''
+    config_path = get_siteconf_filepath()
+    env = parse_ion_file(config_path)
+    # check for missing keys
+    required_keys = ['site_name', 'site_author',
+    'site_description', 'base_url', 'default_theme']
+    check_keys(required_keys, env, config_path)
+    # add a trailing slash to base url, if necessary
+    base_url = url_join(env['base_url'])
+    env['base_url'] = base_url
+    env['themes_url'] = get_themes_url(base_url)
+    env['feed_url'] = url_join(base_url, config.FEED_URL)
+    env['site_tags'] = extract_tags(env.get('site_tags'))
+    # now let's get all the pages
+    env['pages'] = OrderedDict(get_page_collection(env))
+    return env

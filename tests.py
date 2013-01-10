@@ -23,12 +23,7 @@ Write your content here'''
     def test_date_format(self):
         formated_date = ion.date_format('1347640769.0', '%d/%m/%Y')
         self.assertEqual('14/09/2012', formated_date)
-
-    def test_system_pathinfo(self):
-        system_path = os.path.join(os.getcwd(), ion.CFG['system_dir'])
-        config_path = os.path.join(system_path, ion.CFG['config_file'])
-        pathinfo = ion.system_pathinfo()
-        self.assertEqual((system_path, config_path), pathinfo)
+    
 
     def test_build_style(self):
         permalink = 'http://localhost/'

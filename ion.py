@@ -26,24 +26,19 @@ if sys.version_info.major < 3:
 def ion_charge(path):
     '''Reads recursively every directory under path and
     outputs HTML/JSON for each data.ion file'''
-    # config_check()
-    for dirpath, subdirs, filenames in os.walk(path):
-        page_data = quark.get_page_data(dirpath)
-        if not page_data:
-            continue
-        photon.save_json(dirpath, page_data)
-        photon.save_html(dirpath, page_data)
+    env = quark.get_env()
+    for path in env['pages'].keys():
+        page_data = env['pages'][path].copy()
+        photon.save_json(env, page_data)
+        photon.save_html(env, page_data)
     # after generating all pages, update feed
-    photon.save_rss()
-
+    photon.save_rss(env)
+    # gerar json do env e disponibilizar na url /_ion/data
 
 def ion_spark(path):
     '''Creates a new page in specified path'''
-    #config_check()
     # copy source file to new path
     datafile_path = quark.create_page(path)
-    # saves data to file listing all pages created
-    quark.update_index(path)
     print('Page "{0}" successfully created!'.format(path))
     print('Edit the file "{0}" and call "ion charge"!'.format(datafile_path))
 
