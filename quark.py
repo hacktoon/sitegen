@@ -173,7 +173,7 @@ def create_page(path):
     src_path = get_pagedata_filepath(get_skeldata_dirpath())
     content = read_file(src_path)
     # saving date in the format configured
-    date = datetime.today()
+    date = datetime.today().strftime(config.DATE_FORMAT)
     # need to write file contents to insert creation date
     write_file(dest_filepath, content.format(date))
     return dest_filepath
