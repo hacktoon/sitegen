@@ -27,8 +27,6 @@ def url_join(start, end=''):
     start = start.strip('/')
     end = end.strip('/')
     url = '/'.join([start, end])
-    if end:
-        url += '/'
     return url
 
 
@@ -227,7 +225,7 @@ def get_env():
     'site_description', 'base_url', 'default_theme']
     check_keys(required_keys, env, config_path)
     # add a trailing slash to base url, if necessary
-    base_url = url_join(env['base_url'])
+    base_url = url_join(env['base_url'], '')
     env['base_url'] = base_url
     env['themes_url'] = get_themes_url(base_url)
     env['feed_url'] = url_join(base_url, config.FEED_URL)
