@@ -16,7 +16,9 @@ import re
 import os
 import sys
 import json
+
 from datetime import datetime
+from urllib.parse import urljoin
 
 import config
 import quark
@@ -211,7 +213,7 @@ def save_html(env, page):
     # get css and javascript found in the folder
     page['css'] = build_style_tags(page.get('css', ''), page['permalink'])
     page['js'] = build_script_tags(page.get('js', ''), page['permalink'])
-    page['page_theme_url'] = quark.url_join(env['themes_url'], page['theme'])
+    page['page_theme_url'] = urljoin(env['themes_url'], page['theme'])
     # if not using custom theme, use default
     template_model = page.get('template', config.THEMES_DEFAULT_TEMPL)
     html_templ = quark.read_html_template(page['theme'], template_model)
