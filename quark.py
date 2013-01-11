@@ -25,13 +25,13 @@ from urllib.parse import urljoin
 import config
 
 
-def read_file(path, to_list=False):
-    if not os.path.exists(path):
-        sys.exit('Zap! File "{0}" couldn\'t be \
+def read_file(path, output_mode=None):
+	if not os.path.exists(path):
+		sys.exit('Zap! File "{0}" couldn\'t be \
 found!'.format(path))
-    with open(path, 'r') as f:
-        if to_list:
-    		return [l.strip() for l in f.readlines()]
+	with open(path, 'r') as f:
+		if output_mode == 'list':
+			return [l.strip() for l in f.readlines()]
 	return f.read()
 
 
