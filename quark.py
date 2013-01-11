@@ -32,7 +32,7 @@ found!'.format(path))
     with open(path, 'r') as f:
         if to_list:
     		return [l.strip() for l in f.readlines()]
-		return f.read()
+	return f.read()
 
 
 def write_file(path, content='', append=False):
