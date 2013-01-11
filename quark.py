@@ -17,17 +17,12 @@ import sys
 import re
 import shutil
 import time
+
 from datetime import datetime
 from collections import OrderedDict
+from urllib.parse import urljoin
 
 import config
-
-
-def url_join(start, end=''):
-    start = start.strip('/')
-    end = end.strip('/')
-    url = '/'.join([start, end])
-    return url
 
 
 def read_file(path):
@@ -114,8 +109,8 @@ def get_themes_path():
 
 def get_themes_url(base_url):
     '''Returns the URL of the themes folder'''
-    system_url = url_join(base_url, config.SITECONF_DIRNAME)
-    return url_join(system_url, config.THEMES_DIRNAME)
+    system_url = urljoin(base_url, config.SITECONF_DIRNAME)
+    return urljoin(system_url, config.THEMES_DIRNAME)
 
 
 def get_page_theme_dir(theme):
@@ -207,7 +202,7 @@ def get_page_data(env, path):
     except ValueError:
         sys.exit('Zap! Wrong date format detected at {!r}!'.format(data_file))
     # absolute link of the page
-    page_data['permalink'] = url_join(env['base_url'], path)
+    page_data['permalink'] = urljoin(env['base_url'], path)
     # if a theme is not provided, uses default
     page_data['theme'] = page_data.get('theme', env['default_theme'])
     # splits tags into a list
@@ -225,10 +220,10 @@ def get_env():
     'site_description', 'base_url', 'default_theme']
     check_keys(required_keys, env, config_path)
     # add a trailing slash to base url, if necessary
-    base_url = url_join(env['base_url'], '')
+    base_url = urljoin(env['base_url'], '/')
     env['base_url'] = base_url
     env['themes_url'] = get_themes_url(base_url)
-    env['feed_url'] = url_join(base_url, config.FEED_URL)
+    env['feed_url'] = urljoin(base_url, config.FEED_URL)
     env['site_tags'] = extract_tags(env.get('site_tags'))
     # now let's get all the pages
     env['pages'] = OrderedDict(get_page_collection(env))
