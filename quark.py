@@ -25,21 +25,14 @@ from urllib.parse import urljoin
 import config
 
 
-def read_file(path):
+def read_file(path, to_list=False):
     if not os.path.exists(path):
         sys.exit('Zap! File "{0}" couldn\'t be \
 found!'.format(path))
     with open(path, 'r') as f:
-        return f.read()
-
-
-def list_read_file(path):
-    '''Reads a file and returns a list of its lines'''
-    if not os.path.exists(path):
-        sys.exit('Zap! File "{0}" couldn\'t be \
-found!'.format(path))
-    with open(path, 'r') as f:
-        return [l.strip() for l in f.readlines()]
+        if to_list:
+    		return [l.strip() for l in f.readlines()]
+		return f.read()
 
 
 def write_file(path, content='', append=False):
@@ -50,7 +43,7 @@ def write_file(path, content='', append=False):
 
 def parse_ion_file(source_path):
     ion_data = {}
-    lines = list_read_file(source_path)
+    lines = read_file(source_path, to_list=True)
     for num, line in enumerate(lines):
         # avoids empty lines and comments
         if not line or line.startswith('#'):
