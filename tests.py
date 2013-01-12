@@ -37,6 +37,9 @@ class TestBasicBricks(unittest.TestCase):
 			test_content = f.read()
 			self.assertEqual(test_content, content)
 
+	def testFilterQueryCategory(self):
+		pass
+
 
 	'''
 	def test_ion_parser(self):
