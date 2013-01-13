@@ -10,23 +10,47 @@ import photon
 
 from datetime import datetime
 
-class TestBasicBricks(unittest.TestCase):
+class TestFileHandlers(unittest.TestCase):
+
+	def setUp(self):
+		self.test_file_path = 'test_file'
+		self.test_file = open(self.test_file_path, 'w')
+		self.content = 'this is first line\nthis is second line'
+		self.test_file.write(self.content)
+		self.test_file.close()
+
 
 	def testReadFile(self):
-		content = 'this is first line\nthis is second line'
-		fp = tempfile.NamedTemporaryFile(delete=False)
-		fp.write(bytes(content, 'UTF-8'))
-		fp.close()
-		content_read = quark.read_file(fp.name)
-		self.assertEqual(content, content_read)
+		content_read = quark.read_file(self.test_file_path)
+		self.assertEqual(self.content, content_read)
 		
 
 	def testWriteFile(self):
-		content = 'this is first line\nthis is second line'
-		quark.write_file('test_file', content)
-		with open('test_file') as f:
+		content = 'Another version\nthis is another line'
+		quark.write_file(self.test_file_path, content)
+		with open(self.test_file_path) as f:
 			test_content = f.read()
 			self.assertEqual(test_content, content)
+
+
+	def tearDown(self):
+		os.remove(self.test_file_path)
+
+
+class TestHelpers(unittest.TestCase):
+
+	def testIonParser(self):
+		file_content = ('title = Write your title here\n'
+	   'date = 2012-09-12 14:30:10\n'
+	   'content\n'
+	   'Write your content here')
+		ion_data = quark.parse_ion_file(file_content)
+		data_dict = {
+			'title': 'Write your title here',
+			'date': '2012-09-12 14:30:10',
+			'content': 'Write your content here'
+		}
+		self.assertEqual(ion_data, data_dict)
 
 
 	def testIonParser(self):
@@ -41,6 +65,18 @@ class TestBasicBricks(unittest.TestCase):
 			'content': 'Write your content here'
 		}
 		self.assertEqual(ion_data, data_dict)
+
+
+	def testURLJoin(self):
+		# append slash
+		final = quark.urljoin('http://localhost', '')
+		self.assertEqual('http://localhost/', final)
+		# concat url parts
+		final = quark.urljoin('http://localhost', 'base')
+		self.assertEqual('http://localhost/base', final)
+		# split extra slashes
+		final = quark.urljoin('http://localhost/', '/base/')
+		self.assertEqual('http://localhost/base', final)
 
 	'''
 	def test_build_style(self):
@@ -65,9 +101,6 @@ class TestBasicBricks(unittest.TestCase):
 			result += model.replace('url', url)
 		self.assertEqual(result, built_tags)
 	'''
-	def tearDown(self):
-		pass
 
 if __name__ == '__main__':
-	suite = unittest.TestLoader().loadTestsFromTestCase(TestBasicBricks)
-	unittest.TextTestRunner(verbosity=2).run(suite)
+	unittest.main()

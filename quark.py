@@ -24,6 +24,7 @@ import config
 
 
 def urljoin(base, slug):
+	'''Custom URL join function to concatenate and add slashes'''
 	return '/'.join(s.strip('/') for s in [base, slug])
 
 
@@ -35,16 +36,14 @@ def read_file(path):
 		return f.read()
 
 
-def write_file(path, content='', append=False):
-	mode = 'a' if append else 'w'
-	with open(path, mode) as f:
+def write_file(path, content=''):
+	with open(path, 'w') as f:
 		f.write(content)
 
 
 def parse_ion_file(file_string):
 	ion_data = {}
 	lines = file_string.split('\n')
-	#sys.exit(lines)
 	for num, line in enumerate(lines):
 		# avoids empty lines and comments
 		line = line.strip()
@@ -54,11 +53,8 @@ def parse_ion_file(file_string):
 			# read the rest of the file
 			ion_data['content'] = ''.join(lines[num + 1:])
 			break
-		try:
-			key, value = [l.strip() for l in line.split('=')]
-			ion_data[key] = value
-		except:
-			continue
+		key, value = [l.strip() for l in line.split('=', 1)]
+		ion_data[key] = value
 	return ion_data
 
 
