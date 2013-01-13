@@ -10,46 +10,31 @@ import photon
 
 from datetime import datetime
 
-
-
 class TestBasicBricks(unittest.TestCase):
-    
-    def test_read_file(self):
+
+	def testReadFile(self):
 		content = 'this is first line\nthis is second line'
-		content_lines = content.split('\n')
-		
 		fp = tempfile.NamedTemporaryFile(delete=False)
 		fp.write(bytes(content, 'UTF-8'))
 		fp.close()
-		
 		content_read = quark.read_file(fp.name)
 		self.assertEqual(content, content_read)
 		
-		lines_read = quark.read_file(fp.name, 'list')
-		self.assertEqual(content_lines, lines_read)
-		
 
-	def test_write_file(self):
+	def testWriteFile(self):
 		content = 'this is first line\nthis is second line'
 		quark.write_file('test_file', content)
-		
 		with open('test_file') as f:
 			test_content = f.read()
 			self.assertEqual(test_content, content)
 
-	def testFilterQueryCategory(self):
-		pass
 
-
-	'''
-	def test_ion_parser(self):
-		self.data_ion_file = 'title = Write your title here'
-		'date = 2012-09-12 14:30:10'
-		'content'
-		'Write your content here'
-		with open('/tmp/data.ion', 'w') as f:
-			f.write(self.data_ion_file)
-		ion_data = ion.parse_ion_file('/tmp/data.ion')
+	def testIonParser(self):
+		file_content = ('title = Write your title here\n'
+	   'date = 2012-09-12 14:30:10\n'
+	   'content\n'
+	   'Write your content here')
+		ion_data = quark.parse_ion_file(file_content)
 		data_dict = {
 			'title': 'Write your title here',
 			'date': '2012-09-12 14:30:10',
@@ -57,13 +42,7 @@ class TestBasicBricks(unittest.TestCase):
 		}
 		self.assertEqual(ion_data, data_dict)
 
-	
-	def test_date_format(self):
-		date = datetime()
-		formated_date = quark.date_to_string('1347640769.0', '%d/%m/%Y')
-		self.assertEqual('14/09/2012', formated_date)
-
-
+	'''
 	def test_build_style(self):
 		permalink = 'http://localhost/'
 		filenames = 'main.css, print.css'
@@ -90,5 +69,5 @@ class TestBasicBricks(unittest.TestCase):
 		pass
 
 if __name__ == '__main__':
-    suite = unittest.TestLoader().loadTestsFromTestCase(TestBasicBricks)
-    unittest.TextTestRunner(verbosity=2).run(suite)
+	suite = unittest.TestLoader().loadTestsFromTestCase(TestBasicBricks)
+	unittest.TextTestRunner(verbosity=2).run(suite)

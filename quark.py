@@ -27,13 +27,11 @@ def urljoin(base, slug):
 	return '/'.join(s.strip('/') for s in [base, slug])
 
 
-def read_file(path, output_mode=None):
+def read_file(path):
 	if not os.path.exists(path):
 		sys.exit('Zap! File "{0}" couldn\'t be \
 	found!'.format(path))
 	with open(path, 'r') as f:
-		if output_mode == 'list':
-			return [l.strip() for l in f.readlines()]
 		return f.read()
 
 
@@ -43,11 +41,13 @@ def write_file(path, content='', append=False):
 		f.write(content)
 
 
-def parse_ion_file(source_path):
+def parse_ion_file(file_string):
 	ion_data = {}
-	lines = read_file(source_path, output_mode='list')
+	lines = file_string.split('\n')
+	#sys.exit(lines)
 	for num, line in enumerate(lines):
 		# avoids empty lines and comments
+		line = line.strip()
 		if not line or line.startswith('#'):
 			continue
 		if(line == 'content'):
@@ -174,7 +174,7 @@ def get_page_data(env, path):
 	# avoid directories that doesn't have a data file
 	if not os.path.exists(data_file):
 		return
-	page_data = parse_ion_file(data_file)
+	page_data = parse_ion_file(read_file(data_file))
 	# verify missing required keys in page data
 	check_keys(['title', 'date', 'content'], page_data, data_file)
 	# convert date string to datetime object
@@ -216,7 +216,7 @@ def read_page_files(env):
 def get_env():
 	'''Returns a dict containing the site data'''
 	config_path = get_siteconf_filepath()
-	env = parse_ion_file(config_path)
+	env = parse_ion_file(read_file(config_path))
 	# check for missing keys
 	required_keys = ['site_name', 'site_author',
 	'site_description', 'base_url', 'default_theme']
