@@ -12,7 +12,6 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 ===============================================================================
 '''
 
-import os
 import sys
 
 import photon  # rendering functions
