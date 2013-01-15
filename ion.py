@@ -45,7 +45,7 @@ def ion_plug():
 	'''Installs Ion in the current folder'''
 	print('Installing Ion...')
 	quark.create_site()
-	sys.exit('\nIon is ready! Run "ion spark [path]" to create pages!\n')
+	print('\nIon is ready! Run "ion spark [path]" to create pages!\n')
 
 
 def ion_help():
@@ -56,7 +56,7 @@ def ion_help():
 folder under the path specified and its subfolders, recursively.
 	ion.py help - Shows this help message.
 	'''
-	sys.exit(help_message)
+	print(help_message)
 
 
 if __name__ == '__main__':
@@ -83,4 +83,4 @@ if __name__ == '__main__':
 		ion_help()
 	else:
 		print('Zap! {0} is a very strange command!'.format(command))
-		sys.exit(help_message)
+		print(help_message)
