@@ -62,7 +62,8 @@ def check_keys(keys, container, src):
 	'''Checks for missing keys in a data container'''
 	for key in keys:
 		if not key in container:
-			sys.exit('Zap! The key {!r} is missing in {!r}!'.format(key, src))
+			raise Exception('Zap! The key {!r} is missing in {!r}!'.format(key, src))
+	return True
 
 
 def extract_tags(tag_string):
