@@ -1,7 +1,6 @@
 # encoding: utf-8
 
 import unittest
-import tempfile
 import os
 
 import ion
@@ -53,20 +52,6 @@ class TestHelpers(unittest.TestCase):
 		self.assertEqual(ion_data, data_dict)
 
 
-	def testIonParser(self):
-		file_content = ('title = Write your title here\n'
-	   'date = 2012-09-12 14:30:10\n'
-	   'content\n'
-	   'Write your content here')
-		ion_data = quark.parse_ion_file(file_content)
-		data_dict = {
-			'title': 'Write your title here',
-			'date': '2012-09-12 14:30:10',
-			'content': 'Write your content here'
-		}
-		self.assertEqual(ion_data, data_dict)
-
-
 	def testURLJoin(self):
 		# append slash
 		final = quark.urljoin('http://localhost', '')
@@ -77,6 +62,12 @@ class TestHelpers(unittest.TestCase):
 		# split extra slashes
 		final = quark.urljoin('http://localhost/', '/base/')
 		self.assertEqual('http://localhost/base', final)
+
+		
+	def testExtractTags(self):
+		tag_string = 'eletron,  neutron,  proton   '
+		tag_list = ['eletron', 'neutron', 'proton']
+		self.assertEqual(tag_list, quark.extract_tags(tag_string))
 
 	'''
 	def test_build_style(self):
