@@ -196,18 +196,20 @@ def read_page_files(env):
     pages = {}
     # running at the current dir
     for path, subdirs, filenames in os.walk('.'):
+        # if did not find a data file, ignores  
         if not config.PAGE_DATA_FILENAME in filenames:
             continue
         path = re.sub('^\.$|\./', '', path)
         page_data = get_page_data(env, path)
         page_data['children'] = []
         if path: # checks if isnt home page
-            # get parent to include itself as child page
+            # get parent folder to include itself as child page
             parent_path = os.path.dirname(path)
-            pages[parent_path]['children'].append(page_data)
-        # if did not find a data file, ignores  
+            # linking children pages, only if parent exists
+            if parent_path in pages:
+                pages[parent_path]['children'].append(page_data)
+        # uses the page path as a key
         pages[page_data['path']] = page_data
-    # linking children pages
     return pages
 
 
