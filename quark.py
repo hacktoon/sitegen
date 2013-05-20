@@ -30,8 +30,7 @@ def urljoin(base, slug):
 
 def read_file(path):
     if not os.path.exists(path):
-        sys.exit('Zap! File "{0}" couldn\'t be \
-    found!'.format(path))
+        sys.exit('Zap! File {!r} couldn\'t be found!'.format(path))
     with open(path, 'r') as f:
         return f.read()
 
@@ -62,7 +61,8 @@ def check_keys(keys, container, src):
     '''Checks for missing keys in a data container'''
     for key in keys:
         if not key in container:
-            raise Exception('Zap! The key {!r} is missing in {!r}!'.format(key, src))
+            raise Exception('Zap! The key {!r} '
+            'is missing in {!r}!'.format(key, src))
     return True
 
 
@@ -81,23 +81,20 @@ def get_skeldata_dirpath():
     return os.path.join(script_dir, config.SKEL_DATA_DIRNAME)
 
 
-def get_siteconf_dirpath(path = ''):
-    '''Returns the absolute path of the _ion config folder'''
-    path = re.sub('^\.$|\./', '', path)
-    return os.path.join(os.getcwd(), path, config.SITECONF_DIRNAME)
-
-
-def get_siteconf_filepath():
-    '''Returns the absolute path of the config.ion file'''
-    system_path = get_siteconf_dirpath()
-    config_path = os.path.join(system_path, config.CONFIG_FILENAME)
-    return config_path
-
-
-def get_themes_path():
-    '''Returns the path of the themes folder'''
-    system_path = get_siteconf_dirpath()
-    return os.path.join(system_path, config.THEMES_DIRNAME)
+def find_siteconf_dir():
+    '''Tries to find the config folder'''
+    siteconf_name = config.SITECONF_DIRNAME
+    basedir = os.getcwd()
+    fullpath = os.path.join(basedir, siteconf_name)
+    while not os.path.exists(fullpath):
+        # get the parent dir
+        basedir = os.path.dirname(basedir)
+        fullpath = os.path.join(basedir, siteconf_name)
+        # if reached the top dir
+        if os.path.dirname(basedir) == basedir:
+            fullpath = None
+            break
+    return fullpath
 
 
 def get_themes_url(base_url):
@@ -108,7 +105,9 @@ def get_themes_url(base_url):
 
 def get_page_theme_dir(theme):
     '''Returns the folder path of the theme'''
-    return os.path.join(get_themes_path(), theme)
+    system_path = find_siteconf_dir()
+    theme_path= os.path.join(system_path, config.THEMES_DIRNAME)
+    return os.path.join(theme_path, theme)
 
 
 def read_html_template(theme_name, tpl_filename):
@@ -118,7 +117,7 @@ def read_html_template(theme_name, tpl_filename):
         tpl_filename = '{0}.tpl'.format(tpl_filename)
     tpl_filepath = os.path.join(theme_dir, tpl_filename)
     if not os.path.exists(tpl_filepath):
-        sys.exit('Zap! Template file "{0}" '
+        sys.exit('Zap! Template file {!r} '
                  'couldn\'t be found!'.format(tpl_filepath))
     return read_file(tpl_filepath)
 
@@ -135,26 +134,28 @@ def get_pagedata_filepath(path):
     return os.path.join(path, config.PAGE_DATA_FILENAME)
 
 
-def create_site(directory):
-    '''Copies the skel _ion folder to the current dir'''
+def create_site():
+    if find_siteconf_dir():
+        sys.exit('Zap! Ion is already installed in this folder!')
+    # get the model _ion folder
     script_datadir = get_skeldata_dirpath()
     # copying the skeleton _ion folder to new site folder
     orig_dir = os.path.join(script_datadir, config.SITECONF_DIRNAME)
-    dest_dir = get_siteconf_dirpath(directory)
-    if os.path.exists(dest_dir):
-        sys.exit('Zap! Ion is already installed in this folder!')
-    print('Copying system config to "{0}"...'.format(dest_dir))
+    dest_dir = os.path.join(os.getcwd(), config.SITECONF_DIRNAME)
+    print('Copying system config to {!r}...'.format(dest_dir))
     shutil.copytree(orig_dir, dest_dir)
 
 
 def create_page(path):
     '''Creates a data.ion file in the folder passed as parameter'''
+    if not find_siteconf_dir():
+        sys.exit('Zap! Ion is not installed in this folder!')
     if not os.path.exists(path):
         os.makedirs(path)
     # full path of page data file
     dest_filepath = get_pagedata_filepath(path)
     if os.path.exists(dest_filepath):
-        sys.exit('Zap! Page "{0}" already exists.'.format(path))
+        sys.exit('Zap! Page {!r} already exists.'.format(path))
     # copy the skel page data file to new page
     src_path = get_pagedata_filepath(get_skeldata_dirpath())
     content = read_file(src_path)
@@ -195,7 +196,7 @@ def read_page_files(env):
     '''Returns all the pages created in the site'''
     pages = {}
     # running at the current dir
-    for path, subdirs, filenames in os.walk('.'):
+    for path, subdirs, filenames in os.walk(env['config_dir']):
         # if did not find a data file, ignores  
         if not config.PAGE_DATA_FILENAME in filenames:
             continue
@@ -215,7 +216,10 @@ def read_page_files(env):
 
 def get_env():
     '''Returns a dict containing the site data'''
-    config_path = get_siteconf_filepath()
+    config_dir = find_siteconf_dir()
+    if not config_dir:
+        sys.exit('Zap! Ion is not installed in this folder!')
+    config_path = os.path.join(config_dir, config.CONFIG_FILENAME)
     env = parse_ion_file(read_file(config_path))
     # check for missing keys
     required_keys = ['site_name', 'site_author',
@@ -223,6 +227,7 @@ def get_env():
     check_keys(required_keys, env, config_path)
     # add a trailing slash to base url, if necessary
     base_url = urljoin(env['base_url'], '/')
+    env['config_dir'] = config_dir
     env['base_url'] = base_url
     env['themes_url'] = get_themes_url(base_url)
     env['feed_url'] = urljoin(base_url, config.FEED_URL)

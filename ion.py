@@ -36,22 +36,17 @@ def ion_charge(path):
 def ion_spark(path):
     '''Creates a new page in specified path'''
     # copy source file to new path
-    datafile_path = quark.create_page(path)
-    print('Page "{0}" successfully created!'.format(path))
-    print('Edit the file "{0}" and call "ion charge"!'.format(datafile_path))
+    file_path = quark.create_page(path)
+    print('Page {!r} successfully created!'.format(path))
+    print('Edit the file {!r} and call "ion charge"!'.format(file_path))
 
 
-def ion_plug(path):
+def ion_plug():
     '''Installs Ion in the current folder'''
-    dirname = 'current' if path == '.' else '"{0}"'.format(path)
-    print('Installing Ion in {0} folder...'.format(dirname))
-    quark.create_site(path)
-    print('\nIon was successfully installed!\n')
-    if(path == '.'):
-        print('Run "ion spark [path]" to start creating pages!\n')
-    else:
-        print('Enter the {0} folder and run "ion spark [path]" '
-        'to start creating pages!\n'.format(dirname))
+    print('Installing Ion...')
+    quark.create_site()
+    print('\nIon was successfully installed!\n'
+    'Run "ion spark [path]" to start creating pages!\n')
 
 
 def ion_help():
@@ -80,7 +75,7 @@ if __name__ == '__main__':
         path = '.'
 
     if command == 'plug':
-        ion_plug(path)
+        ion_plug()
     elif command == 'spark':
         ion_spark(path)
     elif command == 'charge':
