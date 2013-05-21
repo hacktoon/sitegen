@@ -81,26 +81,9 @@ def get_skeldata_dirpath():
     return os.path.join(script_dir, config.SKEL_DATA_DIRNAME)
 
 
-def find_siteconf_dir():
-    '''Tries to find the config folder'''
-    siteconf_name = config.SITECONF_DIRNAME
-    basedir = os.getcwd()
-    fullpath = os.path.join(basedir, siteconf_name)
-    while not os.path.exists(fullpath):
-        # get the parent dir
-        basedir = os.path.dirname(basedir)
-        fullpath = os.path.join(basedir, siteconf_name)
-        # if reached the top dir
-        if os.path.dirname(basedir) == basedir:
-            fullpath = None
-            break
-    return fullpath
-
-
 def get_themes_url(base_url):
     '''Returns the URL of the themes folder'''
-    system_url = urljoin(base_url, config.SITECONF_DIRNAME)
-    return urljoin(system_url, config.THEMES_DIRNAME)
+    return urljoin(base_url, config.THEMES_DIRNAME)
 
 
 def get_page_theme_dir(theme):
@@ -135,13 +118,13 @@ def get_pagedata_filepath(path):
 
 
 def create_site():
-    if find_siteconf_dir():
+    if get_siteconf_path():
         sys.exit('Zap! Ion is already installed in this folder!')
     # get the model _ion folder
     script_datadir = get_skeldata_dirpath()
     # copying the skeleton _ion folder to new site folder
-    orig_dir = os.path.join(script_datadir, config.SITECONF_DIRNAME)
-    dest_dir = os.path.join(os.getcwd(), config.SITECONF_DIRNAME)
+    orig_dir = script_datadir
+    dest_dir = os.getcwd()
     print('Copying system config to {!r}...'.format(dest_dir))
     shutil.copytree(orig_dir, dest_dir)
 

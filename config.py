@@ -3,7 +3,6 @@ SKEL_DATA_DIRNAME = 'data'
 SKEL_RSS_FILENAME = 'rss.tpl'
 PAGE_DATA_FILENAME = 'data.ion'
 
-SITECONF_DIRNAME = '_ion'
 CONFIG_FILENAME = 'config.ion'
 
 THEMES_DIRNAME = 'themes'
