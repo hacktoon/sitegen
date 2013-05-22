@@ -1,12 +1,19 @@
-# General configuration values
-SKEL_DATA_DIRNAME = 'data'
-SKEL_RSS_FILENAME = 'rss.tpl'
-PAGE_DATA_FILENAME = 'data.ion'
+import os
 
-CONFIG_FILENAME = 'config.ion'
+# Configuration values
+DATA_FILE = 'data.ion'
 
-THEMES_DIRNAME = 'themes'
-THEMES_DEFAULT_TEMPL = 'main.tpl'
+CONFIG_FILE = 'config.ion'
+THEMES_DIR = 'themes'
+MAIN_TEMPLATE = 'main.tpl'
 
 DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
-FEED_URL = 'rss.xml'
+
+# Setting values based on config
+script_path = os.path.dirname(os.path.abspath(__file__))
+data_dir = os.path.join(script_path, 'data')
+
+MODEL_RSS_FILE = os.path.join(data_dir, 'rss.tpl')
+MODEL_CONFIG_FILE = os.path.join(data_dir, CONFIG_FILE)
+MODEL_DATA_FILE = os.path.join(data_dir, DATA_FILE)
+MODEL_THEMES_DIR = os.path.join(data_dir, THEMES_DIR)

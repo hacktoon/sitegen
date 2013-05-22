@@ -118,15 +118,12 @@ def get_pagedata_filepath(path):
 
 
 def create_site():
-    if get_siteconf_path():
+    if get_site_config():
         sys.exit('Zap! Ion is already installed in this folder!')
-    # get the model _ion folder
-    script_datadir = get_skeldata_dirpath()
-    # copying the skeleton _ion folder to new site folder
-    orig_dir = script_datadir
-    dest_dir = os.getcwd()
-    print('Copying system config to {!r}...'.format(dest_dir))
-    shutil.copytree(orig_dir, dest_dir)
+    # copy the config file
+    shutil.copyfile(config.MODEL_CONFIG_FILE, config.CONFIG_FILE)
+    # copy the themes folder
+    shutil.copytree(config.MODEL_THEMES_DIR, config.THEMES_DIR)
 
 
 def create_page(path):
@@ -147,6 +144,14 @@ def create_page(path):
     # need to write file contents to insert creation date
     write_file(dest_filepath, content.format(date))
     return dest_filepath
+
+
+def get_site_config():
+	'''returns the current site config'''
+	config_path = os.path.join(os.getcwd(), config.CONFIG_FILE)
+	if not os.path.exists(config_path):
+		return
+	return parse_ion_file(read_file(config_path))
 
 
 def get_page_data(env, path):
@@ -199,11 +204,9 @@ def read_page_files(env):
 
 def get_env():
     '''Returns a dict containing the site data'''
-    config_dir = find_siteconf_dir()
-    if not config_dir:
+    env = get_site_config()
+    if not env:
         sys.exit('Zap! Ion is not installed in this folder!')
-    config_path = os.path.join(config_dir, config.CONFIG_FILENAME)
-    env = parse_ion_file(read_file(config_path))
     # check for missing keys
     required_keys = ['site_name', 'site_author',
     'site_description', 'base_url', 'default_theme']
