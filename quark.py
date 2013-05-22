@@ -114,7 +114,7 @@ def read_rss_template():
 
 def get_pagedata_filepath(path):
     '''Returns the path of the data source file of a page'''
-    return os.path.join(path, config.PAGE_DATA_FILENAME)
+    return os.path.join(path, config.DATA_FILE)
 
 
 def create_site():
@@ -128,22 +128,21 @@ def create_site():
 
 def create_page(path):
     '''Creates a data.ion file in the folder passed as parameter'''
-    if not find_siteconf_dir():
-        sys.exit('Zap! Ion is not installed in this folder!')
+    if not get_site_config():
+        sys.exit('Zap! Ion is not installed!')
     if not os.path.exists(path):
         os.makedirs(path)
     # full path of page data file
-    dest_filepath = get_pagedata_filepath(path)
-    if os.path.exists(dest_filepath):
+    dest_file = os.path.join(path, config.DATA_FILE)
+    if os.path.exists(dest_file):
         sys.exit('Zap! Page {!r} already exists.'.format(path))
     # copy the skel page data file to new page
-    src_path = get_pagedata_filepath(get_skeldata_dirpath())
-    content = read_file(src_path)
+    content = read_file(config.MODEL_DATA_FILE)
     # saving date in the format configured
     date = datetime.today().strftime(config.DATE_FORMAT)
     # need to write file contents to insert creation date
-    write_file(dest_filepath, content.format(date))
-    return dest_filepath
+    write_file(dest_file, content.format(date))
+    return dest_file
 
 
 def get_site_config():
