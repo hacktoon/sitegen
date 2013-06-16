@@ -190,8 +190,8 @@ def save_rss(env):
 		# get lastBuildDate
 		'build_date': datetime.today()
 	}
-	rss_tpl = quark.read_rss_template()
+	rss_tpl = quark.read_file(config.MODEL_RSS_FILE)
 	# populate RSS items with the page index
 	rss_doc = render_template(rss_tpl, env, rss_data)
-	quark.write_file(config.FEED_URL, rss_doc)
-	print('Feed "{}" generated.'.format(config.FEED_URL))
+	quark.write_file('rss.tpl', rss_doc)
+	print('Feed "{}" generated.'.format('rss.tpl'))

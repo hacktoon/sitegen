@@ -105,13 +105,6 @@ def read_html_template(theme_name, tpl_filename):
     return read_file(tpl_filepath)
 
 
-def read_rss_template():
-    '''Returns a tuple containing the rss and rss items models'''
-    data_dir = get_skeldata_dirpath()
-    rss_filepath = os.path.join(data_dir, config.SKEL_RSS_FILENAME)
-    return read_file(rss_filepath)
-
-
 def get_pagedata_filepath(path):
     '''Returns the path of the data source file of a page'''
     return os.path.join(path, config.DATA_FILE)
