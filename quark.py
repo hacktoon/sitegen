@@ -23,6 +23,12 @@ from datetime import datetime
 import config
 
 
+required_config_keys = ['site_name', 'site_author',
+    'site_description', 'base_url', 'default_theme']
+
+required_page_keys = ['title', 'date', 'content']
+
+
 def urljoin(base, slug):
     '''Custom URL join function to concatenate and add slashes'''
     return '/'.join(s.strip('/') for s in [base, slug])
@@ -57,13 +63,12 @@ def parse_ion_file(file_string):
     return ion_data
 
 
-def check_keys(keys, container, src):
+def keys_missing(keys, container):
     '''Checks for missing keys in a data container'''
     for key in keys:
         if not key in container:
-            raise Exception('Zap! The key {!r} '
-            'is missing in {!r}!'.format(key, src))
-    return True
+            return key
+    return False
 
 
 def extract_tags(tag_string):
@@ -79,11 +84,6 @@ def get_skeldata_dirpath():
     '''Gets the skeleton data folder in the Ion installation folder'''
     script_dir = os.path.dirname(os.path.abspath(__file__))
     return os.path.join(script_dir, config.SKEL_DATA_DIRNAME)
-
-
-def get_themes_url(base_url):
-    '''Returns the URL of the themes folder'''
-    return urljoin(base_url, config.THEMES_DIRNAME)
 
 
 def get_page_theme_dir(theme):
@@ -117,6 +117,20 @@ def get_pagedata_filepath(path):
     return os.path.join(path, config.DATA_FILE)
 
 
+def get_site_config():
+    '''returns the current site config'''
+    config_path = os.path.join(os.getcwd(), config.CONFIG_FILE)
+    if not os.path.exists(config_path):
+        return
+    cfg = parse_ion_file(read_file(config_path))
+    cfg['config_dir'] = config_path
+    # check for missing keys
+    key = keys_missing(required_config_keys, cfg)
+    if key:
+        sys.exit('Zap! The key {!r} is missing in site config!'.format(key))
+    return cfg
+
+
 def create_site():
     if get_site_config():
         sys.exit('Zap! Ion is already installed in this folder!')
@@ -145,14 +159,6 @@ def create_page(path):
     return dest_file
 
 
-def get_site_config():
-	'''returns the current site config'''
-	config_path = os.path.join(os.getcwd(), config.CONFIG_FILE)
-	if not os.path.exists(config_path):
-		return
-	return parse_ion_file(read_file(config_path))
-
-
 def get_page_data(env, path):
     '''Returns a dictionary with the page data'''
     #removing '.' of the path in the case of root directory of site
@@ -162,7 +168,10 @@ def get_page_data(env, path):
         return
     page_data = parse_ion_file(read_file(data_file))
     # verify missing required keys in page data
-    check_keys(['title', 'date', 'content'], page_data, data_file)
+    key = keys_missing(required_page_keys, page_data)
+    if key:
+        sys.exit('Zap! The key {!r} is missing '
+        'in page config at {!r}!'.format(key, path))
     # convert date string to datetime object
     date = page_data['date']
     try:
@@ -206,16 +215,11 @@ def get_env():
     env = get_site_config()
     if not env:
         sys.exit('Zap! Ion is not installed in this folder!')
-    # check for missing keys
-    required_keys = ['site_name', 'site_author',
-    'site_description', 'base_url', 'default_theme']
-    check_keys(required_keys, env, config_path)
     # add a trailing slash to base url, if necessary
     base_url = urljoin(env['base_url'], '/')
-    env['config_dir'] = config_dir
     env['base_url'] = base_url
-    env['themes_url'] = get_themes_url(base_url)
-    env['feed_url'] = urljoin(base_url, config.FEED_URL)
+    env['themes_url'] = urljoin(base_url, config.THEMES_DIR)
+    #env['feed_url'] = urljoin(base_url, config.FEED_URL)
     env['site_tags'] = extract_tags(env.get('site_tags'))
     # now let's get all the pages
     env['pages'] = read_page_files(env)
