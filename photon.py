@@ -80,7 +80,7 @@ def tag_list(env, page, args, tpl):
 
 
 def tag_include(env, page, filename):
-	theme_dir = quark.get_page_theme_dir(page['theme'])
+	theme_dir = os.path.join(config.THEMES_DIR, page['theme'])
 	if not filename.endswith('.tpl'):
 		filename = '{0}.tpl'.format(filename)
 	path = os.path.join(theme_dir, filename)
@@ -96,7 +96,7 @@ def tag_breadcrumbs(env, page, tpl):
 	path = page['path']
 	breadcrumbs = []
 	while path:
-		item_data = env['pages'][path]
+		item_data = env['pages'].get(path)
 		if not item_data:
 			break
 		breadcrumbs.insert(0, render_template(tpl, env, item_data))
@@ -172,7 +172,7 @@ def save_html(env, page):
 	page['js'] = build_script_tags(page.get('js', ''), page['permalink'])
 	page['page_theme_url'] = quark.urljoin(env['themes_url'], page['theme'])
 	# if not using custom theme, use default
-	template_model = page.get('template', config.THEMES_DEFAULT_TEMPL)
+	template_model = page.get('template', config.MAIN_TEMPLATE)
 	html_templ = quark.read_html_template(page['theme'], template_model)
 	# replace template with page data and listings
 	html = render_template(html_templ, env, page)
