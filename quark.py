@@ -247,17 +247,14 @@ def query_pages(env, page, dataset, args=None):
 
 def query(env, page, args):
 	'''Make queries to the environment data set'''
-	# get the source argument
 	src = args.get('src', '')
 	sources = {
-		'pages': [query_pages, list(env['pages'].copy().values())],
-		'children': [query_pages, [get_page_data(env, p) \
-		for p in page.get('children', [])]]
+		'pages': list(env['pages'].copy().values()),
+		'children': [get_page_data(env, p) for p in page.get('children', [])]
 	}
 	# calling the proper query function
 	if src in sources:
-		dataset = sources[src][1]
-		return sources[src][0](env, page, dataset, args)
+		return query_pages(env, page, sources[src], args)
 	else:
 		sys.exit('Zap! "src" argument is'
 		' missing or invalid!'.format(src))
