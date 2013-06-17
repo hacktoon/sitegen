@@ -80,12 +80,6 @@ def extract_tags(tag_string):
 	return tag_list
 
 
-def get_skeldata_dirpath():
-	'''Gets the skeleton data folder in the Ion installation folder'''
-	script_dir = os.path.dirname(os.path.abspath(__file__))
-	return os.path.join(script_dir, config.SKEL_DATA_DIRNAME)
-
-
 def read_html_template(theme_name, tpl_filename):
 	'''Returns a HTML template string from the current theme folder'''
 	theme_dir = os.path.join(config.THEMES_DIR, theme_name)
@@ -96,11 +90,6 @@ def read_html_template(theme_name, tpl_filename):
 		sys.exit('Zap! Template file {!r} '
 				 'couldn\'t be found!'.format(tpl_filepath))
 	return read_file(tpl_filepath)
-
-
-def get_pagedata_filepath(path):
-	'''Returns the path of the data source file of a page'''
-	return os.path.join(path, config.DATA_FILE)
 
 
 def get_site_config():
@@ -147,7 +136,7 @@ def create_page(path):
 def get_page_data(env, path):
 	'''Returns a dictionary with the page data'''
 	#removing '.' of the path in the case of root directory of site
-	data_file = get_pagedata_filepath(path)
+	data_file = os.path.join(path, config.DATA_FILE)
 	# avoid directories that doesn't have a data file
 	if not os.path.exists(data_file):
 		return
@@ -177,21 +166,23 @@ def read_page_files(env):
 	'''Returns all the pages created in the site'''
 	pages = {}
 	# running at the current dir
-	for path, subdirs, filenames in os.walk(os.getcwd()):
+	for path, subdirs, filenames in os.walk('.'):
 		# if did not find a data file, ignores
 		if not config.DATA_FILE in filenames:
 			continue
+		# removing dot from path
 		path = re.sub('^\.$|\./', '', path)
 		page_data = get_page_data(env, path)
+		# uses the page path as a key
+		pages[path] = page_data
+		# get the child pages
 		page_data['children'] = []
-		if path: # checks if isnt home page
+		if path: # checks if isnt home page (empty string)
 			# get parent folder to include itself as child page
 			parent_path = os.path.dirname(path)
 			# linking children pages, only if parent exists
 			if parent_path in pages:
-				pages[parent_path]['children'].append(page_data)
-		# uses the page path as a key
-		pages[page_data['path']] = page_data
+				pages[parent_path]['children'].append(path)
 	return pages
 
 
@@ -260,7 +251,8 @@ def query(env, page, args):
 	src = args.get('src', '')
 	sources = {
 		'pages': [query_pages, list(env['pages'].copy().values())],
-		'children': [query_pages, page.get('children', [])[:]]
+		'children': [query_pages, [get_page_data(env, p) \
+		for p in page.get('children', [])]]
 	}
 	# calling the proper query function
 	if src in sources:
