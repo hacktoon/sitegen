@@ -82,11 +82,23 @@ A theme can have multiples template files. By default Ion comes uses the **main.
 ### Collections and template listings
 By default, Ion provides some collections of data for using in templates. The first is the **pages** collection. You can list a subset of the pages of your site by passing arguments in the template tag:
 
-    {{list src=pages num=10}}
+	{{list src=pages num=10}}
         <li>{{title}}</li>
     {{end}}
 
 The **children** collection lists all the child pages of the current page being generated.
+
+### Page properties
+Properties listed in a page data file can be used to change how Ion will handle the page.
+
+* nojson - Ion will not generate a JSON file.
+* nohtml - Ion will not generate a HTML file.
+* nolist - The page will not appear in listings
+* norender - The page will not be generated
+
+Example:
+
+	props = nojson, nolist
 
 ### And another thing...
 * All page content stay in its own folder - so each page is independent.

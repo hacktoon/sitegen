@@ -30,6 +30,8 @@ def ion_charge(path):
 	if not pages:
 		sys.exit('No pages to generate.')
 	for page in pages.values():
+		if 'norender' in page['props']:
+			continue
 		photon.save_json(env, page)
 		photon.save_html(env, page)
 	# after generating all pages, update feed

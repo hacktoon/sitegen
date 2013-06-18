@@ -75,6 +75,8 @@ def tag_list(env, page, args, tpl):
 	render_list = []
 	# renders the sub tpl block for each item
 	for item in data_list:
+		if 'nolist' in item.get('props', []):
+			continue
 		render_list.append(render_template(tpl, env, item))
 	return '\n'.join(render_list)
 
@@ -158,14 +160,17 @@ def build_script_tags(filenames, permalink):
 
 
 def save_json(env, page):
+	if 'nojson' in page['props']:
+		return
 	page = page.copy()
 	page['date'] = date_to_string(page['date'])
 	json_filepath = os.path.join(page['path'], 'index.json')
-	page['children'] = None
 	quark.write_file(json_filepath, json.dumps(page))
 
 
 def save_html(env, page):
+	if 'nohtml' in page['props']:
+		return
 	page = page.copy()
 	# get css and javascript found in the folder
 	page['css'] = build_style_tags(page.get('css', ''), page['permalink'])

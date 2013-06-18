@@ -158,6 +158,8 @@ def get_page_data(env, path):
 	page_data['theme'] = page_data.get('theme', env['default_theme'])
 	# splits tags into a list
 	page_data['tags'] = extract_tags(page_data.get('tags'))
+	# get the page properties
+	page_data['props'] = extract_tags(page_data.get('props'))
 	page_data['path'] = path
 	return page_data
 
@@ -180,9 +182,8 @@ def read_page_files(env):
 		if path: # checks if isnt home page (empty string)
 			# get parent folder to include itself as child page
 			parent_path = os.path.dirname(path)
-			# linking children pages, only if parent exists
-			if parent_path in pages:
-				pages[parent_path]['children'].append(path)
+			# linking children pages
+			pages[parent_path]['children'].append(path)
 	return pages
 
 
