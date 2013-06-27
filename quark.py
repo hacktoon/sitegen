@@ -223,11 +223,8 @@ def get_env():
 	return env
 
 
-def dataset_filter_category(dataset, cat=None):
-	# FIXME - this may not work on windows - path/slug
-	if not cat:
-		return dataset
-	from_cat = lambda page: page['path'].startswith(cat)
+def dataset_filter_category(dataset, cat_name):
+	from_cat = lambda page: page.get('category') == cat_name
 	dataset = [page for page in dataset if from_cat(page)]
 	return dataset
 
