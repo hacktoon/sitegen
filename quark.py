@@ -92,6 +92,21 @@ def read_html_template(theme_name, tpl_filename):
 	return read_file(tpl_filepath)
 
 
+def create_category(env, page):
+	'''Creates lists of categories by demand to allow pagination'''
+	# checks if this page has a category
+	if not 'category' in page:
+		return
+	cat_key = 'categories'
+	cat_name = page['category']
+	# creates a dict if the key do not exists
+	if not cat_key in env:
+		env[cat_key] = {}
+	if not cat_name in env[cat_key]:
+		env[cat_key][cat_name] = []
+	env[cat_key][cat_name].append(page)
+
+
 def get_site_config():
 	'''returns the current site config'''
 	config_path = os.path.join(os.getcwd(), config.CONFIG_FILE)
@@ -175,8 +190,7 @@ def read_page_files(env):
 		# removing dot from path
 		path = re.sub('^\.$|\./', '', path)
 		page_data = get_page_data(env, path)
-		# uses the page path as a key
-		pages[path] = page_data
+		create_category(env, page_data)
 		# get the child pages
 		page_data['children'] = []
 		if path: # checks if isnt home page (empty string)
@@ -184,6 +198,8 @@ def read_page_files(env):
 			parent_path = os.path.dirname(path)
 			# linking children pages
 			pages[parent_path]['children'].append(path)
+		# uses the page path as a key
+		pages[path] = page_data
 	return pages
 
 
@@ -200,6 +216,10 @@ def get_env():
 	env['site_tags'] = extract_tags(env.get('site_tags'))
 	# now let's get all the pages
 	env['pages'] = read_page_files(env)
+	# finally, let's sort by date the pages grouped by categories
+	for key in env['categories'].keys():
+		pages = env['categories'][key]
+		env['categories'][key] = dataset_sort(pages, 'date')
 	return env
 
 
@@ -207,12 +227,12 @@ def dataset_filter_category(dataset, cat=None):
 	# FIXME - this may not work on windows - path/slug
 	if not cat:
 		return dataset
-	from_cat = lambda c: c['path'].startswith(cat)
+	from_cat = lambda page: page['path'].startswith(cat)
 	dataset = [page for page in dataset if from_cat(page)]
 	return dataset
 
 
-def dataset_sort(dataset, sort, order):
+def dataset_sort(dataset, sort, order='asc'):
 	reverse = (order == 'desc')
 	sort_by = lambda d: d[sort or 'date']
 	return sorted(dataset, key=sort_by, reverse=reverse)
