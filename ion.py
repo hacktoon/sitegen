@@ -22,7 +22,7 @@ if sys.version_info.major < 3:
 	sys.exit('Zap! Ion requires Python 3!')
 
 
-def ion_charge(path):
+def ion_charge():
 	'''Reads recursively every directory under path and
 	outputs HTML/JSON for each data.ion file'''
 	env = quark.get_env()
@@ -85,7 +85,7 @@ if __name__ == '__main__':
 	elif command == 'spark':
 		ion_spark(path)
 	elif command == 'charge':
-		ion_charge(path)
+		ion_charge()
 	elif command == 'help':
 		ion_help()
 	else:

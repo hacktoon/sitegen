@@ -197,7 +197,7 @@ def read_page_files(env):
 		if not config.DATA_FILE in filenames:
 			continue
 		# removing dot from path
-		path = re.sub('^\.$|\./', '', path)
+		path = re.sub(r'^\.$|\./|\.\\', '', path)
 		page_data = get_page_data(env, path)
 		category_append(categories, page_data)
 		# get the child pages
