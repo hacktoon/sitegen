@@ -92,21 +92,6 @@ def read_html_template(theme_name, tpl_filename):
 	return read_file(tpl_filepath)
 
 
-def create_category(env, page):
-	'''Creates lists of categories by demand to allow pagination'''
-	# checks if this page has a category
-	if not 'category' in page:
-		return
-	cat_key = 'categories'
-	cat_name = page['category']
-	# creates a dict if the key do not exists
-	if not cat_key in env:
-		env[cat_key] = {}
-	if not cat_name in env[cat_key]:
-		env[cat_key][cat_name] = []
-	env[cat_key][cat_name].append(page)
-
-
 def get_site_config():
 	'''returns the current site config'''
 	config_path = os.path.join(os.getcwd(), config.CONFIG_FILE)
@@ -179,9 +164,33 @@ def get_page_data(env, path):
 	return page_data
 
 
+def category_append(categories, page):
+	'''Creates lists of categories by demand to allow pagination'''
+	# checks if this page has a category
+	if not 'category' in page:
+		return
+	cat_name = page['category']
+	# creates a dict if the key do not exists
+	if not cat_name in categories.keys():
+		categories[cat_name] = []
+	categories[cat_name].append(page)
+
+
+def set_pagination(pages):
+	length = len(pages)
+	for index, page in enumerate(pages):
+		page['first'] = pages[0]['permalink']
+		page['last'] = pages[-1]['permalink']
+		next_page = pages[index + 1 if index < length - 1 else -1]
+		page['next'] = next_page['permalink']
+		prev_page = pages[index - 1 if index > 0 else 0]
+		page['prev'] = prev_page['permalink']
+
+
 def read_page_files(env):
 	'''Returns all the pages created in the site'''
 	pages = {}
+	categories = {}
 	# running at the current dir
 	for path, subdirs, filenames in os.walk('.'):
 		# if did not find a data file, ignores
@@ -190,7 +199,7 @@ def read_page_files(env):
 		# removing dot from path
 		path = re.sub('^\.$|\./', '', path)
 		page_data = get_page_data(env, path)
-		create_category(env, page_data)
+		category_append(categories, page_data)
 		# get the child pages
 		page_data['children'] = []
 		if path: # checks if isnt home page (empty string)
@@ -200,6 +209,11 @@ def read_page_files(env):
 			pages[parent_path]['children'].append(path)
 		# uses the page path as a key
 		pages[path] = page_data
+	# finally, let's group the pages by categories
+	for key in categories.keys():
+		# sorting by date
+		pages_sorted = dataset_sort(categories[key], 'date')
+		set_pagination(pages_sorted)
 	return pages
 
 
@@ -216,10 +230,6 @@ def get_env():
 	env['site_tags'] = extract_tags(env.get('site_tags'))
 	# now let's get all the pages
 	env['pages'] = read_page_files(env)
-	# finally, let's sort by date the pages grouped by categories
-	for key in env['categories'].keys():
-		pages = env['categories'][key]
-		env['categories'][key] = dataset_sort(pages, 'date')
 	return env
 
 
