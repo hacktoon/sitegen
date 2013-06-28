@@ -70,7 +70,8 @@ if __name__ == '__main__':
 	try:
 		command = sys.argv[1]
 	except IndexError:
-		sys.exit(help_message)
+		ion_help()
+		sys.exit()
 
 	# second parameter - path
 	# if not provided, defaults to current
