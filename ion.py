@@ -29,6 +29,7 @@ def ion_charge():
 	pages = env['pages']
 	if not pages:
 		sys.exit('No pages to generate.')
+	print("Total of pages read: {}.\n{}".format(len(pages), "-"*30))
 	for page in pages.values():
 		if 'norender' in page['props']:
 			continue
