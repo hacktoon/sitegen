@@ -246,7 +246,7 @@ def dataset_sort(dataset, sort, order='asc'):
 
 
 def dataset_range(dataset, num_range):
-	if not dataset or not num_range:
+	if not num_range:
 		return dataset
 	# limit number of objects to show
 	start, end = num_range.partition(':')[::2]
@@ -254,7 +254,7 @@ def dataset_range(dataset, num_range):
 		start = abs(int(start)) if start else 0
 		end = abs(int(end)) if end else None
 	except ValueError:
-		sys.exit('Zap! Bad range argument!')
+		sys.exit('Zap! [{}, {}] Bad range argument!'.format(start, end))
 	if ':' in num_range:
 		return dataset[start:end]
 	else: # a single number means quantity of posts

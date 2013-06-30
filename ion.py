@@ -22,14 +22,14 @@ if sys.version_info.major < 3:
 	sys.exit('Zap! Ion requires Python 3!')
 
 
-def ion_charge():
+def ion_gen():
 	'''Reads recursively every directory under path and
 	outputs HTML/JSON for each data.ion file'''
 	env = quark.get_env()
 	pages = env['pages']
 	if not pages:
 		sys.exit('No pages to generate.')
-	print("Total of pages read: {}.\n{}".format(len(pages), "-"*30))
+	print("Total of pages read: {}.\n{}".format(len(pages), "-" * 30))
 	for page in pages.values():
 		if 'norender' in page['props']:
 			continue
@@ -39,7 +39,7 @@ def ion_charge():
 	photon.save_rss(env)
 
 
-def ion_spark(path):
+def ion_add(path):
 	'''Creates a new page in specified path'''
 	# copy source file to new path
 	file_path = quark.create_page(path)
@@ -47,7 +47,7 @@ def ion_spark(path):
 	print('Edit the file {!r} and call "ion charge"!'.format(file_path))
 
 
-def ion_plug():
+def ion_init():
 	'''Installs Ion in the current folder'''
 	print('Installing Ion...')
 	quark.create_site()
@@ -57,13 +57,13 @@ def ion_plug():
 
 def ion_help():
 	help_message = '''Usage:
-	ion.py plug - Installs Ion on this folder.
-	ion.py spark [path/to/folder] - Creates a empty page on path specified.
-	ion.py charge [path/to/folder] - Generates HTML/JSON files of each \
+	ion init - Installs Ion on current folder.
+	ion add [path/to/folder] - Creates a empty page on path specified.
+	ion gen - Generates HTML/JSON files of each \
 folder under the path specified and its subfolders, recursively.
-	ion.py help - Shows this help message.
+	ion help - Shows this help message.
 	'''
-	print(help_message)
+	sys.exit(help_message)
 
 
 if __name__ == '__main__':
@@ -72,7 +72,6 @@ if __name__ == '__main__':
 		command = sys.argv[1]
 	except IndexError:
 		ion_help()
-		sys.exit()
 
 	# second parameter - path
 	# if not provided, defaults to current
@@ -81,14 +80,14 @@ if __name__ == '__main__':
 	except IndexError:
 		path = '.'
 
-	if command == 'plug':
-		ion_plug()
-	elif command == 'spark':
-		ion_spark(path)
-	elif command == 'charge':
-		ion_charge()
+	if command == 'init':
+		ion_init()
+	elif command == 'add':
+		ion_add(path)
+	elif command == 'gen':
+		ion_gen()
 	elif command == 'help':
 		ion_help()
 	else:
-		print('Zap! {0} is a very strange command!'.format(command))
-		print(help_message)
+		print('Zap! {!r} is a very strange command!'.format(command))
+		ion_help()

@@ -19,24 +19,26 @@ Given these facts, static site generators are systems you can use for specific c
 You only need Python 3 to run Ion.
 
 ### How to install
-Call **ion.py plug** in a directory in your web root. It will create the basic configuration to run your site.
+Create a directory to be your web root. Enter it and call the folowing command:
+    
+	ion init
 
 ### Configure
 After installing, Ion will setup some basic configuration to you, but you can change these values.
 
-Open the *config.ion* in **_ion** folder and define your settings. Here are some examples:
+Open the *config.ion* in and define your settings. Here are some examples:
 * **base_url** - Will be used for absolute linking.
 * **default_theme** - If a custom theme is not provided for a page, this theme will be used.
 * **date_format** - A standard [date format](http://docs.python.org/library/datetime.html#strftime-and-strptime-behavior) used by Python language.
 
-### Create your first page
-Just run the *spark* command in the site root folder to create a new page:
+### Create your home page
+Just run the *add* command in the site root folder to create a new page:
 
-    python3 ion.py spark
+    ion add
     
 To create a different page, you have to pass a path as second parameter:
 
-    python3 ion.py spark path/to/folder
+    ion add path/to/folder
 
 This will create a *data.ion* model file. You're ready to start adding your own content:
 
@@ -46,14 +48,14 @@ This will create a *data.ion* model file. You're ready to start adding your own 
     content
     My page content
 
-Now run the *charge* command. The *charge* command accepts a path parameter just like the *spark*.
+Now run the *gen* command to generate the pages.
     
-    python3 ion.py charge
+    ion gen
 
-This will create a HTML and a JSON file in the folder you specified. Done!
+This will create (by default) a HTML and a JSON file in the folder you specified. Done!
 
 ### Theming and page variables
-You can add new themes to **_ion/themes**, create and use optional variables without having to edit all your previous *.ion* files. If you want a page to use a specific theme, just add the definition in *data.ion*:
+You can add new themes to **themes** folder, create and use optional variables without having to edit all your previous *.ion* files. If you want a page to use a specific theme, just add the definition in *data.ion*:
 
     title = My first post
     theme = mytheme
@@ -74,10 +76,28 @@ Defining new variables is as simple as that. Just add any new definition to your
 
 New themes must obey the same file structure of the default theme.
 
-### Templates
-A theme can have multiples template files. By default Ion comes uses the **main.tpl** file. You can create new *tpl* files and select it in the **data.ion** config:
+### Page categories
+Categories can be used to group pages, provide pagination and page filtering in listings as well.
+To file a page under a category, add a key to **data.ion**
 
-    template = 'archive'
+	category = blog
+
+### Page properties
+Properties listed in a page data file can be used to change how Ion will handle the page.
+
+* nojson - Ion will not generate a JSON file.
+* nohtml - Ion will not generate a HTML file.
+* nolist - The page will not appear in listings
+* norender - The page will not be generated. Better to use it with 'nolist'
+
+Example:
+
+	props = nojson, nolist
+
+### Templates
+A theme can have multiples template files under the same theme. By default Ion comes uses the **main.tpl** file. You can create new *tpl* files and select it in the **data.ion** config:
+
+    template = archive
 
 ### Collections and template listings
 By default, Ion provides some collections of data for using in templates. The first is the **pages** collection. You can list a subset of the pages of your site by passing arguments in the template tag:
@@ -88,17 +108,30 @@ By default, Ion provides some collections of data for using in templates. The fi
 
 The **children** collection lists all the child pages of the current page being generated.
 
-### Page properties
-Properties listed in a page data file can be used to change how Ion will handle the page.
+	{{list src=children sort=date}}
+        <li>{{title}}</li>
+    {{end}}
 
-* nojson - Ion will not generate a JSON file.
-* nohtml - Ion will not generate a HTML file.
-* nolist - The page will not appear in listings
-* norender - The page will not be generated
+The list options can control the items that will be rendered:
 
-Example:
+* sort - The 'sort by' option. Can be any page property. Default: 'date'.
+* ord - Order of listing. Can be 'asc' or 'desc'. Default: 'asc'.
+* cat - Filter by category. 
+* num - Range of pages or the last x pages.
 
-	props = nojson, nolist
+Examples:
+
+    {{list src=pages cat=blog num=6}}
+		<li>{{title}}</li>
+	{{end}}
+
+Renders the last 6 pages under the 'blog' category.
+
+	{{list src=pages ord=desc num=1:7}}
+		<li>{{title}}</li>
+	{{end}}
+
+Renders the pages from 1st to 7th array position in decrescent order.
 
 ### And another thing...
 * All page content stay in its own folder - so each page is independent.
