@@ -281,7 +281,7 @@ def query(env, page, args):
 		'children': [get_page_data(env, p) for p in page.get('children', [])]
 	}
 	# calling the proper query function
-	if src in sources:
+	if src in sources.keys():
 		return query_pages(env, page, sources[src], args)
 	else:
 		sys.exit('Zap! "src" argument is'
