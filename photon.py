@@ -71,7 +71,7 @@ def parse_variable_args(args):
 def tag_list(env, page, args, tpl):
 	'''Prints a list of objects within a given template'''
 	args = parse_list_args(args)
-	data_list = quark.query(env, page, args)
+	data_list = quark.query_pages(env, page, args)
 	render_list = []
 	# renders the sub tpl block for each item
 	for item in data_list:
@@ -186,8 +186,16 @@ def save_html(env, page):
 	print('"{0}" page generated.'.format(path or 'Home'))
 
 
-def write_feed_file(env, feed_tpl, feed_data, filename):
+def write_feed_file(env, filename):
 	feed_dir = env.get('feed_dir', 'feed')
+	feed_data = {
+		'description': env.get('site_description'),
+		'build_date': datetime.today()  # sets lastBuildDate
+	}
+	# create the feed directory
+	if not os.path.exists(feed_dir):
+		os.makedirs(feed_dir)
+	feed_tpl = quark.read_file(config.MODEL_FEED_FILE)
 	feed_data['link'] = quark.urljoin(env['base_url'], feed_dir, filename)
 	feed_content = render_template(feed_tpl, env, feed_data)
 	feed_path = os.path.join(feed_dir, filename)
@@ -195,34 +203,26 @@ def write_feed_file(env, feed_tpl, feed_data, filename):
 	print('Feed {!r} generated.'.format(feed_path))
 
 
+def set_feed_source(env, pages):
+	items_listed = int(env.get('feed_num', 8))
+	pages = quark.dataset_sort(pages, 'date', 'desc')
+	pages = quark.dataset_range(pages, items_listed)
+	env['feeds'] = pages
+
+
 def generate_feeds(env):
-	feed_dir = env.get('feed_dir', 'feed')
-	categories = env['categories']
 	sources = env.get('feed_sources')
-	items_listed = int(env.get('feed_num', 8)) # TODO - check number type
 	if not sources:
 		print('No feeds generated.')
 		return
-	# create the feed directory
-	if not os.path.exists(feed_dir):
-		os.makedirs(feed_dir)
-	feed_data = {
-		'description': env.get('site_description'),
-		'build_date': datetime.today()  # sets lastBuildDate
-	}
-	feed_tpl = quark.read_file(config.MODEL_FEED_FILE)
-	
 	if 'all' in sources:
 		pages = env['pages'].copy().values()
-		pages = quark.dataset_sort(pages, 'date', 'desc')
-		pages = quark.dataset_range(pages, items_listed)
-		env['feeds'] = pages
-		write_feed_file(env, feed_tpl, feed_data, 'default.xml')
+		set_feed_source(env, pages)
+		write_feed_file(env, 'default.xml')
 
 	if 'category' in sources:
+		categories = env['categories']
 		for cat_name in categories.keys():
 			pages = categories[cat_name][::]
-			pages = quark.dataset_sort(pages, 'date', 'desc')
-			pages = quark.dataset_range(pages, items_listed)
-			env['feeds'] = pages
-			write_feed_file(env, feed_tpl, feed_data, '{}.xml'.format(cat_name))
+			set_feed_source(env, pages)
+			write_feed_file(env, '{}.xml'.format(cat_name))

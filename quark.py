@@ -277,19 +277,7 @@ def dataset_range(dataset, num_range):
 		return dataset[:start]
 
 
-def query_pages(env, dataset, args=None):
-	if not dataset:
-		return dataset
-	# limit the category first
-	dataset = dataset_filter_category(dataset, args.get('cat'))
-	# listing order before number of objects
-	dataset = dataset_sort(dataset, args.get('sort'), args.get('ord'))
-	# number must be the last one
-	dataset = dataset_range(dataset, args.get('num'))
-	return dataset
-
-
-def query(env, page, args):
+def query_pages(env, page, args):
 	'''Make queries to the environment data set'''
 	src = args.get('src', '')
 	sources = {
@@ -298,8 +286,15 @@ def query(env, page, args):
 		'children': [get_page_data(env, p) for p in page.get('children', [])]
 	}
 	# calling the proper query function
-	if src in sources.keys():
-		return query_pages(env, sources[src], args)
-	else:
+	if not src in sources.keys():
 		sys.exit('Zap! "src" argument is'
 		' missing or invalid!'.format(src))
+	dataset = sources[src]
+	if src != 'feeds':
+		# limit the category first
+		dataset = dataset_filter_category(dataset, args.get('cat'))
+		# listing order before number of objects
+		dataset = dataset_sort(dataset, args.get('sort'), args.get('ord'))
+		# number must be the last one
+		dataset = dataset_range(dataset, args.get('num'))
+	return dataset
