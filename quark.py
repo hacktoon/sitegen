@@ -29,8 +29,9 @@ required_config_keys = ['site_name', 'site_author',
 required_page_keys = ['title', 'date', 'content']
 
 
-def urljoin(base, slug):
+def urljoin(base, *slug):
 	'''Custom URL join function to concatenate and add slashes'''
+	slug = '/'.join(slug)
 	return '/'.join(s.strip('/') for s in [base, slug])
 
 
@@ -292,7 +293,7 @@ def query(env, page, args):
 	'''Make queries to the environment data set'''
 	src = args.get('src', '')
 	sources = {
-		'pages': env['pages'].copy().values(),
+		'pages': list(env['pages'].copy().values()),
 		'feeds': env['feeds'],
 		'children': [get_page_data(env, p) for p in page.get('children', [])]
 	}

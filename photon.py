@@ -188,6 +188,7 @@ def save_html(env, page):
 
 def write_feed_file(env, feed_tpl, feed_data, filename):
 	feed_dir = env.get('feed_dir', 'feed')
+	feed_data['link'] = quark.urljoin(env['base_url'], feed_dir, filename)
 	feed_content = render_template(feed_tpl, env, feed_data)
 	feed_path = os.path.join(feed_dir, filename)
 	quark.write_file(feed_path, feed_content)
@@ -207,30 +208,21 @@ def generate_feeds(env):
 		os.makedirs(feed_dir)
 	feed_data = {
 		'description': env.get('site_description'),
-		# get lastBuildDate
-		'build_date': datetime.today()
+		'build_date': datetime.today()  # sets lastBuildDate
 	}
 	feed_tpl = quark.read_file(config.MODEL_FEED_FILE)
 	
 	if 'all' in sources:
-		filename = 'default.xml'
-		feed_url = quark.urljoin(env['base_url'], feed_dir)
-		feed_data['link'] = quark.urljoin(feed_url, filename)
 		pages = env['pages'].copy().values()
 		pages = quark.dataset_sort(pages, 'date', 'desc')
-		# the number limit must be the last filter
 		pages = quark.dataset_range(pages, items_listed)
 		env['feeds'] = pages
-		write_feed_file(env, feed_tpl, feed_data, filename)
+		write_feed_file(env, feed_tpl, feed_data, 'default.xml')
 
 	if 'category' in sources:
 		for cat_name in categories.keys():
-			filename = '{}.xml'.format(cat_name)
-			feed_url = quark.urljoin(env['base_url'], feed_dir)
-			feed_data['link'] = quark.urljoin(feed_url, filename)
 			pages = categories[cat_name][::]
 			pages = quark.dataset_sort(pages, 'date', 'desc')
-			# the number limit must be the last filter
 			pages = quark.dataset_range(pages, items_listed)
 			env['feeds'] = pages
-			write_feed_file(env, feed_tpl, feed_data, filename)
+			write_feed_file(env, feed_tpl, feed_data, '{}.xml'.format(cat_name))
