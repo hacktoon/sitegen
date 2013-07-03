@@ -36,7 +36,7 @@ def ion_gen():
 		photon.save_json(env, page)
 		photon.save_html(env, page)
 	# after generating all pages, update feed
-	photon.save_rss(env)
+	photon.generate_feeds(env)
 
 
 def ion_add(path):
@@ -44,15 +44,16 @@ def ion_add(path):
 	# copy source file to new path
 	file_path = quark.create_page(path)
 	print('Page {!r} successfully created!'.format(path))
-	print('Edit the file {!r} and call "ion charge"!'.format(file_path))
+	print('Edit the file {!r} and call "ion gen"!'.format(file_path))
 
 
 def ion_init():
 	'''Installs Ion in the current folder'''
 	print('Installing Ion...')
 	quark.create_site()
-	print('\nIon was successfully installed!\n'
-	'Run "ion spark [path]" to start creating pages!\n')
+	print('\nIon was successfully installed!\n\n'
+	'Next steps:\n1 - Edit the "config.ion" file.\n'
+	'2 - Run "ion add [path]" to start creating pages!\n')
 
 
 def ion_help():

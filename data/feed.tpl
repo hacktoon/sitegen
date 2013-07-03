@@ -4,11 +4,11 @@
 >
 <channel>
     <title>{{site_name}}</title>
-    <atom:link href="{{link}}rss.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="{{link}}" rel="self" type="application/rss+xml" />
     <link>{{link}}</link>
     <description>{{description}}</description>
     <lastBuildDate>{{build_date | fmt=%a, %d %b %Y %H:%M:%S +0000}}</lastBuildDate>
-    {{list src=pages num=8 ord=desc}}
+    {{list src=feeds}}
         <item>
 		    <title>{{title}}</title>
 		    <link>{{permalink}}</link>

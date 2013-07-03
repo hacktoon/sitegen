@@ -178,16 +178,17 @@ def category_append(categories, page):
 
 def set_pagination(pages):
 	length = len(pages)
+	key = 'permalink'
 	for index, page in enumerate(pages):
-		page['first'] = pages[0]['permalink']
-		page['last'] = pages[-1]['permalink']
-		next_page = pages[index + 1 if index < length - 1 else -1]
-		page['next'] = next_page['permalink']
-		prev_page = pages[index - 1 if index > 0 else 0]
-		page['prev'] = prev_page['permalink']
+		page['first'] = pages[0][key]
+		page['last'] = pages[-1][key]
+		next_index = index + 1 if index < length - 1 else -1
+		page['next'] = pages[next_index][key]
+		prev_index = index - 1 if index > 0 else 0
+		page['prev'] = pages[prev_index][key]
 
 
-def read_page_files(env):
+def build_site_data(env):
 	'''Returns all the pages created in the site'''
 	pages = {}
 	categories = {}
@@ -202,19 +203,22 @@ def read_page_files(env):
 		category_append(categories, page_data)
 		# get the child pages
 		page_data['children'] = []
-		if path: # checks if isnt home page (empty string)
+		if path: # checks if it isn't the home page (empty string)
 			# get parent folder to include itself as child page
 			parent_path = os.path.dirname(path)
-			# linking children pages
-			pages[parent_path]['children'].append(path)
+			if pages.get(parent_path) != None:
+				# linking children pages
+				pages[parent_path]['children'].append(path)
 		# uses the page path as a key
 		pages[path] = page_data
-	# finally, let's group the pages by categories
+	# next, let's sort the pages in categories by date
 	for key in categories.keys():
 		# sorting by date
 		pages_sorted = dataset_sort(categories[key], 'date')
 		set_pagination(pages_sorted)
-	return pages
+	# finally, sets the data
+	env['pages'] = pages
+	env['categories'] = categories
 
 
 def get_env():
@@ -226,28 +230,39 @@ def get_env():
 	base_url = urljoin(env['base_url'], '/')
 	env['base_url'] = base_url
 	env['themes_url'] = urljoin(base_url, config.THEMES_DIR)
-	#env['feed_url'] = urljoin(base_url, config.FEED_URL)
 	env['site_tags'] = extract_tags(env.get('site_tags'))
-	# now let's get all the pages
-	env['pages'] = read_page_files(env)
+	env['feed_sources'] = extract_tags(env.get('feed_sources'))
+	env['feeds'] = []
+	# now let's read from files all the pages and categories
+	build_site_data(env)
 	return env
 
 
 def dataset_filter_category(dataset, cat_name):
+	if not cat_name:
+		return dataset
 	from_cat = lambda page: page.get('category') == cat_name
 	dataset = [page for page in dataset if from_cat(page)]
 	return dataset
 
 
-def dataset_sort(dataset, sort, order='asc'):
+def dataset_sort(dataset, field_sort, order='asc'):
+	if not field_sort:
+		return dataset
 	reverse = (order == 'desc')
-	sort_by = lambda d: d[sort or 'date']
+	sort_by = lambda page: page[field_sort]
 	return sorted(dataset, key=sort_by, reverse=reverse)
 
 
 def dataset_range(dataset, num_range):
 	if not num_range:
 		return dataset
+	# if an integer was passed, returns a slice
+	try:
+		num = int(num_range)
+		return dataset[:num]
+	except ValueError:
+		pass
 	# limit number of objects to show
 	start, end = num_range.partition(':')[::2]
 	try:
@@ -261,7 +276,7 @@ def dataset_range(dataset, num_range):
 		return dataset[:start]
 
 
-def query_pages(env, page, dataset, args=None):
+def query_pages(env, dataset, args=None):
 	if not dataset:
 		return dataset
 	# limit the category first
@@ -277,12 +292,13 @@ def query(env, page, args):
 	'''Make queries to the environment data set'''
 	src = args.get('src', '')
 	sources = {
-		'pages': list(env['pages'].copy().values()),
+		'pages': env['pages'].copy().values(),
+		'feeds': env['feeds'],
 		'children': [get_page_data(env, p) for p in page.get('children', [])]
 	}
 	# calling the proper query function
 	if src in sources.keys():
-		return query_pages(env, page, sources[src], args)
+		return query_pages(env, sources[src], args)
 	else:
 		sys.exit('Zap! "src" argument is'
 		' missing or invalid!'.format(src))

@@ -121,7 +121,7 @@ def render_variable(env, page, var_name, args):
 		return tag_value
 
 
-def render_template(tpl, env, page, tpl_name=None):
+def render_template(tpl, env, page):
 	'''Replaces the page variables in the given template'''
 	# try to match the tag regular expressions by order
 	for expr in tag_exprs:
@@ -183,20 +183,54 @@ def save_html(env, page):
 	html = render_template(html_templ, env, page)
 	path = page['path']
 	quark.write_file(os.path.join(path, 'index.html'), html)
-	if not path:
-		path = 'Home'
-	print('"{0}" page generated.'.format(path))
+	print('"{0}" page generated.'.format(path or 'Home'))
 
 
-def save_rss(env):
-	rss_data = {
-		'link': env['base_url'],
+def write_feed_file(env, feed_tpl, feed_data, filename):
+	feed_dir = env.get('feed_dir', 'feed')
+	feed_content = render_template(feed_tpl, env, feed_data)
+	feed_path = os.path.join(feed_dir, filename)
+	quark.write_file(feed_path, feed_content)
+	print('Feed {!r} generated.'.format(feed_path))
+
+
+def generate_feeds(env):
+	feed_dir = env.get('feed_dir', 'feed')
+	categories = env['categories']
+	sources = env.get('feed_sources')
+	items_listed = int(env.get('feed_num', 8)) # TODO - check number type
+	if not sources:
+		print('No feeds generated.')
+		return
+	# create the feed directory
+	if not os.path.exists(feed_dir):
+		os.makedirs(feed_dir)
+	feed_data = {
 		'description': env.get('site_description'),
 		# get lastBuildDate
 		'build_date': datetime.today()
 	}
-	rss_tpl = quark.read_file(config.MODEL_RSS_FILE)
-	# populate RSS items with the page index
-	rss_doc = render_template(rss_tpl, env, rss_data)
-	quark.write_file('rss.tpl', rss_doc)
-	print('Feed "{}" generated.'.format('rss.tpl'))
+	feed_tpl = quark.read_file(config.MODEL_FEED_FILE)
+	
+	if 'all' in sources:
+		filename = 'default.xml'
+		feed_url = quark.urljoin(env['base_url'], feed_dir)
+		feed_data['link'] = quark.urljoin(feed_url, filename)
+		pages = env['pages'].copy().values()
+		pages = quark.dataset_sort(pages, 'date', 'desc')
+		# the number limit must be the last filter
+		pages = quark.dataset_range(pages, items_listed)
+		env['feeds'] = pages
+		write_feed_file(env, feed_tpl, feed_data, filename)
+
+	if 'category' in sources:
+		for cat_name in categories.keys():
+			filename = '{}.xml'.format(cat_name)
+			feed_url = quark.urljoin(env['base_url'], feed_dir)
+			feed_data['link'] = quark.urljoin(feed_url, filename)
+			pages = categories[cat_name][::]
+			pages = quark.dataset_sort(pages, 'date', 'desc')
+			# the number limit must be the last filter
+			pages = quark.dataset_range(pages, items_listed)
+			env['feeds'] = pages
+			write_feed_file(env, feed_tpl, feed_data, filename)

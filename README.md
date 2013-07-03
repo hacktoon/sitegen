@@ -89,6 +89,7 @@ Properties listed in a page data file can be used to change how Ion will handle 
 * nohtml - Ion will not generate a HTML file.
 * nolist - The page will not appear in listings
 * norender - The page will not be generated. Better to use it with 'nolist'
+* nofeed - The page will not be listed in feeds.
 
 Example:
 
