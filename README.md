@@ -19,17 +19,18 @@ Given these facts, static site generators are systems you can use for specific c
 You only need Python 3 to run Ion.
 
 ### How to install
-Create a directory to be your web root. Enter it and call the folowing command:
+Create a directory to be your web root. Enter it and call the following command:
     
 	ion init
 
 ### Configure
-After installing, Ion will setup some basic configuration to you, but you can change these values.
+After installing, Ion will setup some basic configuration to you, but you must change these values.
 
 Open the *config.ion* in and define your settings. Here are some examples:
+* **site_tags** - Tags used in HTML meta tags
 * **base_url** - Will be used for absolute linking.
 * **default_theme** - If a custom theme is not provided for a page, this theme will be used.
-* **date_format** - A standard [date format](http://docs.python.org/library/datetime.html#strftime-and-strptime-behavior) used by Python language.
+* **feed_num** - Number of items to be listed in feeds
 
 ### Create your home page
 Just run the *add* command in the site root folder to create a new page:
@@ -54,6 +55,7 @@ Now run the *gen* command to generate the pages.
 
 This will create (by default) a HTML and a JSON file in the folder you specified. Done!
 
+## Customizing
 ### Theming and page variables
 You can add new themes to **themes** folder, create and use optional variables without having to edit all your previous *.ion* files. If you want a page to use a specific theme, just add the definition in *data.ion*:
 
@@ -128,7 +130,7 @@ Examples:
 
 Renders the last 6 pages under the 'blog' category.
 
-	{{list src=pages sorte=date ord=desc num=1:7}}
+	{{list src=pages sort=date ord=desc num=1:7}}
 		<li>{{title}}</li>
 	{{end}}
 
@@ -136,4 +138,4 @@ Renders the pages from 1st to 7th array position in decrescent order of date.
 
 ## Help
 
-Run **ion.py help**.
+Run **ion help**.
