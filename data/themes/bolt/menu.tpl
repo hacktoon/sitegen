@@ -15,7 +15,7 @@
 	<div class="widget">
 		<h2>This page's children</h2>
 		<ul>
-			{{list src=children num=4 ord=desc}}
+			{{list src=children num=4 sort=date ord=desc}}
 				<li>
 					<a title="{{title}}" href="{{permalink}}">
 						{{date}} - {{title}}
