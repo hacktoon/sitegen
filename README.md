@@ -116,8 +116,8 @@ The **children** collection lists all the child pages of the current page being 
 The list options can control the items that will be rendered:
 
 * sort - The 'sort by' option. Can be any page property. Default: 'date'.
-* ord - Order of listing. Can be 'asc' or 'desc'. Default: 'asc'.
-* cat - Filter by category. 
+* ord - Order of listing. Can be 'asc' or 'desc'. It only works if a sort parameter is passed. Default: 'asc'.
+* cat - Filter by category.
 * num - Range of pages or the last x pages.
 
 Examples:
@@ -128,15 +128,11 @@ Examples:
 
 Renders the last 6 pages under the 'blog' category.
 
-	{{list src=pages ord=desc num=1:7}}
+	{{list src=pages sorte=date ord=desc num=1:7}}
 		<li>{{title}}</li>
 	{{end}}
 
-Renders the pages from 1st to 7th array position in decrescent order.
-
-### And another thing...
-* All page content stay in its own folder - so each page is independent.
-* Uses the file system hierarchy to simulate pages and sub-pages.
+Renders the pages from 1st to 7th array position in decrescent order of date.
 
 ## Help
 

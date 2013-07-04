@@ -290,6 +290,7 @@ def query_pages(env, page, args):
 		sys.exit('Zap! "src" argument is'
 		' missing or invalid!'.format(src))
 	dataset = sources[src]
+	# feeds are already sorted and filtered
 	if src != 'feeds':
 		# limit the category first
 		dataset = dataset_filter_category(dataset, args.get('cat'))

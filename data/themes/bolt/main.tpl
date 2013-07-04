@@ -6,7 +6,6 @@
 	<meta name="keywords" content="{{site_tags}} {{tags}}" />
 	<meta charset="UTF-8" />
 	<link rel="stylesheet" href="{{page_theme_url}}/bolt.css" type="text/css" />
-	<link rel="alternate" type="application/rss+xml" title="RSS Feed" href="{{feed_url}}" />
 	{{css}}
 	<title>{{title}} | {{site_name}}</title>
 </head>
