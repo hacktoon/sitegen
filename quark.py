@@ -72,7 +72,7 @@ def keys_missing(keys, container):
 	return False
 
 
-def extract_tags(tag_string):
+def extract_multivalues(tag_string):
 	'''Converts a comma separated list of tags into a list'''
 	tag_list = []
 	if tag_string:
@@ -158,9 +158,9 @@ def get_page_data(env, path):
 	# if a theme is not provided, uses default
 	page_data['theme'] = page_data.get('theme', env['default_theme'])
 	# splits tags into a list
-	page_data['tags'] = extract_tags(page_data.get('tags'))
+	page_data['tags'] = extract_multivalues(page_data.get('tags'))
 	# get the page properties
-	page_data['props'] = extract_tags(page_data.get('props'))
+	page_data['props'] = extract_multivalues(page_data.get('props'))
 	page_data['path'] = path
 	return page_data
 
@@ -204,12 +204,12 @@ def build_site_data(env):
 		category_append(categories, page_data)
 		# get the child pages
 		page_data['children'] = []
-		if path: # checks if it isn't the home page (empty string)
-			# get parent folder to include itself as child page
-			parent_path = os.path.dirname(path)
-			if pages.get(parent_path) != None:
-				# linking children pages
-				pages[parent_path]['children'].append(path)
+		# get parent folder to include itself as child page
+		parent_path = os.path.dirname(path)
+		# checks if it isn't the home page (empty string)
+		if path and pages.get(parent_path) != None: 
+			# linking children pages
+			pages[parent_path]['children'].append(path)
 		# uses the page path as a key
 		pages[path] = page_data
 	# next, let's sort the pages in categories by date
@@ -231,8 +231,8 @@ def get_env():
 	base_url = urljoin(env['base_url'], '/')
 	env['base_url'] = base_url
 	env['themes_url'] = urljoin(base_url, config.THEMES_DIR)
-	env['site_tags'] = extract_tags(env.get('site_tags'))
-	env['feed_sources'] = extract_tags(env.get('feed_sources'))
+	env['site_tags'] = extract_multivalues(env.get('site_tags'))
+	env['feed_sources'] = extract_multivalues(env.get('feed_sources'))
 	env['feeds'] = []
 	# now let's read from files all the pages and categories
 	build_site_data(env)

@@ -141,21 +141,22 @@ def render_template(tpl, env, page):
 def build_external_tags(filenames, permalink, tpl):
 	tag_list = []
 	for filename in filenames:
-		filename = filename.strip()
-		url = os.path.join(permalink, filename)
+		url = quark.urljoin(permalink, filename)
 		tag_list.append(tpl.format(url))
 	return '\n'.join(tag_list)
 
 
 def build_style_tags(filenames, permalink):
 	tpl = '<link rel="stylesheet" type="text/css" href="{0}"/>'
-	filenames = [f for f in filenames.split(',') if f.endswith('.css')]
+	filenames = quark.extract_multivalues(filenames)
+	filenames = [f for f in filenames if f.endswith('.css')]
 	return build_external_tags(filenames, permalink, tpl)
 
 
 def build_script_tags(filenames, permalink):
 	tpl = '<script src="{0}"></script>'
-	filenames = [f for f in filenames.split(',') if f.endswith('.js')]
+	filenames = quark.extract_multivalues(filenames)
+	filenames = [f for f in filenames if f.endswith('.js')]
 	return build_external_tags(filenames, permalink, tpl)
 
 
