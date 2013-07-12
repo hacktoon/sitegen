@@ -277,30 +277,31 @@ def dataset_range(dataset, num_range):
 		return dataset[:start]
 
 
-def list_pages(pages):
-	pages = list(pages.copy().values())
-	return [page for page in pages if 'nolist' in page.get('props', [])]
+def apply_page_filters(pages, args):
+	pages = [p for p in pages if not 'nolist' in p.get('props', [])]
+	# limit the category first
+	pages = dataset_filter_category(pages, args.get('cat'))
+	# listing order before number of objects
+	pages = dataset_sort(pages, args.get('sort'), args.get('ord'))
+	# number must be the last one
+	pages = dataset_range(pages, args.get('num'))
+	return pages
 
 
 def query_pages(env, page, args):
 	'''Make queries to the environment data set'''
 	src = args.get('src', '')
-	sources = {
-		'pages': list_pages(env['pages']),
-		'feeds': env['feeds'],
-		'children': [get_page_data(env, p) for p in page.get('children', [])]
-	}
+	sources = ['pages', 'feeds', 'children']
 	# calling the proper query function
-	if not src in sources.keys():
+	if not src in sources:
 		sys.exit('Zap! "src" argument is'
 		' missing or invalid!'.format(src))
-	dataset = sources[src]
-	# feeds are already sorted and filtered
-	if src != 'feeds':
-		# limit the category first
-		dataset = dataset_filter_category(dataset, args.get('cat'))
-		# listing order before number of objects
-		dataset = dataset_sort(dataset, args.get('sort'), args.get('ord'))
-		# number must be the last one
-		dataset = dataset_range(dataset, args.get('num'))
-	return dataset
+	if src == 'feeds':
+		# feeds are already sorted and filtered
+		return env['feeds']
+	if src == 'pages':
+		dataset = list(env['pages'].copy().values())
+	elif src == 'children':
+		pages = page.get('children', [])
+		dataset = [get_page_data(env, p) for p in pages]
+	return apply_page_filters(dataset, args)

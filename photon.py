@@ -182,7 +182,7 @@ def save_html(env, page):
 	html = render_template(html_templ, env, page)
 	path = page['path']
 	quark.write_file(os.path.join(path, 'index.html'), html)
-	#print('"{0}" page generated.'.format(path or 'Home'))
+	print('"{0}" page generated.'.format(path or 'Home'))
 
 
 def write_feed_file(env, filename):
