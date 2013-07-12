@@ -277,11 +277,16 @@ def dataset_range(dataset, num_range):
 		return dataset[:start]
 
 
+def list_pages(pages):
+	pages = list(pages.copy().values())
+	return [page for page in pages if 'nolist' in page.get('props', [])]
+
+
 def query_pages(env, page, args):
 	'''Make queries to the environment data set'''
 	src = args.get('src', '')
 	sources = {
-		'pages': list(env['pages'].copy().values()),
+		'pages': list_pages(env['pages']),
 		'feeds': env['feeds'],
 		'children': [get_page_data(env, p) for p in page.get('children', [])]
 	}
