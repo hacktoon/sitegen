@@ -9,6 +9,8 @@ MAIN_TEMPLATE = 'main.tpl'
 
 DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
 
+CONTENT_TYPES = ['article', 'page']
+
 # Setting values based on config
 script_path = os.path.dirname(os.path.abspath(__file__))
 data_dir = os.path.join(script_path, 'data')
