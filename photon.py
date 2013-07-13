@@ -204,10 +204,10 @@ def write_feed_file(env, filename):
 
 def set_feed_source(env, pages):
 	items_listed = int(env.get('feed_num', 8))  # default value
-	pages = quark.dataset_sort(pages, 'date', 'desc')
-	pages = quark.dataset_range(pages, items_listed)
 	# filtering the pages that shouldn't be listed in feeds
 	pages = [page for page in pages if not 'nofeed' in page['props']]
+	pages = quark.dataset_sort(pages, 'date', 'desc')
+	pages = quark.dataset_range(pages, items_listed)
 	env['feeds'] = pages
 
 
