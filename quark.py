@@ -31,8 +31,9 @@ required_page_keys = ['title', 'date', 'content']
 
 def urljoin(base, *slug):
 	'''Custom URL join function to concatenate and add slashes'''
-	slug = '/'.join(slug)
-	return '/'.join(s.strip('/') for s in [base, slug])
+	fragments = [base]
+	fragments.extend(slug)
+	return '/'.join(s.strip('/') for s in fragments) + "/"
 
 
 def read_file(path):
@@ -228,7 +229,7 @@ def get_env():
 	if not env:
 		sys.exit('Zap! Ion is not installed in this folder!')
 	# add a trailing slash to base url, if necessary
-	base_url = urljoin(env['base_url'], '/')
+	base_url = urljoin(env['base_url'])
 	env['base_url'] = base_url
 	env['themes_url'] = urljoin(base_url, config.THEMES_DIR)
 	env['site_tags'] = extract_multivalues(env.get('site_tags'))
