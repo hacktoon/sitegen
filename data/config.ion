@@ -1,10 +1,10 @@
-# main config file
 base_url = http://localhost/
-site_name = My Ion site
+site_title = My Ion site
 site_author = Electric Joe
 site_description = An electric site
 site_tags = ion, joe, bolt
-
+# Default type of content. May be 'page' or 'article'
+default_type = article
 default_theme = bolt
 # directory where the feeds will be generated
 feed_dir = feed

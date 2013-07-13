@@ -7,12 +7,12 @@
 	<meta charset="UTF-8" />
 	<link rel="stylesheet" href="{{page_theme_url}}/bolt.css" type="text/css" />
 	{{css}}
-	<title>{{title}} | {{site_name}}</title>
+	<title>{{title}} | {{site_title}}</title>
 </head>
 <body>
 	<div id="wrapper">
 		<header>
-			<h1><a href="{{base_url}}">{{site_name}}</a></h1>
+			<h1><a href="{{base_url}}">{{site_title}}</a></h1>
 			<p id="description">{{site_description}}</p>
 		</header>
 		<section id="content">
