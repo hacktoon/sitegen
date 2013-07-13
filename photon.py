@@ -6,7 +6,7 @@ Ion - A shocking simple static (site) generator
 
 Author: Karlisson M. Bezerra
 E-mail: contact@hacktoon.com
-URL: https://github.com/karlisson/ion
+URL: https://github.com/hacktoon/ion
 License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 
 ==============================================================================
