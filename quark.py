@@ -26,8 +26,6 @@ import config
 required_config_keys = ['site_name', 'site_author',
 	'site_description', 'base_url', 'default_theme']
 
-required_page_keys = ['title', 'date', 'content']
-
 
 def urljoin(base, *slug):
 	'''Custom URL join function to concatenate and add slashes'''
@@ -135,6 +133,19 @@ def create_page(path):
 	return dest_file
 
 
+def convert_page_date(page_data):
+	date = page_data.get('date')
+	if date:
+		try:
+			# converts date string to datetime object
+			date = datetime.strptime(date, config.DATE_FORMAT)
+		except ValueError:
+			sys.exit('Zap! Wrong date format detected at {!r}!'.format(data_file))
+	else:
+		date = datetime.now()
+	return date
+
+
 def get_page_data(env, path):
 	'''Returns a dictionary with the page data'''
 	#removing '.' of the path in the case of root directory of site
@@ -143,17 +154,7 @@ def get_page_data(env, path):
 	if not os.path.exists(data_file):
 		return
 	page_data = parse_ion_file(read_file(data_file))
-	# verify missing required keys in page data
-	key = keys_missing(required_page_keys, page_data)
-	if key:
-		sys.exit('Zap! The key {!r} is missing '
-		'in page config at {!r}!'.format(key, path))
-	# convert date string to datetime object
-	date = page_data['date']
-	try:
-		page_data['date'] = datetime.strptime(date, config.DATE_FORMAT)
-	except ValueError:
-		sys.exit('Zap! Wrong date format detected at {!r}!'.format(data_file))
+	page_data['date'] = convert_page_date(page_data)
 	# absolute link of the page
 	page_data['permalink'] = urljoin(env['base_url'], path)
 	# if a theme is not provided, uses default
