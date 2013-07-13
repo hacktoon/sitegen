@@ -1,13 +1,13 @@
 # Ion - Shocking simple static (site) generator
 
 ## About
-Static site generators are softwares that produces HTML and other static web formats like JSON as output. This output is then served just like the early years of web, what makes it fast. Content and templates are kept separated in different files, so changes are easy to make.
+Static site generators are systems that reads a content source and given a template, produces HTML and other static web formats like JSON as output. This output is then served just like the early years of web, what makes it fast. Content and templates are kept separated in different files, so changes are easy to make.
 
 The advantages of static site generators are:
 * Security - No database, no user input, nothing. Just plain old HTML.
-* Performance - As I said, it's just HTML. Servers will love you.
+* Performance - As said above, it's just HTML. Servers will love you.
 * Easy to migrate/copy from/to anywhere. It's just a bunch of plain files.
-* Easy to track changes and maintain websites with version controls systems like git.
+* Easy to track changes and maintain websites with version control systems like git.
 
 And the disadvantages:
 * No comments, pingbacks, search, contact forms or anything dynamic (although most of this itens can be implemented with third party services like Disqus)

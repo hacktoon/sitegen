@@ -75,8 +75,6 @@ def tag_list(env, page, args, tpl):
 	render_list = []
 	# renders the sub tpl block for each item
 	for item in data_list:
-		if 'nolist' in item.get('props', []):
-			continue
 		render_list.append(render_template(tpl, env, item))
 	return '\n'.join(render_list)
 

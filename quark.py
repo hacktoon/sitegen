@@ -31,8 +31,9 @@ required_page_keys = ['title', 'date', 'content']
 
 def urljoin(base, *slug):
 	'''Custom URL join function to concatenate and add slashes'''
-	slug = '/'.join(slug)
-	return '/'.join(s.strip('/') for s in [base, slug])
+	fragments = [base]
+	fragments.extend(slug)
+	return '/'.join(s.strip('/') for s in fragments) + "/"
 
 
 def read_file(path):
@@ -228,7 +229,7 @@ def get_env():
 	if not env:
 		sys.exit('Zap! Ion is not installed in this folder!')
 	# add a trailing slash to base url, if necessary
-	base_url = urljoin(env['base_url'], '/')
+	base_url = urljoin(env['base_url'])
 	env['base_url'] = base_url
 	env['themes_url'] = urljoin(base_url, config.THEMES_DIR)
 	env['site_tags'] = extract_multivalues(env.get('site_tags'))
@@ -277,25 +278,31 @@ def dataset_range(dataset, num_range):
 		return dataset[:start]
 
 
+def apply_page_filters(pages, args):
+	pages = [p for p in pages if not 'nolist' in p.get('props', [])]
+	# limit the category first
+	pages = dataset_filter_category(pages, args.get('cat'))
+	# listing order before number of objects
+	pages = dataset_sort(pages, args.get('sort'), args.get('ord'))
+	# number must be the last one
+	pages = dataset_range(pages, args.get('num'))
+	return pages
+
+
 def query_pages(env, page, args):
 	'''Make queries to the environment data set'''
 	src = args.get('src', '')
-	sources = {
-		'pages': list(env['pages'].copy().values()),
-		'feeds': env['feeds'],
-		'children': [get_page_data(env, p) for p in page.get('children', [])]
-	}
+	sources = ['pages', 'feeds', 'children']
 	# calling the proper query function
-	if not src in sources.keys():
+	if not src in sources:
 		sys.exit('Zap! "src" argument is'
 		' missing or invalid!'.format(src))
-	dataset = sources[src]
-	# feeds are already sorted and filtered
-	if src != 'feeds':
-		# limit the category first
-		dataset = dataset_filter_category(dataset, args.get('cat'))
-		# listing order before number of objects
-		dataset = dataset_sort(dataset, args.get('sort'), args.get('ord'))
-		# number must be the last one
-		dataset = dataset_range(dataset, args.get('num'))
-	return dataset
+	if src == 'feeds':
+		# feeds are already sorted and filtered
+		return env['feeds']
+	if src == 'pages':
+		dataset = list(env['pages'].copy().values())
+	elif src == 'children':
+		pages = page.get('children', [])
+		dataset = [get_page_data(env, p) for p in pages]
+	return apply_page_filters(dataset, args)
