@@ -26,6 +26,7 @@ def ion_gen(args):
 	'''Reads recursively every directory under path and
 	outputs HTML/JSON for each data.ion file'''
 	env = quark.get_env()
+	env['output_enabled'] = args.output_enabled
 	pages = env['pages']
 	if not pages:
 		sys.exit('No pages to generate.')
@@ -59,31 +60,32 @@ def ion_init(args):
 
 def main():	
 	description = 'A static site generator.'
-	parser = argparse.ArgumentParser(prog='ion', description=description)
+	parser = argparse.ArgumentParser(prog='ion', 
+		description=description)
 	parser.add_argument('--version', action='version', 
 						help="show current version and quits", 
-						version='{}'.format(VERSION))
-	
-	group = parser.add_mutually_exclusive_group()
-	group.add_argument("-v", "--verbose", help="show generation messages",
+						version=VERSION)
+
+	parser.add_argument("-o", "--output-enabled", 
+						help="show generation messages",
 						action="store_true")
-	
+
 	subparsers = parser.add_subparsers(title='Commands')
-	
-	parser_init = subparsers.add_parser('init', help='install Ion on current folder')
+
+	parser_init = subparsers.add_parser('init', 
+		help='install Ion on current folder')
 	parser_init.set_defaults(method=ion_init)
-	
-	parser_add = subparsers.add_parser('add', help='create a empty page on path specified')
+
+	parser_add = subparsers.add_parser('add', 
+		help='create a empty page on the path specified')
 	parser_add.add_argument("path")
 	parser_add.set_defaults(method=ion_add)
-	
-	parser_gen = subparsers.add_parser('gen', help='generate files on each \
-folder and its subfolders, recursively')
+
+	parser_gen = subparsers.add_parser('gen', help='generate the pages')
 	parser_gen.set_defaults(method=ion_gen)
-	
+
 	args = parser.parse_args()
 	args.method(args)
-
 
 if __name__ == '__main__':
 	main()

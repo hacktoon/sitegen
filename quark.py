@@ -17,14 +17,9 @@ import sys
 import re
 import shutil
 import time
-
 from datetime import datetime
 
 import config
-
-
-required_config_keys = ['site_name', 'site_author',
-	'site_description', 'base_url', 'default_theme']
 
 
 def urljoin(base, *slug):
@@ -63,14 +58,6 @@ def parse_ion_file(file_string):
 	return ion_data
 
 
-def keys_missing(keys, container):
-	'''Checks for missing keys in a data container'''
-	for key in keys:
-		if not key in container:
-			return key
-	return False
-
-
 def extract_multivalues(tag_string):
 	'''Converts a comma separated list of tags into a list'''
 	tag_list = []
@@ -98,10 +85,6 @@ def get_site_config():
 	if not os.path.exists(config_path):
 		return
 	cfg = parse_ion_file(read_file(config_path))
-	# check for missing keys
-	key = keys_missing(required_config_keys, cfg)
-	if key:
-		sys.exit('Zap! The key {!r} is missing in site config!'.format(key))
 	return cfg
 
 
@@ -146,6 +129,13 @@ def convert_page_date(page_data):
 	return date
 
 
+def get_page_type(env, page_data):
+	page_type = page_data.get('type')
+	if page_type not in config.CONTENT_TYPES:
+		return env['default_type']
+	return page_type
+
+
 def get_page_data(env, path):
 	'''Returns a dictionary with the page data'''
 	#removing '.' of the path in the case of root directory of site
@@ -154,6 +144,7 @@ def get_page_data(env, path):
 	if not os.path.exists(data_file):
 		return
 	page_data = parse_ion_file(read_file(data_file))
+	page_data['type'] = get_page_type(env, page_data)
 	page_data['date'] = convert_page_date(page_data)
 	# absolute link of the page
 	page_data['permalink'] = urljoin(env['base_url'], path)
@@ -229,10 +220,17 @@ def get_env():
 	env = get_site_config()
 	if not env:
 		sys.exit('Zap! Ion is not installed in this folder!')
+	
+	base_url = env.get('base_url')
+	if not base_url:
+		sys.exit('Zap! base_url was not set in config!')
 	# add a trailing slash to base url, if necessary
-	base_url = urljoin(env['base_url'])
-	env['base_url'] = base_url
-	env['themes_url'] = urljoin(base_url, config.THEMES_DIR)
+	env['base_url'] = urljoin(base_url)
+
+	if env.get('default_type') not in config.CONTENT_TYPES:
+		sys.exit('Zap! content_type was not set in config!')
+
+	env['themes_url'] = urljoin(env['base_url'], config.THEMES_DIR)
 	env['site_tags'] = extract_multivalues(env.get('site_tags'))
 	env['feed_sources'] = extract_multivalues(env.get('feed_sources'))
 	env['feeds'] = []

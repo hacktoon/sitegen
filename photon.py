@@ -16,7 +16,6 @@ import re
 import os
 import sys
 import json
-
 from datetime import datetime
 
 import config
@@ -182,7 +181,8 @@ def save_html(env, page):
 	html = render_template(html_templ, env, page)
 	path = page['path']
 	quark.write_file(os.path.join(path, 'index.html'), html)
-	print('"{0}" page generated.'.format(path or 'Home'))
+	if env['output_enabled']:
+		print('"{0}" page generated.'.format(path or 'Home'))
 
 
 def write_feed_file(env, filename):
@@ -199,7 +199,8 @@ def write_feed_file(env, filename):
 	feed_content = render_template(feed_tpl, env, feed_data)
 	feed_path = os.path.join(feed_dir, filename)
 	quark.write_file(feed_path, feed_content)
-	print('Feed {!r} generated.'.format(feed_path))
+	if env['output_enabled']:
+		print('Feed {!r} generated.'.format(feed_path))
 
 
 def set_feed_source(env, pages):
