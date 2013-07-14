@@ -67,8 +67,10 @@ def parse_variable_args(args):
 	return arg_data
 
 
-def tag_list(env, page, args, tpl):
+def tag_list(env, page, args, tpl=''):
 	'''Prints a list of objects within a given template'''
+	if not tpl:
+		return ''
 	args = parse_list_args(args)
 	data_list = quark.query_pages(env, page, args)
 	render_list = []
@@ -158,8 +160,6 @@ def build_script_tags(filenames, permalink):
 
 
 def save_json(env, page):
-	if 'nojson' in page['props']:
-		return
 	page = page.copy()
 	page['date'] = date_to_string(page['date'])
 	json_filepath = os.path.join(page['path'], 'index.json')
@@ -167,15 +167,13 @@ def save_json(env, page):
 
 
 def save_html(env, page):
-	if 'nohtml' in page['props']:
-		return
 	page = page.copy()
 	# get css and javascript found in the folder
 	page['css'] = build_style_tags(page.get('css', ''), page['permalink'])
 	page['js'] = build_script_tags(page.get('js', ''), page['permalink'])
 	page['page_theme_url'] = quark.urljoin(env['themes_url'], page['theme'])
-	# if not using custom theme, use default
-	template_model = page.get('template', config.MAIN_TEMPLATE)
+	# if not using custom template, it is defined by page type
+	template_model = page.get('template', config.DEFAULT_TEMPLATE)
 	html_templ = quark.read_html_template(page['theme'], template_model)
 	# replace template with page data and listings
 	html = render_template(html_templ, env, page)
@@ -206,7 +204,7 @@ def write_feed_file(env, filename):
 def set_feed_source(env, pages):
 	items_listed = int(env.get('feed_num', 8))  # default value
 	# filtering the pages that shouldn't be listed in feeds
-	pages = [page for page in pages if not 'nofeed' in page['props']]
+	pages = [p for p in pages if not 'nofeed' in p['props']]
 	pages = quark.dataset_sort(pages, 'date', 'desc')
 	pages = quark.dataset_range(pages, items_listed)
 	env['feeds'] = pages

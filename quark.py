@@ -129,13 +129,6 @@ def convert_page_date(page_data):
 	return date
 
 
-def get_page_type(env, page_data):
-	page_type = page_data.get('type')
-	if page_type not in config.CONTENT_TYPES:
-		return env['default_type']
-	return page_type
-
-
 def get_page_data(env, path):
 	'''Returns a dictionary with the page data'''
 	#removing '.' of the path in the case of root directory of site
@@ -144,7 +137,6 @@ def get_page_data(env, path):
 	if not os.path.exists(data_file):
 		return
 	page_data = parse_ion_file(read_file(data_file))
-	page_data['type'] = get_page_type(env, page_data)
 	page_data['date'] = convert_page_date(page_data)
 	# absolute link of the page
 	page_data['permalink'] = urljoin(env['base_url'], path)
@@ -226,10 +218,6 @@ def get_env():
 		sys.exit('Zap! base_url was not set in config!')
 	# add a trailing slash to base url, if necessary
 	env['base_url'] = urljoin(base_url)
-
-	if env.get('default_type') not in config.CONTENT_TYPES:
-		sys.exit('Zap! content_type was not set in config!')
-
 	env['themes_url'] = urljoin(env['base_url'], config.THEMES_DIR)
 	env['site_tags'] = extract_multivalues(env.get('site_tags'))
 	env['feed_sources'] = extract_multivalues(env.get('feed_sources'))

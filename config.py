@@ -5,11 +5,9 @@ DATA_FILE = 'data.ion'
 
 CONFIG_FILE = 'config.ion'
 THEMES_DIR = 'themes'
-MAIN_TEMPLATE = 'main.tpl'
+DEFAULT_TEMPLATE = 'main.tpl'
 
 DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
-
-CONTENT_TYPES = ['article', 'page']
 
 # Setting values based on config
 script_path = os.path.dirname(os.path.abspath(__file__))

@@ -30,12 +30,17 @@ def ion_gen(args):
 	pages = env['pages']
 	if not pages:
 		sys.exit('No pages to generate.')
-	print("Total of pages read: {}.\n{}".format(len(pages), "-" * 30))
+	total_rendered = 0
 	for page in pages.values():
 		if 'norender' in page['props']:
 			continue
-		photon.save_json(env, page)
-		photon.save_html(env, page)
+		if not 'nojson' in page['props']:	
+			photon.save_json(env, page)
+		if not 'nohtml' in page['props']:
+			photon.save_html(env, page)
+			total_rendered += 1
+	print("{}\nTotal of pages read: {}.".format("-" * 30, len(pages)))
+	print("Total of pages generated: {}.\n".format(total_rendered))
 	# after generating all pages, update feed
 	photon.generate_feeds(env)
 
@@ -86,6 +91,7 @@ def main():
 
 	args = parser.parse_args()
 	args.method(args)
+
 
 if __name__ == '__main__':
 	main()
