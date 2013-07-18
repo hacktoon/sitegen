@@ -171,10 +171,13 @@ def save_html(env, page):
 	# get css and javascript found in the folder
 	page['css'] = build_style_tags(page.get('css', ''), page['permalink'])
 	page['js'] = build_script_tags(page.get('js', ''), page['permalink'])
-	page['page_theme_url'] = quark.urljoin(env['themes_url'], page['theme'])
+	# if a theme is not provided, uses default
+	page_theme = page.get('theme', env['default_theme'])
+	page['theme'] = page_theme
+	page['page_theme_url'] = quark.urljoin(env['themes_url'], page_theme)
 	# if not using custom template, it is defined by page type
 	template_model = page.get('template', config.DEFAULT_TEMPLATE)
-	html_templ = quark.read_html_template(page['theme'], template_model)
+	html_templ = quark.read_html_template(page_theme, template_model)
 	# replace template with page data and listings
 	html = render_template(html_templ, env, page)
 	path = page['path']
@@ -203,8 +206,6 @@ def write_feed_file(env, filename):
 
 def set_feed_source(env, pages):
 	items_listed = int(env.get('feed_num', 8))  # default value
-	# filtering the pages that shouldn't be listed in feeds
-	pages = [p for p in pages if not 'nofeed' in p['props']]
 	pages = quark.dataset_sort(pages, 'date', 'desc')
 	pages = quark.dataset_range(pages, items_listed)
 	env['feeds'] = pages
@@ -215,14 +216,14 @@ def generate_feeds(env):
 	if not sources:
 		print('No feeds generated.')
 		return
+	pages = env['pages'].values()
+	# filtering the pages that shouldn't be listed in feeds
+	pages = [p for p in pages if not 'nofeed' in p['props']]
 	if 'all' in sources:
-		pages = env['pages'].copy().values()
 		set_feed_source(env, pages)
 		write_feed_file(env, 'default.xml')
-
-	if 'category' in sources:
-		categories = env['categories']
-		for cat_name in categories.keys():
-			pages = categories[cat_name][::]
+	if 'group' in sources:
+		for group_name in env['groups']:
+			pages = quark.dataset_filter_group(pages, group_name)
 			set_feed_source(env, pages)
-			write_feed_file(env, '{}.xml'.format(cat_name))
+			write_feed_file(env, '{}.xml'.format(group_name))

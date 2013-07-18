@@ -10,6 +10,6 @@ feed_dir = feed
 feed_num = 8
 # feed files that will be generated, based on its sources
 # 'all' means all pages will be listed, except that marked with a 'nofeed' in its props
-# 'category' means a feed will be generated for each category
+# 'group' means a feed will be generated for each group of pages defined
 # remove the line if you do not want feeds
-feed_sources = all, category
+feed_sources = all, group
