@@ -6,7 +6,7 @@ Ion - A shocking simple static (site) generator
 
 Author: Karlisson M. Bezerra
 E-mail: contact@hacktoon.com
-URL: https://github.com/karlisson/ion
+URL: https://github.com/hacktoon/ion
 License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 
 ==============================================================================
@@ -16,7 +16,6 @@ import re
 import os
 import sys
 import json
-
 from datetime import datetime
 
 import config
@@ -68,8 +67,10 @@ def parse_variable_args(args):
 	return arg_data
 
 
-def tag_list(env, page, args, tpl):
+def tag_list(env, page, args, tpl=''):
 	'''Prints a list of objects within a given template'''
+	if not tpl:
+		return ''
 	args = parse_list_args(args)
 	data_list = quark.query_pages(env, page, args)
 	render_list = []
@@ -159,8 +160,6 @@ def build_script_tags(filenames, permalink):
 
 
 def save_json(env, page):
-	if 'nojson' in page['props']:
-		return
 	page = page.copy()
 	page['date'] = date_to_string(page['date'])
 	json_filepath = os.path.join(page['path'], 'index.json')
@@ -168,21 +167,23 @@ def save_json(env, page):
 
 
 def save_html(env, page):
-	if 'nohtml' in page['props']:
-		return
 	page = page.copy()
 	# get css and javascript found in the folder
 	page['css'] = build_style_tags(page.get('css', ''), page['permalink'])
 	page['js'] = build_script_tags(page.get('js', ''), page['permalink'])
-	page['page_theme_url'] = quark.urljoin(env['themes_url'], page['theme'])
-	# if not using custom theme, use default
-	template_model = page.get('template', config.MAIN_TEMPLATE)
-	html_templ = quark.read_html_template(page['theme'], template_model)
+	# if a theme is not provided, uses default
+	page_theme = page.get('theme', env['default_theme'])
+	page['theme'] = page_theme
+	page['page_theme_url'] = quark.urljoin(env['themes_url'], page_theme)
+	# if not using custom template, it is defined by page type
+	template_model = page.get('template', config.DEFAULT_TEMPLATE)
+	html_templ = quark.read_html_template(page_theme, template_model)
 	# replace template with page data and listings
 	html = render_template(html_templ, env, page)
 	path = page['path']
 	quark.write_file(os.path.join(path, 'index.html'), html)
-	print('"{0}" page generated.'.format(path or 'Home'))
+	if env['output_enabled']:
+		print('"{0}" page generated.'.format(path or 'Home'))
 
 
 def write_feed_file(env, filename):
@@ -199,15 +200,14 @@ def write_feed_file(env, filename):
 	feed_content = render_template(feed_tpl, env, feed_data)
 	feed_path = os.path.join(feed_dir, filename)
 	quark.write_file(feed_path, feed_content)
-	print('Feed {!r} generated.'.format(feed_path))
+	if env['output_enabled']:
+		print('Feed {!r} generated.'.format(feed_path))
 
 
 def set_feed_source(env, pages):
 	items_listed = int(env.get('feed_num', 8))  # default value
 	pages = quark.dataset_sort(pages, 'date', 'desc')
 	pages = quark.dataset_range(pages, items_listed)
-	# filtering the pages that shouldn't be listed in feeds
-	pages = [page for page in pages if not 'nofeed' in page['props']]
 	env['feeds'] = pages
 
 
@@ -216,14 +216,14 @@ def generate_feeds(env):
 	if not sources:
 		print('No feeds generated.')
 		return
+	pages = env['pages'].values()
+	# filtering the pages that shouldn't be listed in feeds
+	pages = [p for p in pages if not 'nofeed' in p['props']]
 	if 'all' in sources:
-		pages = env['pages'].copy().values()
 		set_feed_source(env, pages)
 		write_feed_file(env, 'default.xml')
-
-	if 'category' in sources:
-		categories = env['categories']
-		for cat_name in categories.keys():
-			pages = categories[cat_name][::]
+	if 'group' in sources:
+		for group_name in env['groups']:
+			pages = quark.dataset_filter_group(pages, group_name)
 			set_feed_source(env, pages)
-			write_feed_file(env, '{}.xml'.format(cat_name))
+			write_feed_file(env, '{}.xml'.format(group_name))

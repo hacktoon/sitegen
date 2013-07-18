@@ -6,7 +6,7 @@ Ion - A shocking simple static (site) generator
 
 Author: Karlisson M. Bezerra
 E-mail: contact@hacktoon.com
-URL: https://github.com/karlisson/ion
+URL: https://github.com/hacktoon/ion
 License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 
 ===============================================================================
@@ -17,16 +17,9 @@ import sys
 import re
 import shutil
 import time
-
 from datetime import datetime
 
 import config
-
-
-required_config_keys = ['site_name', 'site_author',
-	'site_description', 'base_url', 'default_theme']
-
-required_page_keys = ['title', 'date', 'content']
 
 
 def urljoin(base, *slug):
@@ -65,14 +58,6 @@ def parse_ion_file(file_string):
 	return ion_data
 
 
-def keys_missing(keys, container):
-	'''Checks for missing keys in a data container'''
-	for key in keys:
-		if not key in container:
-			return key
-	return False
-
-
 def extract_multivalues(tag_string):
 	'''Converts a comma separated list of tags into a list'''
 	tag_list = []
@@ -99,12 +84,7 @@ def get_site_config():
 	config_path = os.path.join(os.getcwd(), config.CONFIG_FILE)
 	if not os.path.exists(config_path):
 		return
-	cfg = parse_ion_file(read_file(config_path))
-	# check for missing keys
-	key = keys_missing(required_config_keys, cfg)
-	if key:
-		sys.exit('Zap! The key {!r} is missing in site config!'.format(key))
-	return cfg
+	return parse_ion_file(read_file(config_path))
 
 
 def create_site():
@@ -135,6 +115,29 @@ def create_page(path):
 	return dest_file
 
 
+def convert_page_date(page_data):
+	date = page_data.get('date')
+	if date:
+		try:
+			# converts date string to datetime object
+			date = datetime.strptime(date, config.DATE_FORMAT)
+		except ValueError:
+			sys.exit('Zap! Wrong date format detected at {!r}!'.format(data_file))
+	else:
+		date = datetime.now()
+	return date
+
+
+def process_group_data(page_data):
+	group_data = {}
+	keys = [k for k in page_data.keys() if k.startswith('group_')]
+	if 'group' in page_data['props']:
+		group_data['group'] = os.path.basename(page_data['path'])
+	for key in keys:
+		group_data[key.replace('group_', '')] = page_data[key]
+	return group_data
+
+
 def get_page_data(env, path):
 	'''Returns a dictionary with the page data'''
 	#removing '.' of the path in the case of root directory of site
@@ -143,84 +146,90 @@ def get_page_data(env, path):
 	if not os.path.exists(data_file):
 		return
 	page_data = parse_ion_file(read_file(data_file))
-	# verify missing required keys in page data
-	key = keys_missing(required_page_keys, page_data)
-	if key:
-		sys.exit('Zap! The key {!r} is missing '
-		'in page config at {!r}!'.format(key, path))
-	# convert date string to datetime object
-	date = page_data['date']
-	try:
-		page_data['date'] = datetime.strptime(date, config.DATE_FORMAT)
-	except ValueError:
-		sys.exit('Zap! Wrong date format detected at {!r}!'.format(data_file))
+	page_data['path'] = path
+	page_data['date'] = convert_page_date(page_data)
 	# absolute link of the page
 	page_data['permalink'] = urljoin(env['base_url'], path)
-	# if a theme is not provided, uses default
-	page_data['theme'] = page_data.get('theme', env['default_theme'])
 	# splits tags into a list
 	page_data['tags'] = extract_multivalues(page_data.get('tags'))
 	# get the page properties
 	page_data['props'] = extract_multivalues(page_data.get('props'))
-	page_data['path'] = path
+	group_data = process_group_data(page_data)
+	if group_data:
+		page_data['group_data'] = group_data
 	return page_data
 
 
-def category_append(categories, page):
-	'''Creates lists of categories by demand to allow pagination'''
-	# checks if this page has a category
-	if not 'category' in page:
+def get_page_children(env, path, folders):
+	'''Returns a list containing the full path of the children pages,
+	removing the ignored pages like the themes folder'''
+	join = os.path.join
+	isdir = os.path.isdir
+	children = []
+	for folder in folders:
+		fullpath = join(path, folder)
+		if isdir(fullpath) and fullpath not in env['ignore_folders']:
+			children.append(fullpath)
+	return children
+
+
+def apply_group_data(page_data, group_data):
+	'''Add the group properties to the page, if it isn't already
+	present. The page data has priority.'''
+	if not group_data:
 		return
-	cat_name = page['category']
-	# creates a dict if the key do not exists
-	if not cat_name in categories.keys():
-		categories[cat_name] = []
-	categories[cat_name].append(page)
-
-
-def set_pagination(pages):
-	length = len(pages)
-	key = 'permalink'
-	for index, page in enumerate(pages):
-		page['first'] = pages[0][key]
-		page['last'] = pages[-1][key]
-		next_index = index + 1 if index < length - 1 else -1
-		page['next'] = pages[next_index][key]
-		prev_index = index - 1 if index > 0 else 0
-		page['prev'] = pages[prev_index][key]
-
-
-def build_site_data(env):
-	'''Returns all the pages created in the site'''
-	pages = {}
-	categories = {}
-	# running at the current dir
-	for path, subdirs, filenames in os.walk('.'):
-		# if did not find a data file, ignores
-		if not config.DATA_FILE in filenames:
+	for key in group_data.keys():
+		# already defined, so do not override
+		if key in page_data:
 			continue
-		# removing dot from path
-		path = re.sub(r'^\.$|\./|\.\\', '', path)
+		page_data[key] = group_data[key]
+
+
+def read_page_files(env, path, group_data=None):
+	'''Read the folders recursively and creates a dictionary
+	containing the pages' data.'''
+	# inherits the group defined previously, if it exists
+	current_group_data = group_data or {}
+	file_list = os.listdir(path)
+	# removing dot from path
+	path = re.sub(r'^\.$|\./|\.\\', '', path)
+	children = get_page_children(env, path, file_list)
+	
+	# there's a data file in this path
+	if os.path.exists(os.path.join(path, config.DATA_FILE)):
 		page_data = get_page_data(env, path)
-		category_append(categories, page_data)
-		# get the child pages
-		page_data['children'] = []
-		# get parent folder to include itself as child page
-		parent_path = os.path.dirname(path)
-		# checks if it isn't the home page (empty string)
-		if path and pages.get(parent_path) != None: 
-			# linking children pages
-			pages[parent_path]['children'].append(path)
-		# uses the page path as a key
-		pages[path] = page_data
-	# next, let's sort the pages in categories by date
-	for key in categories.keys():
-		# sorting by date
-		pages_sorted = dataset_sort(categories[key], 'date')
-		set_pagination(pages_sorted)
-	# finally, sets the data
-	env['pages'] = pages
-	env['categories'] = categories
+		# merge in the group properties defined in parent page
+		apply_group_data(page_data, current_group_data)
+		# stores the path of its children
+		page_data['children'] = children
+		# if this page defines a group, pass it to children pages
+		# register it in the environment for feed generation
+		if 'group_data' in page_data:
+			current_group_data = page_data['group_data']
+			# set the group name to page properties for sorting later
+			env['groups'].append(current_group_data['group'])
+		env['pages'][path] = page_data
+
+	# process the children pages, pass the group data if defined
+	for child_path in children:
+		read_page_files(env, child_path, current_group_data)
+
+
+def paginate_groups(env):
+	groups = env['groups']
+	pages = list(env['pages'].values())
+	key = 'permalink'
+	for group in groups:
+		pages = dataset_filter_group(pages, group)
+		pages = dataset_sort(pages, 'date', 'desc')
+		length = len(pages)
+		for index, page in enumerate(pages):
+			page['first'] = pages[0][key]
+			page['last'] = pages[-1][key]
+			next_index = index + 1 if index < length - 1 else -1
+			page['next'] = pages[next_index][key]
+			prev_index = index - 1 if index > 0 else 0
+			page['prev'] = pages[prev_index][key]
 
 
 def get_env():
@@ -228,32 +237,38 @@ def get_env():
 	env = get_site_config()
 	if not env:
 		sys.exit('Zap! Ion is not installed in this folder!')
+	base_url = env.get('base_url')
+	if not base_url:
+		sys.exit('Zap! base_url was not set in config!')
 	# add a trailing slash to base url, if necessary
-	base_url = urljoin(env['base_url'])
-	env['base_url'] = base_url
-	env['themes_url'] = urljoin(base_url, config.THEMES_DIR)
+	env['base_url'] = urljoin(base_url)
+	env['themes_url'] = urljoin(env['base_url'], config.THEMES_DIR)
 	env['site_tags'] = extract_multivalues(env.get('site_tags'))
 	env['feed_sources'] = extract_multivalues(env.get('feed_sources'))
+	env['ignore_folders'] = [config.THEMES_DIR, env.get('feed_dir')]
+	env['pages'] = {}
+	env['groups'] = []
 	env['feeds'] = []
-	# now let's read from files all the pages and categories
-	build_site_data(env)
+	# now let's read all the pages and groups from files 
+	read_page_files(env, os.curdir)
+	paginate_groups(env)
 	return env
 
 
-def dataset_filter_category(dataset, cat_name):
-	if not cat_name:
+def dataset_filter_group(dataset, group_name):
+	if not group_name:
 		return dataset
-	from_cat = lambda page: page.get('category') == cat_name
-	dataset = [page for page in dataset if from_cat(page)]
+	from_group = lambda page: page.get('group') == group_name
+	dataset = [page for page in dataset if from_group(page)]
 	return dataset
 
 
 def dataset_sort(dataset, field_sort, order='asc'):
-	if not field_sort:
-		return dataset
 	reverse = (order == 'desc')
+	# all pages have a date, even if not specified in data files
 	sort_by = lambda page: page[field_sort]
-	return sorted(dataset, key=sort_by, reverse=reverse)
+	dataset = sorted(dataset, key=sort_by, reverse=reverse)
+	return dataset
 
 
 def dataset_range(dataset, num_range):
@@ -280,10 +295,10 @@ def dataset_range(dataset, num_range):
 
 def apply_page_filters(pages, args):
 	pages = [p for p in pages if not 'nolist' in p.get('props', [])]
-	# limit the category first
-	pages = dataset_filter_category(pages, args.get('cat'))
-	# listing order before number of objects
-	pages = dataset_sort(pages, args.get('sort'), args.get('ord'))
+	# must limit the group first
+	pages = dataset_filter_group(pages, args.get('group'))
+	# listing order
+	pages = dataset_sort(pages, args.get('sort', 'date'), args.get('ord'))
 	# number must be the last one
 	pages = dataset_range(pages, args.get('num'))
 	return pages
@@ -304,5 +319,5 @@ def query_pages(env, page, args):
 		dataset = list(env['pages'].copy().values())
 	elif src == 'children':
 		pages = page.get('children', [])
-		dataset = [get_page_data(env, p) for p in pages]
+		dataset = [env['pages'][p] for p in pages if p in env['pages']]
 	return apply_page_filters(dataset, args)

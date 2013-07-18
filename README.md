@@ -78,11 +78,17 @@ Defining new variables is as simple as that. Just add any new definition to your
 
 New themes must obey the same file structure of the default theme.
 
-### Page categories
-Categories can be used to group pages, provide pagination and page filtering in listings as well.
-To file a page under a category, add a key to **data.ion**
+### Page groups
+Groups can be used to apply properties to several pages at once, provide pagination and page filtering in listings. To define a group, thus enabling sorting and pagination of its child pages, you have to add the 'group' key to the page props definition in **data.ion** file:
 
-	category = blog
+	props = **group**, nofeed, ...
+
+To define group properties, choose a page whose children you want to modify. Just add the common properties to the **data.ion** file with the "group_" prefix.
+
+	group_template = main
+	group_theme = blog
+
+These properties will be applied to all pages under the chosen page.
 
 ### Page properties
 Properties listed in a page data file can be used to change how Ion will handle the page.
@@ -98,7 +104,7 @@ Example:
 	props = nojson, nolist
 
 ### Templates
-A theme can have multiples template files under the same theme. By default Ion comes uses the **main.tpl** file. You can create new *tpl* files and select it in the **data.ion** config:
+A theme can have multiples template files under the same theme. By default Ion uses the **main.tpl** file. You can create new *tpl* files in the theme folder and select it in the **data.ion** config:
 
     template = archive
 
@@ -119,16 +125,16 @@ The list options can control the items that will be rendered:
 
 * sort - The 'sort by' option. Can be any page property. Default: 'date'.
 * ord - Order of listing. Can be 'asc' or 'desc'. It only works if a sort parameter is passed. Default: 'asc'.
-* cat - Filter by category.
+* group - Filter by group. The group is the name of the page where it was defined.
 * num - Range of pages or the last x pages.
 
 Examples:
 
-    {{list src=pages cat=blog num=6}}
+    {{list src=pages group=blog num=6}}
 		<li>{{title}}</li>
 	{{end}}
 
-Renders the last 6 pages under the 'blog' category.
+Renders the last 6 pages of the 'blog' group.
 
 	{{list src=pages sort=date ord=desc num=1:7}}
 		<li>{{title}}</li>

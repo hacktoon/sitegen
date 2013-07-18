@@ -6,40 +6,47 @@ Ion - A shocking simple static (site) generator
 
 Author: Karlisson M. Bezerra
 E-mail: contact@hacktoon.com
-URL: https://github.com/karlisson/ion
+URL: https://github.com/hacktoon/ion
 License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 
 ===============================================================================
 '''
 
 import sys
+import argparse
 
 import photon  # rendering functions
 import quark  # low level module, basic bricks
 
-# obey the rules
-if sys.version_info.major < 3:
-	sys.exit('Zap! Ion requires Python 3!')
+
+VERSION = "1.1.0"
 
 
-def ion_gen():
+def ion_gen(args):
 	'''Reads recursively every directory under path and
 	outputs HTML/JSON for each data.ion file'''
 	env = quark.get_env()
+	env['output_enabled'] = args.output_enabled
 	pages = env['pages']
 	if not pages:
 		sys.exit('No pages to generate.')
-	print("Total of pages read: {}.\n{}".format(len(pages), "-" * 30))
+	total_rendered = 0
 	for page in pages.values():
 		if 'norender' in page['props']:
 			continue
-		photon.save_json(env, page)
-		photon.save_html(env, page)
+		if not 'nojson' in page['props']:	
+			photon.save_json(env, page)
+		if not 'nohtml' in page['props']:
+			photon.save_html(env, page)
+			total_rendered += 1
+	print("{}\nTotal of pages read: {}.".format("-" * 30, len(pages)))
+	print("Total of pages generated: {}.\n".format(total_rendered))
 	# after generating all pages, update feed
 	photon.generate_feeds(env)
 
 
-def ion_add(path):
+def ion_add(args):
+	path = args.path
 	'''Creates a new page in specified path'''
 	# copy source file to new path
 	file_path = quark.create_page(path)
@@ -47,7 +54,7 @@ def ion_add(path):
 	print('Edit the file {!r} and call "ion gen"!'.format(file_path))
 
 
-def ion_init():
+def ion_init(args):
 	'''Installs Ion in the current folder'''
 	print('Installing Ion...')
 	quark.create_site()
@@ -56,39 +63,35 @@ def ion_init():
 	'2 - Run "ion add [path]" to start creating pages!\n')
 
 
-def ion_help():
-	help_message = '''Usage:
-	ion init - Installs Ion on current folder.
-	ion add [path/to/folder] - Creates a empty page on path specified.
-	ion gen - Generates HTML/JSON files of each \
-folder under the path specified and its subfolders, recursively.
-	ion help - Shows this help message.
-	'''
-	sys.exit(help_message)
+def main():	
+	description = 'A static site generator.'
+	parser = argparse.ArgumentParser(prog='ion', 
+		description=description)
+	parser.add_argument('--version', action='version', 
+						help="show current version and quits", 
+						version=VERSION)
+
+	parser.add_argument("-o", "--output-enabled", 
+						help="show generation messages",
+						action="store_true")
+
+	subparsers = parser.add_subparsers(title='Commands')
+
+	parser_init = subparsers.add_parser('init', 
+		help='install Ion on current folder')
+	parser_init.set_defaults(method=ion_init)
+
+	parser_add = subparsers.add_parser('add', 
+		help='create a empty page on the path specified')
+	parser_add.add_argument("path")
+	parser_add.set_defaults(method=ion_add)
+
+	parser_gen = subparsers.add_parser('gen', help='generate the pages')
+	parser_gen.set_defaults(method=ion_gen)
+
+	args = parser.parse_args()
+	args.method(args)
 
 
 if __name__ == '__main__':
-	# first parameter - command
-	try:
-		command = sys.argv[1]
-	except IndexError:
-		ion_help()
-
-	# second parameter - path
-	# if not provided, defaults to current
-	try:
-		path = sys.argv[2]
-	except IndexError:
-		path = '.'
-
-	if command == 'init':
-		ion_init()
-	elif command == 'add':
-		ion_add(path)
-	elif command == 'gen':
-		ion_gen()
-	elif command == 'help':
-		ion_help()
-	else:
-		print('Zap! {!r} is a very strange command!'.format(command))
-		ion_help()
+	main()

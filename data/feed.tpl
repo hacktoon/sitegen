@@ -3,7 +3,7 @@
     xmlns:atom="http://www.w3.org/2005/Atom"
 >
 <channel>
-    <title>{{site_name}}</title>
+    <title>{{site_title}}</title>
     <atom:link href="{{link}}" rel="self" type="application/rss+xml" />
     <link>{{link}}</link>
     <description>{{description}}</description>
