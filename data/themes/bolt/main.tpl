@@ -6,7 +6,7 @@
 	<meta name="keywords" content="{{site_tags}} {{tags}}" />
 	<meta charset="UTF-8" />
 	<link rel="stylesheet" href="{{page_theme_url}}/bolt.css" type="text/css" />
-	{{css}}
+	{{styles}}
 	<title>{{title}} | {{site_title}}</title>
 </head>
 <body>
@@ -37,6 +37,6 @@
 			Bolt theme - by {{site_author}}
 		</footer>
 	</div>
-	{{js}}
+	{{scripts}}
 </body>
 </html>

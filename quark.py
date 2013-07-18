@@ -25,8 +25,8 @@ import config
 def urljoin(base, *slug):
 	'''Custom URL join function to concatenate and add slashes'''
 	fragments = [base]
-	fragments.extend(slug)
-	return '/'.join(s.strip('/') for s in fragments) + "/"
+	fragments.extend(filter(None, slug))
+	return '/'.join(s.strip('/') for s in fragments)
 
 
 def read_file(path):
@@ -241,7 +241,7 @@ def get_env():
 	if not base_url:
 		sys.exit('Zap! base_url was not set in config!')
 	# add a trailing slash to base url, if necessary
-	env['base_url'] = urljoin(base_url)
+	env['base_url'] = urljoin(base_url, '/')
 	env['themes_url'] = urljoin(env['base_url'], config.THEMES_DIR)
 	env['site_tags'] = extract_multivalues(env.get('site_tags'))
 	env['feed_sources'] = extract_multivalues(env.get('feed_sources'))
