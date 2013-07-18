@@ -169,8 +169,8 @@ def save_json(env, page):
 def save_html(env, page):
 	page = page.copy()
 	# get css and javascript found in the folder
-	page['css'] = build_style_tags(page.get('css', ''), page['permalink'])
-	page['js'] = build_script_tags(page.get('js', ''), page['permalink'])
+	page['styles'] = build_style_tags(page.get('styles', ''), page['permalink'])
+	page['scripts'] = build_script_tags(page.get('scripts', ''), page['permalink'])
 	# if a theme is not provided, uses default
 	page_theme = page.get('theme', env['default_theme'])
 	page['theme'] = page_theme

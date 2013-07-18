@@ -19,7 +19,7 @@ import photon  # rendering functions
 import quark  # low level module, basic bricks
 
 
-VERSION = "1.1.0"
+VERSION = "1.1.1"
 
 
 def ion_gen(args):

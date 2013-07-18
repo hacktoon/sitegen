@@ -57,12 +57,10 @@ This will create (by default) a HTML and a JSON file in the folder you specified
 
 ## Customizing
 ### Theming and page variables
-You can add new themes to **themes** folder, create and use optional variables without having to edit all your previous *.ion* files. If you want a page to use a specific theme, just add the definition in *data.ion*:
+You can add new themes to **themes** folder, create and use optional variables without having to edit all your previous *.ion* files. If you want a page to use a specific theme, just add the definition in **data.ion**:
 
     title = My first post
     theme = mytheme
-    css = main.css
-    js = jquery.js, site.js
     date = 2012-11-20 10:23:52
     tags = shocking, blue
     content
@@ -78,17 +76,13 @@ Defining new variables is as simple as that. Just add any new definition to your
 
 New themes must obey the same file structure of the default theme.
 
-### Page groups
-Groups can be used to apply properties to several pages at once, provide pagination and page filtering in listings. To define a group, thus enabling sorting and pagination of its child pages, you have to add the 'group' key to the page props definition in **data.ion** file:
+### Styles and scripts
+If a page uses specific CSS or Javascript files, they can be put in the page's folder and listed in the **data.ion** file:
 
-	props = **group**, nofeed, ...
+	styles = main.css
+	scripts = jquery.js, site.js
 
-To define group properties, choose a page whose children you want to modify. Just add the common properties to the **data.ion** file with the "group_" prefix.
-
-	group_template = main
-	group_theme = blog
-
-These properties will be applied to all pages under the chosen page.
+They will be printed in the template through the variables {{styles}} and {{scripts}}.
 
 ### Page properties
 Properties listed in a page data file can be used to change how Ion will handle the page.
@@ -98,13 +92,26 @@ Properties listed in a page data file can be used to change how Ion will handle 
 * nolist - The page will not appear in listings
 * norender - The page will not be generated. Better to use it with 'nolist'
 * nofeed - The page will not be listed in feeds.
+* group - This page's children pages will be defined as a group.
 
 Example:
 
 	props = nojson, nolist
 
+### Page groups
+Groups can be used to apply properties to several pages at once, provide pagination and page filtering in listings. To define a group, thus enabling sorting and pagination of its child pages, you have to add the 'group' key to the page props definition in **data.ion** file:
+
+	props = group, nofeed, ...
+
+To define group properties, choose a page whose children you want to modify. Just add the common properties to the **data.ion** file with the "group_" prefix.
+
+	group_template = main
+	group_theme = blog
+
+These properties will be applied to all pages under the chosen page.
+
 ### Templates
-A theme can have multiples template files under the same theme. By default Ion uses the **main.tpl** file. You can create new *tpl* files in the theme folder and select it in the **data.ion** config:
+A theme can have multiples template files under the same theme. By default Ion uses the **main.tpl** file. You can create new *tpl* files in the theme folder and select it in the **data.ion** config without the extension:
 
     template = archive
 
@@ -141,7 +148,3 @@ Renders the last 6 pages of the 'blog' group.
 	{{end}}
 
 Renders the pages from 1st to 7th array position in decrescent order of date.
-
-## Help
-
-Run **ion help**.
