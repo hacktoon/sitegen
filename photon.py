@@ -220,10 +220,12 @@ def generate_feeds(env):
 	# filtering the pages that shouldn't be listed in feeds
 	pages = [p for p in pages if not 'nofeed' in p['props']]
 	if 'all' in sources:
-		set_feed_source(env, pages)
+		# copy the list
+		set_feed_source(env, list(pages))
 		write_feed_file(env, 'default.xml')
 	if 'group' in sources:
 		for group_name in env['groups']:
-			pages = quark.dataset_filter_group(pages, group_name)
-			set_feed_source(env, pages)
+			# copy the list each iteration
+			group_pages = quark.dataset_filter_group(list(pages), group_name)
+			set_feed_source(env, group_pages)
 			write_feed_file(env, '{}.xml'.format(group_name))

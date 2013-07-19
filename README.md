@@ -18,7 +18,7 @@ Given these facts, static site generators are systems you can use for specific c
 ## Quickstart
 You only need Python 3 to run Ion.
 
-### How to install
+### Creating a site
 Create a directory to be your web root. Enter it and call the following command:
     
 	ion init

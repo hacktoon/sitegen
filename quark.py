@@ -217,9 +217,9 @@ def read_page_files(env, path, group_data=None):
 
 def paginate_groups(env):
 	groups = env['groups']
-	pages = list(env['pages'].values())
 	key = 'permalink'
 	for group in groups:
+		pages = list(env['pages'].copy().values())
 		pages = dataset_filter_group(pages, group)
 		pages = dataset_sort(pages, 'date', 'desc')
 		length = len(pages)
@@ -316,7 +316,7 @@ def query_pages(env, page, args):
 		# feeds are already sorted and filtered
 		return env['feeds']
 	if src == 'pages':
-		dataset = list(env['pages'].copy().values())
+		dataset = list(env['pages'].values())
 	elif src == 'children':
 		pages = page.get('children', [])
 		dataset = [env['pages'][p] for p in pages if p in env['pages']]
