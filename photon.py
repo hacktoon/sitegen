@@ -178,6 +178,11 @@ def save_html(env, page):
 	# if not using custom template, it is defined by page type
 	template_model = page.get('template', config.DEFAULT_TEMPLATE)
 	html_templ = quark.read_html_template(page_theme, template_model)
+	if not html_templ:
+		sys.exit('Zap! Template file {!r} '
+				 'couldn\'t be found for '
+				 'page {!r}!'.format(template_model, page['path']))
+
 	# replace template with page data and listings
 	html = render_template(html_templ, env, page)
 	path = page['path']

@@ -74,8 +74,7 @@ def read_html_template(theme_name, tpl_filename):
 		tpl_filename = '{0}.tpl'.format(tpl_filename)
 	tpl_filepath = os.path.join(theme_dir, tpl_filename)
 	if not os.path.exists(tpl_filepath):
-		sys.exit('Zap! Template file {!r} '
-				 'couldn\'t be found!'.format(tpl_filepath))
+		return ''
 	return read_file(tpl_filepath)
 
 
@@ -130,9 +129,9 @@ def convert_page_date(page_data):
 
 def process_group_data(page_data):
 	group_data = {}
-	keys = [k for k in page_data.keys() if k.startswith('group_')]
 	if 'group' in page_data['props']:
 		group_data['group'] = os.path.basename(page_data['path'])
+	keys = [k for k in page_data.keys() if k.startswith('group_')]
 	for key in keys:
 		group_data[key.replace('group_', '')] = page_data[key]
 	return group_data
@@ -175,7 +174,7 @@ def get_page_children(env, path, folders):
 
 def apply_group_data(page_data, group_data):
 	'''Add the group properties to the page, if it isn't already
-	present. The page data has priority.'''
+	present. The page's own data has priority.'''
 	if not group_data:
 		return
 	for key in group_data.keys():
@@ -207,7 +206,8 @@ def read_page_files(env, path, group_data=None):
 		if 'group_data' in page_data:
 			current_group_data = page_data['group_data']
 			# set the group name to page properties for sorting later
-			env['groups'].append(current_group_data['group'])
+			if 'group' in current_group_data:
+				env['groups'].append(current_group_data['group'])
 		env['pages'][path] = page_data
 
 	# process the children pages, pass the group data if defined
