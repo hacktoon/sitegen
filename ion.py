@@ -32,7 +32,7 @@ def ion_gen(args):
 		sys.exit('No pages to generate.')
 	total_rendered = 0
 	for page in pages.values():
-		if 'norender' in page['props']:
+		if 'draft' in page['props']:
 			continue
 		if not 'nojson' in page['props']:	
 			photon.save_json(env, page)

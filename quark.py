@@ -293,8 +293,17 @@ def dataset_range(dataset, num_range):
 		return dataset[:start]
 
 
+def dataset_filter_props(dataset, props):
+	if not props:
+		return dataset
+	has_props = lambda p: any(x in p.get('props', []) for x in props)
+	dataset = [page for page in dataset if not has_props(page)]
+	return dataset
+
+
 def apply_page_filters(pages, args):
-	pages = [p for p in pages if not 'nolist' in p.get('props', [])]
+	# pages with these props will be filtered
+	pages = dataset_filter_props(pages, ['draft', 'nolist'])
 	# must limit the group first
 	pages = dataset_filter_group(pages, args.get('group'))
 	# listing order

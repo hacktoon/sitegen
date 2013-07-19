@@ -218,7 +218,8 @@ def generate_feeds(env):
 		return
 	pages = env['pages'].values()
 	# filtering the pages that shouldn't be listed in feeds
-	pages = [p for p in pages if not 'nofeed' in p['props']]
+	pages = quark.dataset_filter_props(pages, ['draft', 'nofeed'])
+	
 	if 'all' in sources:
 		# copy the list
 		set_feed_source(env, list(pages))

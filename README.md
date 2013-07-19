@@ -90,8 +90,8 @@ Properties listed in a page data file can be used to change how Ion will handle 
 * nojson - Ion will not generate a JSON file.
 * nohtml - Ion will not generate a HTML file.
 * nolist - The page will not appear in listings
-* norender - The page will not be generated. Better to use it with 'nolist'
 * nofeed - The page will not be listed in feeds.
+* draft - The page will not be generated, listed or syndicated in feeds.
 * group - This page's children pages will be defined as a group.
 
 Example:
