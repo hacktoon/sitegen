@@ -80,11 +80,10 @@ def tag_list(env, page, args, tpl=''):
 	return '\n'.join(render_list)
 
 
-def tag_include(env, page, filename):
-	theme_dir = os.path.join(config.THEMES_DIR, page['theme'])
+def tag_include(env, page, filename): # TODO - DRY read_html_template
 	if not filename.endswith('.tpl'):
 		filename = '{0}.tpl'.format(filename)
-	path = os.path.join(theme_dir, filename)
+	path = os.path.join(config.TEMPLATES_DIR, filename)
 	if os.path.exists(path):
 		include_tpl = quark.read_file(path)
 		return render_template(include_tpl, env, page)
@@ -171,13 +170,9 @@ def save_html(env, page):
 	# get css and javascript found in the folder
 	page['styles'] = build_style_tags(page.get('styles', ''), page['permalink'])
 	page['scripts'] = build_script_tags(page.get('scripts', ''), page['permalink'])
-	# if a theme is not provided, uses default
-	page_theme = page.get('theme', env['default_theme'])
-	page['theme'] = page_theme
-	page['page_theme_url'] = quark.urljoin(env['themes_url'], page_theme)
 	# if not using custom template, it is defined by page type
 	template_model = page.get('template', config.DEFAULT_TEMPLATE)
-	html_templ = quark.read_html_template(page_theme, template_model)
+	html_templ = quark.read_html_template(template_model)
 	if not html_templ:
 		sys.exit('Zap! Template file {!r} '
 				 'couldn\'t be found for '

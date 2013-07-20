@@ -3,7 +3,7 @@ site_title = My Ion site
 site_author = Electric Joe
 site_description = An electric site
 site_tags = ion, joe, bolt
-default_theme = bolt
+default_template = bolt
 # directory where the feeds will be generated
 feed_dir = feed
 # number os pages listed in feeds

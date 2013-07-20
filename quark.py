@@ -67,12 +67,11 @@ def extract_multivalues(tag_string):
 	return tag_list
 
 
-def read_html_template(theme_name, tpl_filename):
-	'''Returns a HTML template string from the current theme folder'''
-	theme_dir = os.path.join(config.THEMES_DIR, theme_name)
+def read_html_template(tpl_filename):  # TODO - check if can be renamed and used for feeds tpl
+	'''Returns a HTML template string from the template folder'''
 	if not tpl_filename.endswith('.tpl'):
 		tpl_filename = '{0}.tpl'.format(tpl_filename)
-	tpl_filepath = os.path.join(theme_dir, tpl_filename)
+	tpl_filepath = os.path.join(config.TEMPLATES_DIR, tpl_filename)
 	if not os.path.exists(tpl_filepath):
 		return ''
 	return read_file(tpl_filepath)
@@ -91,8 +90,8 @@ def create_site():
 		sys.exit('Zap! Ion is already installed in this folder!')
 	# copy the config file
 	shutil.copyfile(config.MODEL_CONFIG_FILE, config.CONFIG_FILE)
-	# copy the themes folder
-	shutil.copytree(config.MODEL_THEMES_DIR, config.THEMES_DIR)
+	# copy the templates folder
+	shutil.copytree(config.MODEL_TEMPLATES_DIR, config.TEMPLATES_DIR)
 
 
 def create_page(path):
@@ -161,7 +160,7 @@ def get_page_data(env, path):
 
 def get_page_children(env, path, folders):
 	'''Returns a list containing the full path of the children pages,
-	removing the ignored pages like the themes folder'''
+	removing the ignored folders like templates'''
 	join = os.path.join
 	isdir = os.path.isdir
 	children = []
@@ -240,11 +239,10 @@ def get_env():
 	if not env.get('base_url'):
 		sys.exit('Zap! base_url was not set in config!')
 	# add a trailing slash to base url, if necessary
-	env['themes_url'] = urljoin(env['base_url'], config.THEMES_DIR)
 	env['site_tags'] = extract_multivalues(env.get('site_tags'))
 	env['feed_sources'] = extract_multivalues(env.get('feed_sources'))
 	ignore_folders = extract_multivalues(env.get('ignore_folders'))
-	ignore_folders.extend([config.THEMES_DIR, env.get('feed_dir')])
+	ignore_folders.extend([config.TEMPLATES_DIR, env.get('feed_dir')])
 	env['ignore_folders'] = ignore_folders
 	env['pages'] = {}
 	env['groups'] = []

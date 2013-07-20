@@ -5,7 +5,7 @@
 	<meta name="description" content="{{site_description}}" />
 	<meta name="keywords" content="{{site_tags}} {{tags}}" />
 	<meta charset="UTF-8" />
-	<link rel="stylesheet" href="{{page_theme_url}}/bolt.css" type="text/css" />
+	<link rel="stylesheet" href="{{base_url}}/templates/bolt.css" type="text/css" />
 	{{styles}}
 	<title>{{title}} | {{site_title}}</title>
 </head>
