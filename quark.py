@@ -237,11 +237,9 @@ def get_env():
 	env = get_site_config()
 	if not env:
 		sys.exit('Zap! Ion is not installed in this folder!')
-	base_url = env.get('base_url')
-	if not base_url:
+	if not env.get('base_url'):
 		sys.exit('Zap! base_url was not set in config!')
 	# add a trailing slash to base url, if necessary
-	env['base_url'] = urljoin(base_url, '/')
 	env['themes_url'] = urljoin(env['base_url'], config.THEMES_DIR)
 	env['site_tags'] = extract_multivalues(env.get('site_tags'))
 	env['feed_sources'] = extract_multivalues(env.get('feed_sources'))
