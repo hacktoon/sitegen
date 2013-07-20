@@ -100,7 +100,7 @@ def tag_breadcrumbs(env, page, tpl):
 		if not item_data:
 			break
 		breadcrumbs.insert(0, render_template(tpl, env, item_data))
-		path, page = os.path.split(path)
+		path, _ = os.path.split(path)
 	return '\n'.join(breadcrumbs)
 
 
