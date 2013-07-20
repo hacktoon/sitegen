@@ -245,7 +245,9 @@ def get_env():
 	env['themes_url'] = urljoin(env['base_url'], config.THEMES_DIR)
 	env['site_tags'] = extract_multivalues(env.get('site_tags'))
 	env['feed_sources'] = extract_multivalues(env.get('feed_sources'))
-	env['ignore_folders'] = [config.THEMES_DIR, env.get('feed_dir')]
+	ignore_folders = extract_multivalues(env.get('ignore_folders'))
+	ignore_folders.extend([config.THEMES_DIR, env.get('feed_dir')])
+	env['ignore_folders'] = ignore_folders
 	env['pages'] = {}
 	env['groups'] = []
 	env['feeds'] = []
