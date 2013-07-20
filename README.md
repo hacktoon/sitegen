@@ -35,7 +35,7 @@ Open the *config.ion* in and define your settings. Here are some examples:
 ### Create your home page
 Just run the *add* command in the site root folder to create a new page:
 
-    ion add
+    ion add .
     
 To create a different page, you have to pass a path as second parameter:
 
@@ -62,11 +62,10 @@ You can add new templates to **templates** folder, create and use optional varia
     title = My first post
     template = article
     date = 2012-11-20 10:23:52
-    tags = shocking, blue
     content
     My page content
 
-This will make Ion search for a file named **article.tpl** in templates folder.
+This will make Ion search for a file named **article.tpl** in templates folder. The template property is inherited by its children, so you don't have to manually configure each subpage under a common page.
 Defining new variables is as simple as that. Just add any new definition to your *data.ion*...
 
     author = Bob
@@ -84,7 +83,7 @@ If a page uses specific CSS or Javascript files, they can be put in the page's f
 They will be printed in the template through the variables {{styles}} and {{scripts}}.
 
 ### Page properties
-Properties listed in a page data file can be used to change how Ion will handle the page.
+Properties listed in a page data file can be used to change how Ion will manage the page.
 
 * nojson - Ion will not generate a JSON file.
 * nohtml - Ion will not generate a HTML file.
@@ -98,7 +97,7 @@ Example:
 	props = nojson, nolist
 
 ### Page groups
-Groups can be used to apply properties to several pages at once, provide pagination and page filtering in listings. To define a group, thus enabling sorting and pagination of its child pages, you have to add the 'group' key to the page props definition in **data.ion** file:
+Groups can be used to provide pagination, filter pages in listings and feeds. To define a group, you have to add the 'group' key to the page props definition in **data.ion** file:
 
 	props = group, nofeed, ...
 
@@ -119,7 +118,7 @@ The list options can control the items that will be rendered:
 
 * sort - The 'sort by' option. Can be any page property. Default: 'date'.
 * ord - Order of listing. Can be 'asc' or 'desc'. It only works if a sort parameter is passed. Default: 'asc'.
-* group - Filter by group. The group is the name of the page where it was defined.
+* group - Filter by group. The group is the URL name of the page where it was defined.
 * num - Range of pages or the last x pages.
 
 Examples:

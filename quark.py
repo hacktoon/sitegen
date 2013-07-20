@@ -67,8 +67,8 @@ def extract_multivalues(tag_string):
 	return tag_list
 
 
-def read_html_template(tpl_filename):  # TODO - check if can be renamed and used for feeds tpl
-	'''Returns a HTML template string from the template folder'''
+def read_template(tpl_filename):
+	'''Returns a template string from the template folder'''
 	if not tpl_filename.endswith('.tpl'):
 		tpl_filename = '{0}.tpl'.format(tpl_filename)
 	tpl_filepath = os.path.join(config.TEMPLATES_DIR, tpl_filename)
@@ -126,16 +126,6 @@ def convert_page_date(page_data):
 	return date
 
 
-def process_group_data(page_data):
-	group_data = {}
-	if 'group' in page_data['props']:
-		group_data['group'] = os.path.basename(page_data['path'])
-	keys = [k for k in page_data.keys() if k.startswith('group_')]
-	for key in keys:
-		group_data[key.replace('group_', '')] = page_data[key]
-	return group_data
-
-
 def get_page_data(env, path):
 	'''Returns a dictionary with the page data'''
 	#removing '.' of the path in the case of root directory of site
@@ -152,9 +142,11 @@ def get_page_data(env, path):
 	page_data['tags'] = extract_multivalues(page_data.get('tags'))
 	# get the page properties
 	page_data['props'] = extract_multivalues(page_data.get('props'))
-	group_data = process_group_data(page_data)
-	if group_data:
-		page_data['group_data'] = group_data
+	# register group in the environment for feed generation
+	if 'group' in page_data['props']:
+		group_name = os.path.basename(path)
+		env['groups'].append(group_name)
+	
 	return page_data
 
 
@@ -171,47 +163,31 @@ def get_page_children(env, path, folders):
 	return children
 
 
-def apply_group_data(page_data, group_data):
-	'''Add the group properties to the page, if it isn't already
-	present. The page's own data has priority.'''
-	if not group_data:
-		return
-	for key in group_data.keys():
-		# already defined, so do not override
-		if key in page_data:
-			continue
-		page_data[key] = group_data[key]
-
-
-def read_page_files(env, path, group_data=None):
+def read_page_files(env, path, parent=None):
 	'''Read the folders recursively and creates a dictionary
 	containing the pages' data.'''
-	# inherits the group defined previously, if it exists
-	current_group_data = group_data or {}
 	file_list = os.listdir(path)
+	page_data = None
 	# removing dot from path
 	path = re.sub(r'^\.$|\./|\.\\', '', path)
 	children = get_page_children(env, path, file_list)
-	
+
 	# there's a data file in this path
 	if os.path.exists(os.path.join(path, config.DATA_FILE)):
 		page_data = get_page_data(env, path)
-		# merge in the group properties defined in parent page
-		apply_group_data(page_data, current_group_data)
+		# inherit the template from parent, if not defined its own
+		if 'template' not in page_data:
+			template = config.DEFAULT_TEMPLATE
+			if parent:
+				template = parent.get('template', template)
+			page_data['template'] = template
 		# stores the path of its children
 		page_data['children'] = children
-		# if this page defines a group, pass it to children pages
-		# register it in the environment for feed generation
-		if 'group_data' in page_data:
-			current_group_data = page_data['group_data']
-			# set the group name to page properties for sorting later
-			if 'group' in current_group_data:
-				env['groups'].append(current_group_data['group'])
 		env['pages'][path] = page_data
 
-	# process the children pages, pass the group data if defined
+	# process the children pages, passing the parent page
 	for child_path in children:
-		read_page_files(env, child_path, current_group_data)
+		read_page_files(env, child_path, page_data)
 
 
 def paginate_groups(env):

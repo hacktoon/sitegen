@@ -81,15 +81,12 @@ def tag_list(env, page, args, tpl=''):
 
 
 def tag_include(env, page, filename): # TODO - DRY read_html_template
-	if not filename.endswith('.tpl'):
-		filename = '{0}.tpl'.format(filename)
-	path = os.path.join(config.TEMPLATES_DIR, filename)
-	if os.path.exists(path):
-		include_tpl = quark.read_file(path)
+	include_tpl = quark.read_template(filename)
+	if include_tpl:
 		return render_template(include_tpl, env, page)
 	else:
-		print('Warning: Include file \'{0}\' doesn\'t exists.'.format(path))
-		return ''
+		sys.exit('Warning: Include file \'{}.tpl\' doesn\'t exists'
+			  'in page {!r}.'.format(filename, page['path']))
 
 
 def tag_breadcrumbs(env, page, tpl):
@@ -170,13 +167,11 @@ def save_html(env, page):
 	# get css and javascript found in the folder
 	page['styles'] = build_style_tags(page.get('styles', ''), page['permalink'])
 	page['scripts'] = build_script_tags(page.get('scripts', ''), page['permalink'])
-	# if not using custom template, it is defined by page type
-	template_model = page.get('template', config.DEFAULT_TEMPLATE)
-	html_templ = quark.read_html_template(template_model)
+	html_templ = quark.read_template(page['template'])
 	if not html_templ:
 		sys.exit('Zap! Template file {!r} '
 				 'couldn\'t be found for '
-				 'page {!r}!'.format(template_model, page['path']))
+				 'page {!r}!'.format(page['template'], page['path']))
 
 	# replace template with page data and listings
 	html = render_template(html_templ, env, page)
