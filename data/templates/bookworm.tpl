@@ -5,7 +5,7 @@
 	<meta name="description" content="{{site_description}}" />
 	<meta name="keywords" content="{{site_tags}} {{tags}}" />
 	<meta charset="UTF-8" />
-	<link rel="stylesheet" href="{{base_url}}/templates/bolt.css" type="text/css" />
+	<link rel="stylesheet" href="{{base_url}}/templates/bookworm.css" type="text/css" />
 	{{styles}}
 	<title>{{title}} | {{site_title}}</title>
 </head>
@@ -34,7 +34,7 @@
 		</section>
 		{{include menu}}
 		<footer>
-			Bolt theme - by {{site_author}}
+			Bookworm theme - by {{site_author}}
 		</footer>
 	</div>
 	{{scripts}}

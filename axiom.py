@@ -2,11 +2,11 @@
 
 '''
 ===============================================================================
-Ion - A shocking simple static (site) generator
+Mnemonix - The Static Publishing System of Nimus Ages
 
 Author: Karlisson M. Bezerra
 E-mail: contact@hacktoon.com
-URL: https://github.com/hacktoon/ion
+URL: https://github.com/hacktoon/mnemonix
 License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 
 ===============================================================================
@@ -31,7 +31,7 @@ def urljoin(base, *slug):
 
 def read_file(path):
 	if not os.path.exists(path):
-		sys.exit('Zap! File {!r} couldn\'t be found!'.format(path))
+		sys.exit('File {!r} couldn\'t be found!'.format(path))
 	with open(path, 'r') as f:
 		return f.read()
 
@@ -41,8 +41,8 @@ def write_file(path, content=''):
 		f.write(content)
 
 
-def parse_ion_file(file_string):
-	ion_data = {}
+def parse_input_file(file_string):
+	file_data = {}
 	lines = file_string.split('\n')
 	for num, line in enumerate(lines):
 		# avoids empty lines and comments
@@ -51,11 +51,11 @@ def parse_ion_file(file_string):
 			continue
 		if(line == 'content'):
 			# read the rest of the file
-			ion_data['content'] = ''.join(lines[num + 1:])
+			file_data['content'] = ''.join(lines[num + 1:])
 			break
 		key, value = [l.strip() for l in line.split('=', 1)]
-		ion_data[key] = value
-	return ion_data
+		file_data[key] = value
+	return file_data
 
 
 def extract_multivalues(tag_string):
@@ -82,12 +82,12 @@ def get_site_config():
 	config_path = os.path.join(os.getcwd(), config.CONFIG_FILE)
 	if not os.path.exists(config_path):
 		return
-	return parse_ion_file(read_file(config_path))
+	return parse_input_file(read_file(config_path))
 
 
 def create_site():
 	if get_site_config():
-		sys.exit('Zap! Ion is already installed in this folder!')
+		sys.exit('Mnemonix is already installed in this folder!')
 	# copy the config file
 	shutil.copyfile(config.MODEL_CONFIG_FILE, config.CONFIG_FILE)
 	# copy the templates folder
@@ -97,13 +97,13 @@ def create_site():
 def create_page(path):
 	'''Creates a data.ion file in the folder passed as parameter'''
 	if not get_site_config():
-		sys.exit('Zap! Ion is not installed!')
+		sys.exit('Mnemonix is not installed!')
 	if not os.path.exists(path):
 		os.makedirs(path)
 	# full path of page data file
 	dest_file = os.path.join(path, config.DATA_FILE)
 	if os.path.exists(dest_file):
-		sys.exit('Zap! Page {!r} already exists.'.format(path))
+		sys.exit('Page {!r} already exists.'.format(path))
 	# copy the skel page data file to new page
 	content = read_file(config.MODEL_DATA_FILE)
 	# saving date in the format configured
@@ -120,7 +120,7 @@ def convert_page_date(page_data):
 			# converts date string to datetime object
 			date = datetime.strptime(date, config.DATE_FORMAT)
 		except ValueError:
-			sys.exit('Zap! Wrong date format detected at {!r}!'.format(data_file))
+			sys.exit('Wrong date format detected at {!r}!'.format(data_file))
 	else:
 		date = datetime.now()
 	return date
@@ -133,7 +133,7 @@ def get_page_data(env, path):
 	# avoid directories that doesn't have a data file
 	if not os.path.exists(data_file):
 		return
-	page_data = parse_ion_file(read_file(data_file))
+	page_data = parse_input_file(read_file(data_file))
 	page_data['path'] = path
 	page_data['date'] = convert_page_date(page_data)
 	# absolute link of the page
@@ -177,7 +177,8 @@ def read_page_files(env, path, parent=None):
 		page_data = get_page_data(env, path)
 		# inherit the template from parent, if not defined its own
 		if 'template' not in page_data:
-			template = config.DEFAULT_TEMPLATE
+			template = env.get('default_template', 
+								config.DEFAULT_TEMPLATE)
 			if parent:
 				template = parent.get('template', template)
 			page_data['template'] = template
@@ -211,9 +212,9 @@ def get_env():
 	'''Returns a dict containing the site data'''
 	env = get_site_config()
 	if not env:
-		sys.exit('Zap! Ion is not installed in this folder!')
+		sys.exit('Mnemonix is not installed in this folder!')
 	if not env.get('base_url'):
-		sys.exit('Zap! base_url was not set in config!')
+		sys.exit('base_url was not set in config!')
 	# add a trailing slash to base url, if necessary
 	env['site_tags'] = extract_multivalues(env.get('site_tags'))
 	env['feed_sources'] = extract_multivalues(env.get('feed_sources'))
@@ -260,7 +261,7 @@ def dataset_range(dataset, num_range):
 		start = abs(int(start)) if start else 0
 		end = abs(int(end)) if end else None
 	except ValueError:
-		sys.exit('Zap! [{}, {}] Bad range argument!'.format(start, end))
+		sys.exit('[{}, {}] Bad range argument!'.format(start, end))
 	if ':' in num_range:
 		return dataset[start:end]
 	else: # a single number means quantity of posts
@@ -293,7 +294,7 @@ def query_pages(env, page, args):
 	sources = ['pages', 'feeds', 'children']
 	# calling the proper query function
 	if not src in sources:
-		sys.exit('Zap! "src" argument is'
+		sys.exit('"src" argument is'
 		' missing or invalid!'.format(src))
 	if src == 'feeds':
 		# feeds are already sorted and filtered

@@ -1,9 +1,9 @@
 import os
 
 # Configuration values
-DATA_FILE = 'data.ion'
+DATA_FILE = 'page'
 
-CONFIG_FILE = 'config.ion'
+CONFIG_FILE = 'site'
 TEMPLATES_DIR = 'templates'
 DEFAULT_TEMPLATE = 'main.tpl'
 
