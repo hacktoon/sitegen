@@ -1,15 +1,15 @@
 # coding: utf-8
 
 '''
-==============================================================================
-Ion - A shocking simple static (site) generator
+===============================================================================
+Mnemonix - The Static Publishing System of Nimus Ages
 
 Author: Karlisson M. Bezerra
 E-mail: contact@hacktoon.com
-URL: https://github.com/hacktoon/ion
+URL: https://github.com/hacktoon/mnemonix
 License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 
-==============================================================================
+===============================================================================
 '''
 
 import re
@@ -19,7 +19,7 @@ import json
 from datetime import datetime
 
 import config
-import quark
+import axiom
 
 
 tag_exprs = (
@@ -72,7 +72,7 @@ def tag_list(env, page, args, tpl=''):
 	if not tpl:
 		return ''
 	args = parse_list_args(args)
-	data_list = quark.query_pages(env, page, args)
+	data_list = axiom.query_pages(env, page, args)
 	render_list = []
 	# renders the sub tpl block for each item
 	for item in data_list:
@@ -80,17 +80,13 @@ def tag_list(env, page, args, tpl=''):
 	return '\n'.join(render_list)
 
 
-def tag_include(env, page, filename):
-	theme_dir = os.path.join(config.THEMES_DIR, page['theme'])
-	if not filename.endswith('.tpl'):
-		filename = '{0}.tpl'.format(filename)
-	path = os.path.join(theme_dir, filename)
-	if os.path.exists(path):
-		include_tpl = quark.read_file(path)
+def tag_include(env, page, filename): # TODO - DRY read_html_template
+	include_tpl = axiom.read_template(filename)
+	if include_tpl:
 		return render_template(include_tpl, env, page)
 	else:
-		print('Warning: Include file \'{0}\' doesn\'t exists.'.format(path))
-		return ''
+		sys.exit('Warning: Include file \'{}.tpl\' doesn\'t exists'
+			  'in page {!r}.'.format(filename, page['path']))
 
 
 def tag_breadcrumbs(env, page, tpl):
@@ -101,7 +97,7 @@ def tag_breadcrumbs(env, page, tpl):
 		if not item_data:
 			break
 		breadcrumbs.insert(0, render_template(tpl, env, item_data))
-		path, page = os.path.split(path)
+		path, _ = os.path.split(path)
 	return '\n'.join(breadcrumbs)
 
 
@@ -140,21 +136,21 @@ def render_template(tpl, env, page):
 def build_external_tags(filenames, permalink, tpl):
 	tag_list = []
 	for filename in filenames:
-		url = quark.urljoin(permalink, filename)
+		url = axiom.urljoin(permalink, filename)
 		tag_list.append(tpl.format(url))
 	return '\n'.join(tag_list)
 
 
 def build_style_tags(filenames, permalink):
 	tpl = '<link rel="stylesheet" type="text/css" href="{0}"/>'
-	filenames = quark.extract_multivalues(filenames)
+	filenames = axiom.extract_multivalues(filenames)
 	filenames = [f for f in filenames if f.endswith('.css')]
 	return build_external_tags(filenames, permalink, tpl)
 
 
 def build_script_tags(filenames, permalink):
 	tpl = '<script src="{0}"></script>'
-	filenames = quark.extract_multivalues(filenames)
+	filenames = axiom.extract_multivalues(filenames)
 	filenames = [f for f in filenames if f.endswith('.js')]
 	return build_external_tags(filenames, permalink, tpl)
 
@@ -163,7 +159,7 @@ def save_json(env, page):
 	page = page.copy()
 	page['date'] = date_to_string(page['date'])
 	json_filepath = os.path.join(page['path'], 'index.json')
-	quark.write_file(json_filepath, json.dumps(page))
+	axiom.write_file(json_filepath, json.dumps(page))
 
 
 def save_html(env, page):
@@ -171,17 +167,16 @@ def save_html(env, page):
 	# get css and javascript found in the folder
 	page['styles'] = build_style_tags(page.get('styles', ''), page['permalink'])
 	page['scripts'] = build_script_tags(page.get('scripts', ''), page['permalink'])
-	# if a theme is not provided, uses default
-	page_theme = page.get('theme', env['default_theme'])
-	page['theme'] = page_theme
-	page['page_theme_url'] = quark.urljoin(env['themes_url'], page_theme)
-	# if not using custom template, it is defined by page type
-	template_model = page.get('template', config.DEFAULT_TEMPLATE)
-	html_templ = quark.read_html_template(page_theme, template_model)
+	html_templ = axiom.read_template(page['template'])
+	if not html_templ:
+		sys.exit('Zap! Template file {!r} '
+				 'couldn\'t be found for '
+				 'page {!r}!'.format(page['template'], page['path']))
+
 	# replace template with page data and listings
 	html = render_template(html_templ, env, page)
 	path = page['path']
-	quark.write_file(os.path.join(path, 'index.html'), html)
+	axiom.write_file(os.path.join(path, 'index.html'), html)
 	if env['output_enabled']:
 		print('"{0}" page generated.'.format(path or 'Home'))
 
@@ -195,19 +190,19 @@ def write_feed_file(env, filename):
 	# create the feed directory
 	if not os.path.exists(feed_dir):
 		os.makedirs(feed_dir)
-	feed_tpl = quark.read_file(config.MODEL_FEED_FILE)
-	feed_data['link'] = quark.urljoin(env['base_url'], feed_dir, filename)
+	feed_tpl = axiom.read_file(config.MODEL_FEED_FILE)
+	feed_data['link'] = axiom.urljoin(env['base_url'], feed_dir, filename)
 	feed_content = render_template(feed_tpl, env, feed_data)
 	feed_path = os.path.join(feed_dir, filename)
-	quark.write_file(feed_path, feed_content)
+	axiom.write_file(feed_path, feed_content)
 	if env['output_enabled']:
 		print('Feed {!r} generated.'.format(feed_path))
 
 
 def set_feed_source(env, pages):
 	items_listed = int(env.get('feed_num', 8))  # default value
-	pages = quark.dataset_sort(pages, 'date', 'desc')
-	pages = quark.dataset_range(pages, items_listed)
+	pages = axiom.dataset_sort(pages, 'date', 'desc')
+	pages = axiom.dataset_range(pages, items_listed)
 	env['feeds'] = pages
 
 
@@ -218,12 +213,15 @@ def generate_feeds(env):
 		return
 	pages = env['pages'].values()
 	# filtering the pages that shouldn't be listed in feeds
-	pages = [p for p in pages if not 'nofeed' in p['props']]
+	pages = axiom.dataset_filter_props(pages, ['draft', 'nofeed'])
+	
 	if 'all' in sources:
-		set_feed_source(env, pages)
+		# copy the list
+		set_feed_source(env, list(pages))
 		write_feed_file(env, 'default.xml')
 	if 'group' in sources:
 		for group_name in env['groups']:
-			pages = quark.dataset_filter_group(pages, group_name)
-			set_feed_source(env, pages)
+			# copy the list each iteration
+			group_pages = axiom.dataset_filter_group(list(pages), group_name)
+			set_feed_source(env, group_pages)
 			write_feed_file(env, '{}.xml'.format(group_name))

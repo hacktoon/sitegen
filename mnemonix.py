@@ -2,11 +2,11 @@
 
 '''
 ===============================================================================
-Ion - A shocking simple static (site) generator
+Mnemonix - The Static Publishing System of Nimus Ages
 
 Author: Karlisson M. Bezerra
 E-mail: contact@hacktoon.com
-URL: https://github.com/hacktoon/ion
+URL: https://github.com/hacktoon/mnemonix
 License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 
 ===============================================================================
@@ -15,57 +15,57 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 import sys
 import argparse
 
-import photon  # rendering functions
-import quark  # low level module, basic bricks
+import reader
+import axiom
 
 
-VERSION = "1.1.1"
+VERSION = "0.2.0-beta"
 
 
-def ion_gen(args):
-	'''Reads recursively every directory under path and
-	outputs HTML/JSON for each data.ion file'''
-	env = quark.get_env()
+def gen(args):
+	'''Read recursively every directory under path and
+	outputs HTML/JSON for each page file'''
+	env = axiom.get_env()
 	env['output_enabled'] = args.output_enabled
 	pages = env['pages']
 	if not pages:
 		sys.exit('No pages to generate.')
 	total_rendered = 0
 	for page in pages.values():
-		if 'norender' in page['props']:
+		if 'draft' in page['props']:
 			continue
 		if not 'nojson' in page['props']:	
-			photon.save_json(env, page)
+			reader.save_json(env, page)
 		if not 'nohtml' in page['props']:
-			photon.save_html(env, page)
+			reader.save_html(env, page)
 			total_rendered += 1
 	print("{}\nTotal of pages read: {}.".format("-" * 30, len(pages)))
 	print("Total of pages generated: {}.\n".format(total_rendered))
 	# after generating all pages, update feed
-	photon.generate_feeds(env)
+	reader.generate_feeds(env)
 
 
-def ion_add(args):
+def add(args):
 	path = args.path
-	'''Creates a new page in specified path'''
+	'''Create a new page in specified path'''
 	# copy source file to new path
-	file_path = quark.create_page(path)
+	file_path = axiom.create_page(path)
 	print('Page {!r} successfully created!'.format(path))
-	print('Edit the file {!r} and call "ion gen"!'.format(file_path))
+	print('Edit the file {!r} and call "mnemonix gen"!'.format(file_path))
 
 
-def ion_init(args):
-	'''Installs Ion in the current folder'''
-	print('Installing Ion...')
-	quark.create_site()
-	print('\nIon was successfully installed!\n\n'
-	'Next steps:\n1 - Edit the "config.ion" file.\n'
-	'2 - Run "ion add [path]" to start creating pages!\n')
+def init(args):
+	'''Install Mnemonic in the current folder'''
+	print('Installing Mnemonic...')
+	axiom.create_site()
+	print('\nMnemonic was successfully installed!\n\n'
+	'Next steps:\n1 - Edit the "site" file.\n'
+	'2 - Run "mnemonix add [path]" to start creating pages!\n')
 
 
 def main():	
-	description = 'A static site generator.'
-	parser = argparse.ArgumentParser(prog='ion', 
+	description = 'The Static Publishing System of Nimus Ages.'
+	parser = argparse.ArgumentParser(prog='mnemonix', 
 		description=description)
 	parser.add_argument('--version', action='version', 
 						help="show current version and quits", 
@@ -78,16 +78,16 @@ def main():
 	subparsers = parser.add_subparsers(title='Commands')
 
 	parser_init = subparsers.add_parser('init', 
-		help='install Ion on current folder')
-	parser_init.set_defaults(method=ion_init)
+		help='install Mnemonic on current folder')
+	parser_init.set_defaults(method=init)
 
 	parser_add = subparsers.add_parser('add', 
 		help='create a empty page on the path specified')
 	parser_add.add_argument("path")
-	parser_add.set_defaults(method=ion_add)
+	parser_add.set_defaults(method=add)
 
 	parser_gen = subparsers.add_parser('gen', help='generate the pages')
-	parser_gen.set_defaults(method=ion_gen)
+	parser_gen.set_defaults(method=gen)
 
 	args = parser.parse_args()
 	args.method(args)

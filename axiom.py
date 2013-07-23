@@ -2,11 +2,11 @@
 
 '''
 ===============================================================================
-Ion - A shocking simple static (site) generator
+Mnemonix - The Static Publishing System of Nimus Ages
 
 Author: Karlisson M. Bezerra
 E-mail: contact@hacktoon.com
-URL: https://github.com/hacktoon/ion
+URL: https://github.com/hacktoon/mnemonix
 License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 
 ===============================================================================
@@ -31,7 +31,7 @@ def urljoin(base, *slug):
 
 def read_file(path):
 	if not os.path.exists(path):
-		sys.exit('Zap! File {!r} couldn\'t be found!'.format(path))
+		sys.exit('File {!r} couldn\'t be found!'.format(path))
 	with open(path, 'r') as f:
 		return f.read()
 
@@ -41,8 +41,8 @@ def write_file(path, content=''):
 		f.write(content)
 
 
-def parse_ion_file(file_string):
-	ion_data = {}
+def parse_input_file(file_string):
+	file_data = {}
 	lines = file_string.split('\n')
 	for num, line in enumerate(lines):
 		# avoids empty lines and comments
@@ -51,11 +51,11 @@ def parse_ion_file(file_string):
 			continue
 		if(line == 'content'):
 			# read the rest of the file
-			ion_data['content'] = ''.join(lines[num + 1:])
+			file_data['content'] = ''.join(lines[num + 1:])
 			break
 		key, value = [l.strip() for l in line.split('=', 1)]
-		ion_data[key] = value
-	return ion_data
+		file_data[key] = value
+	return file_data
 
 
 def extract_multivalues(tag_string):
@@ -67,15 +67,13 @@ def extract_multivalues(tag_string):
 	return tag_list
 
 
-def read_html_template(theme_name, tpl_filename):
-	'''Returns a HTML template string from the current theme folder'''
-	theme_dir = os.path.join(config.THEMES_DIR, theme_name)
+def read_template(tpl_filename):
+	'''Returns a template string from the template folder'''
 	if not tpl_filename.endswith('.tpl'):
 		tpl_filename = '{0}.tpl'.format(tpl_filename)
-	tpl_filepath = os.path.join(theme_dir, tpl_filename)
+	tpl_filepath = os.path.join(config.TEMPLATES_DIR, tpl_filename)
 	if not os.path.exists(tpl_filepath):
-		sys.exit('Zap! Template file {!r} '
-				 'couldn\'t be found!'.format(tpl_filepath))
+		return ''
 	return read_file(tpl_filepath)
 
 
@@ -84,28 +82,28 @@ def get_site_config():
 	config_path = os.path.join(os.getcwd(), config.CONFIG_FILE)
 	if not os.path.exists(config_path):
 		return
-	return parse_ion_file(read_file(config_path))
+	return parse_input_file(read_file(config_path))
 
 
 def create_site():
 	if get_site_config():
-		sys.exit('Zap! Ion is already installed in this folder!')
+		sys.exit('Mnemonix is already installed in this folder!')
 	# copy the config file
 	shutil.copyfile(config.MODEL_CONFIG_FILE, config.CONFIG_FILE)
-	# copy the themes folder
-	shutil.copytree(config.MODEL_THEMES_DIR, config.THEMES_DIR)
+	# copy the templates folder
+	shutil.copytree(config.MODEL_TEMPLATES_DIR, config.TEMPLATES_DIR)
 
 
 def create_page(path):
 	'''Creates a data.ion file in the folder passed as parameter'''
 	if not get_site_config():
-		sys.exit('Zap! Ion is not installed!')
+		sys.exit('Mnemonix is not installed!')
 	if not os.path.exists(path):
 		os.makedirs(path)
 	# full path of page data file
 	dest_file = os.path.join(path, config.DATA_FILE)
 	if os.path.exists(dest_file):
-		sys.exit('Zap! Page {!r} already exists.'.format(path))
+		sys.exit('Page {!r} already exists.'.format(path))
 	# copy the skel page data file to new page
 	content = read_file(config.MODEL_DATA_FILE)
 	# saving date in the format configured
@@ -122,20 +120,10 @@ def convert_page_date(page_data):
 			# converts date string to datetime object
 			date = datetime.strptime(date, config.DATE_FORMAT)
 		except ValueError:
-			sys.exit('Zap! Wrong date format detected at {!r}!'.format(data_file))
+			sys.exit('Wrong date format detected at {!r}!'.format(data_file))
 	else:
 		date = datetime.now()
 	return date
-
-
-def process_group_data(page_data):
-	group_data = {}
-	keys = [k for k in page_data.keys() if k.startswith('group_')]
-	if 'group' in page_data['props']:
-		group_data['group'] = os.path.basename(page_data['path'])
-	for key in keys:
-		group_data[key.replace('group_', '')] = page_data[key]
-	return group_data
 
 
 def get_page_data(env, path):
@@ -145,7 +133,7 @@ def get_page_data(env, path):
 	# avoid directories that doesn't have a data file
 	if not os.path.exists(data_file):
 		return
-	page_data = parse_ion_file(read_file(data_file))
+	page_data = parse_input_file(read_file(data_file))
 	page_data['path'] = path
 	page_data['date'] = convert_page_date(page_data)
 	# absolute link of the page
@@ -154,15 +142,17 @@ def get_page_data(env, path):
 	page_data['tags'] = extract_multivalues(page_data.get('tags'))
 	# get the page properties
 	page_data['props'] = extract_multivalues(page_data.get('props'))
-	group_data = process_group_data(page_data)
-	if group_data:
-		page_data['group_data'] = group_data
+	# register group in the environment for feed generation
+	if 'group' in page_data['props']:
+		group_name = os.path.basename(path)
+		env['groups'].append(group_name)
+	
 	return page_data
 
 
 def get_page_children(env, path, folders):
 	'''Returns a list containing the full path of the children pages,
-	removing the ignored pages like the themes folder'''
+	removing the ignored folders like templates'''
 	join = os.path.join
 	isdir = os.path.isdir
 	children = []
@@ -173,53 +163,39 @@ def get_page_children(env, path, folders):
 	return children
 
 
-def apply_group_data(page_data, group_data):
-	'''Add the group properties to the page, if it isn't already
-	present. The page data has priority.'''
-	if not group_data:
-		return
-	for key in group_data.keys():
-		# already defined, so do not override
-		if key in page_data:
-			continue
-		page_data[key] = group_data[key]
-
-
-def read_page_files(env, path, group_data=None):
+def read_page_files(env, path, parent=None):
 	'''Read the folders recursively and creates a dictionary
 	containing the pages' data.'''
-	# inherits the group defined previously, if it exists
-	current_group_data = group_data or {}
 	file_list = os.listdir(path)
+	page_data = None
 	# removing dot from path
 	path = re.sub(r'^\.$|\./|\.\\', '', path)
 	children = get_page_children(env, path, file_list)
-	
+
 	# there's a data file in this path
 	if os.path.exists(os.path.join(path, config.DATA_FILE)):
 		page_data = get_page_data(env, path)
-		# merge in the group properties defined in parent page
-		apply_group_data(page_data, current_group_data)
+		# inherit the template from parent, if not defined its own
+		if 'template' not in page_data:
+			template = env.get('default_template', 
+								config.DEFAULT_TEMPLATE)
+			if parent:
+				template = parent.get('template', template)
+			page_data['template'] = template
 		# stores the path of its children
 		page_data['children'] = children
-		# if this page defines a group, pass it to children pages
-		# register it in the environment for feed generation
-		if 'group_data' in page_data:
-			current_group_data = page_data['group_data']
-			# set the group name to page properties for sorting later
-			env['groups'].append(current_group_data['group'])
 		env['pages'][path] = page_data
 
-	# process the children pages, pass the group data if defined
+	# process the children pages, passing the parent page
 	for child_path in children:
-		read_page_files(env, child_path, current_group_data)
+		read_page_files(env, child_path, page_data)
 
 
 def paginate_groups(env):
 	groups = env['groups']
-	pages = list(env['pages'].values())
 	key = 'permalink'
 	for group in groups:
+		pages = list(env['pages'].copy().values())
 		pages = dataset_filter_group(pages, group)
 		pages = dataset_sort(pages, 'date', 'desc')
 		length = len(pages)
@@ -236,16 +212,15 @@ def get_env():
 	'''Returns a dict containing the site data'''
 	env = get_site_config()
 	if not env:
-		sys.exit('Zap! Ion is not installed in this folder!')
-	base_url = env.get('base_url')
-	if not base_url:
-		sys.exit('Zap! base_url was not set in config!')
+		sys.exit('Mnemonix is not installed in this folder!')
+	if not env.get('base_url'):
+		sys.exit('base_url was not set in config!')
 	# add a trailing slash to base url, if necessary
-	env['base_url'] = urljoin(base_url, '/')
-	env['themes_url'] = urljoin(env['base_url'], config.THEMES_DIR)
 	env['site_tags'] = extract_multivalues(env.get('site_tags'))
 	env['feed_sources'] = extract_multivalues(env.get('feed_sources'))
-	env['ignore_folders'] = [config.THEMES_DIR, env.get('feed_dir')]
+	ignore_folders = extract_multivalues(env.get('ignore_folders'))
+	ignore_folders.extend([config.TEMPLATES_DIR, env.get('feed_dir')])
+	env['ignore_folders'] = ignore_folders
 	env['pages'] = {}
 	env['groups'] = []
 	env['feeds'] = []
@@ -286,15 +261,24 @@ def dataset_range(dataset, num_range):
 		start = abs(int(start)) if start else 0
 		end = abs(int(end)) if end else None
 	except ValueError:
-		sys.exit('Zap! [{}, {}] Bad range argument!'.format(start, end))
+		sys.exit('[{}, {}] Bad range argument!'.format(start, end))
 	if ':' in num_range:
 		return dataset[start:end]
 	else: # a single number means quantity of posts
 		return dataset[:start]
 
 
+def dataset_filter_props(dataset, props):
+	if not props:
+		return dataset
+	has_props = lambda p: any(x in p.get('props', []) for x in props)
+	dataset = [page for page in dataset if not has_props(page)]
+	return dataset
+
+
 def apply_page_filters(pages, args):
-	pages = [p for p in pages if not 'nolist' in p.get('props', [])]
+	# pages with these props will be filtered
+	pages = dataset_filter_props(pages, ['draft', 'nolist'])
 	# must limit the group first
 	pages = dataset_filter_group(pages, args.get('group'))
 	# listing order
@@ -310,13 +294,13 @@ def query_pages(env, page, args):
 	sources = ['pages', 'feeds', 'children']
 	# calling the proper query function
 	if not src in sources:
-		sys.exit('Zap! "src" argument is'
+		sys.exit('"src" argument is'
 		' missing or invalid!'.format(src))
 	if src == 'feeds':
 		# feeds are already sorted and filtered
 		return env['feeds']
 	if src == 'pages':
-		dataset = list(env['pages'].copy().values())
+		dataset = list(env['pages'].values())
 	elif src == 'children':
 		pages = page.get('children', [])
 		dataset = [env['pages'][p] for p in pages if p in env['pages']]
