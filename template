@@ -1,0 +1,22 @@
+<html>
+{{include header}}
+
+{{loop pages }}
+	{{say site_title}} - Titulo: {{say title}}
+{{endloop}}
+
+{{say title}}
+
+{{partial menu}}
+
+{{if is_home and x == 3 }}
+	entrou no IF
+
+	{{if home }}
+		entrou no IF de novo
+	{{endif}}
+
+{{endif}}
+{{set var = 3 }}
+{{say var}}
+</html>
