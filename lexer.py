@@ -1,34 +1,39 @@
-import re
+import string
 import sys
 
 EOL = '\n'
 EOT = '\0'
 
 TOK_HTML = 'HTML'
-TOK_SYMBOL = 'Symbol'
 TOK_ID = 'Identifier'
 TOK_DIGIT = 'Digit'
 TOK_KEYWORD = 'Keyword'
+TOK_SYMBOL = 'Symbol'
+
+WHITESPACE = [' ', '\t', '\n', '\r']
+KEYWORDS = 'if else endif loop endloop say partial set include and not or'.split()
+SYMBOLS = '+-*/^%()<>=!'
+DOUBLE_SYMBOLS = '== != <= >='.split()
+DIGITS = string.digits
+IDENTIFIERS = string.ascii_letters + '_'
 
 def is_keyword(c):
-	regex = re.compile(r'if|else|endif|loop|endloop|say|partial|set|include|and|not|or')
-	return regex.search(c)
+	return c in KEYWORDS
 
 def is_symbol(c):
-	regex = re.compile(r'[-+*/=()%<>!]')
-	return regex.search(c)
+	return c in SYMBOLS
+
+def is_double_symbol(c):
+	return c in DOUBLE_SYMBOLS
 
 def is_whitespace(c):
-	regex = re.compile(r'\s')
-	return regex.search(c)
+	return c in WHITESPACE
 
 def is_identifier(c):
-	regex = re.compile(r'[a-zA-Z_]')
-	return regex.search(c)
+	return c in IDENTIFIERS
 
 def is_digit(c):
-	regex = re.compile(r'[0-9]')
-	return regex.search(c)
+	return c in DIGITS
 
 
 class Char():
@@ -83,15 +88,58 @@ in_block = False
 html = []
 
 while c != EOT:
-	if in_block:
-		if c.value == '}':
+	if in_block:  # actual lexing of language elements
+		val = c.value
+		# block closing characters
+		if val == '}':
 			# consume next char
 			c2 = scanner.get_char()
 			if c2.value == '}':
 				in_block = False
 			else:
 				sys.exit('Bad character.')
-
+			c = scanner.get_char()
+		
+		# whitespace
+		elif is_whitespace(val):
+			c = scanner.get_char()
+		
+		# identifiers
+		elif is_identifier(val):
+			identifier = val
+			c = scanner.get_char()
+			while is_identifier(c.value) or is_digit(c.value):
+				identifier += c.value
+				c = scanner.get_char()
+			if is_keyword(identifier):
+				tokens.append(Token(identifier, TOK_KEYWORD))
+			else:
+				tokens.append(Token(identifier, TOK_ID))
+		
+		# digits
+		elif is_digit(val):
+			num = val
+			c = scanner.get_char()
+			while is_digit(c.value):
+				num += c.value
+				c = scanner.get_char()
+			# check if last character is an identifier
+			if is_identifier(c.value):
+				sys.exit('Invalid identifier after number: {!r}'.format(c.value))
+			else:
+				tokens.append(Token(num, TOK_DIGIT))
+		
+		# operators
+		elif is_symbol(val):
+			op = val
+			c = scanner.get_char()
+			if is_double_symbol(op + c.value):
+				tokens.append(Token(op + c.value, TOK_SYMBOL))
+				c = scanner.get_char()
+			else:
+				tokens.append(Token(op, TOK_SYMBOL))
+		else:
+			sys.exit('Not a valid character: {!r}'.format(c.value))
 	else: # not inside a template tag
 		if c.value == '{':
 			# consume next char
@@ -102,12 +150,12 @@ while c != EOT:
 				html = []
 			else:
 				# not a block, so append the two read chars
+				# '{' and something else
 				html.append(c.value)
 				html.append(c2.value)
 		else:
 			html.append(c.value)
-		
-	c = scanner.get_char()
+		c = scanner.get_char()
 
 if not in_block:
 	# remaining chars
