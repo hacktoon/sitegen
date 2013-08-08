@@ -12,17 +12,11 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 ==============================================================================
 '''
 
-import re
 import sys
-
 from lexer import *
-from scanner import *
 
-VAR_TOKEN = 'variable'
-OPEN_BLOCK_TOKEN = 'open_block'
-CLOSE_BLOCK_TOKEN = 'close_block'
-TEXT_TOKEN = 'text'
-
+class ParserException(Exception):
+	pass
 
 class Node():
 	has_scope = False
@@ -121,14 +115,6 @@ class Branch(ScopeNode):
 		return ''.join(content)
 
 
-class Breadcrumb(ScopeNode):
-	def parse_token(self, token):
-		self.text = token.value
-
-	def render(self, context):
-		return self.text
-
-
 class Include(Node):
 	def parse_token(self, token):
 		command, tpl = self.get_params(token)
@@ -138,18 +124,7 @@ class Include(Node):
 		return self.text
 
 
-class Variable(Node):
-	def parse_token(self, token):
-		self.name = token.value
-
-	def render(self, context):
-		if self.name in context:
-			return context[self.name]
-		else:
-			return ''
-
-
-class Text(Node):
+class HTML(Node):
 	def parse_token(self, token):
 		self.text = token.value
 
@@ -157,7 +132,45 @@ class Text(Node):
 		return self.text
 
 
-template = open('template').read()
+def parse(template, context):
+	root = Root()
+	stack = [root]
+	lex = Lexer(template)
+	
+	token = lex.get_token()
+	while token.value:  # loop until EOT
+		node = None
+		top_stack = stack[-1]
+		
+		if token.type == TOK_HTML:
+			node = HTML(token)
+
+		if token.value == 'set':
+				node = Attribution(token)
+		if token.value == 'list':
+			node = List(token)
+		if token.value == 'if':
+			node = Branch(token)
+		if token.value == 'else':
+			node = top_stack
+			if isinstance(node, Branch):
+				node.set_alternative()
+			continue
+		if token.value == 'include':
+			node = Include(token)
+
+		'''if token.type == CLOSE_BLOCK_TOKEN:
+			if len(stack) == 1:
+				sys.exit('Unexpected end tag!')
+			if top_stack.has_scope:
+				stack.pop()
+		'''
+		if node:
+			top_stack.add_node(node);
+			if node.has_scope:
+				stack.append(node)
+		
+	return root.render(context)
 
 env = {
 	'site_title': 'Home page',
@@ -165,54 +178,6 @@ env = {
 	'pages': [{'title': 'pagina 1'}, {'title': 'pagina 2'}, {'title': 'pagina 3'}]
 }
 
+template = open('template').read()
 
-def render(template, context):
-	root = Root()
-	stack = [root]
-
-	for fragment in []:
-		if not fragment: # ignore whitespaces
-			continue
-		token = Token(fragment)
-		node = None
-		
-		if token.type == TEXT_TOKEN:
-			node = Text(token)
-		
-		if token.type == VAR_TOKEN:
-			node = Variable(token)
-
-		if token.type == OPEN_BLOCK_TOKEN:
-			command = token.value.split()[0]
-			if command == 'set':
-				node = Attribution(token)
-			elif command == 'list':
-				node = List(token)
-			elif command == 'if':
-				node = Branch(token)
-			elif command == 'else':
-				node = stack[-1]
-				if isinstance(node, Branch):
-					node.set_alternative()
-				continue
-			elif command == 'include':
-				node = Include(token)
-			elif command == 'breadcrumbs':
-				node = Breadcrumb(token)
-			else:
-				sys.exit('Command not recognized.')
-
-		if token.type == CLOSE_BLOCK_TOKEN:
-			if len(stack) == 1:
-				sys.exit('Unexpected end tag!')
-			if stack[-1].has_scope:
-				stack.pop()
-
-		if node:
-			stack[-1].add_node(node);
-			if node.has_scope:
-				stack.append(node)
-		
-	return root.render(context)
-
-print(render(template, env))
+parse(template, env)
