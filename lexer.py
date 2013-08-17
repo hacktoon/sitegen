@@ -7,6 +7,8 @@ EOT = '\0'
 TOK_HTML = 'HTML'
 TOK_ID = 'Identifier'
 TOK_COMMAND = 'Keyword'
+OPEN_ARG = '('
+CLOSE_ARG = ')'
 
 WHITESPACE = ' \n\t\r'
 COMMANDS = 'ifdef ifndef equals list end print set include'.split()
@@ -20,6 +22,7 @@ def is_whitespace(c):
 
 def is_identifier(c):
 	return c in IDENTIFIERS
+
 
 class Char():
 	def __init__(self, line, col, index, value):
@@ -70,10 +73,16 @@ class Lexer():
 		self.in_block = False
 		self.command_start = False
 
-	def get_token(self):
-		scanner = self.scanner
+	def get_token(self):		
+		buffer_tok = None
+		
+		if buffer_tok:
+			buffer_tok = None
+			return buffer_tok;
+		
 		html = []
 		buffer = []
+		scanner = self.scanner
 		c = scanner.get_char()
 		while True:
 			if c.value == EOT:
@@ -84,9 +93,9 @@ class Lexer():
 					return Token(''.join(html), TOK_HTML)
 				else:
 					return Token('', EOT)
-			if self.command_start:  # lexing of actual language elements
+			if self.in_block:  # lexing of actual language elements
 				# whitespace
-				elif is_whitespace(c.value):
+				if is_whitespace(c.value):
 					c = scanner.get_char()
 				
 				# identifiers
@@ -96,17 +105,32 @@ class Lexer():
 					while is_identifier(c.value):
 						identifier += c.value
 						c = scanner.get_char()
-					if is_keyword(identifier):
-						return Token(identifier, TOK_KEYWORD)
+					if is_command(identifier):
+						return Token(identifier, TOK_COMMAND)
 					else:
 						return Token(identifier, TOK_ID)
 				else:
 					sys.exit('Not a valid character: {!r}'.format(c.value))
 			else:
-				if val == '#':
-					self.command_start = True
-					buffer.append(c.value)
-					#return Token(''.join(html), TOK_HTML)
+				if self.command_start:
+					# command started, check if there´s a real command
+					while is_identifier(c.value):
+						buffer.append(c.value)
+						c = scanner.get_char()
+					# possible command formed, check if next char is parenthesis
+					if is_command(''.join(buffer)) and c.value == OPEN_ARG:
+						buffer_tok = Token(''.join(buffer), TOK_COMMAND)
+						self.in_block = True
+					else:
+						self.command_start = False
+						html += buffer
+					content = ''.join(html)
+					buffer = []
+					html = []
+					return Token(content, TOK_HTML)
 				else:
-					html.append(c.value)
+					if c.value == '#':
+						self.command_start = True
+					else:
+						html.append(c.value)
 				c = scanner.get_char()

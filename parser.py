@@ -141,6 +141,8 @@ def parse(template, context):
 	while token.value:  # loop until EOT
 		node = None
 		top_stack = stack[-1]
+		print(token)
+		continue
 		
 		if token.type == TOK_HTML:
 			node = HTML(token)
