@@ -6,37 +6,20 @@ EOT = '\0'
 
 TOK_HTML = 'HTML'
 TOK_ID = 'Identifier'
-TOK_DIGIT = 'Digit'
-TOK_KEYWORD = 'Keyword'
-TOK_SYMBOL = 'Symbol'
-OPEN_PARENS = '('
-CLOSE_PARENS = ')'
+TOK_COMMAND = 'Keyword'
 
-WHITESPACE = ' \t\n\r'
-KEYWORDS = 'if else endif loop endloop say partial set include and not or'.split()
-SYMBOLS = '+-*/^%()<>=!'
-DOUBLE_SYMBOLS = '== != <= >='.split()
-DIGITS = string.digits
-IDENTIFIERS = string.ascii_letters + '_'
+WHITESPACE = ' \n\t\r'
+COMMANDS = 'ifdef ifndef equals list end print set include'.split()
+IDENTIFIERS = string.ascii_letters
 
-def is_keyword(c):
-	return c in KEYWORDS
-
-def is_symbol(c):
-	return c in SYMBOLS
-
-def is_double_symbol(c):
-	return c in DOUBLE_SYMBOLS
+def is_command(c):
+	return c in COMMANDS
 
 def is_whitespace(c):
 	return c in WHITESPACE
 
 def is_identifier(c):
 	return c in IDENTIFIERS
-
-def is_digit(c):
-	return c in DIGITS
-
 
 class Char():
 	def __init__(self, line, col, index, value):
@@ -85,10 +68,12 @@ class Lexer():
 		self.template = template
 		self.scanner = Scanner(template)
 		self.in_block = False
+		self.command_start = False
 
 	def get_token(self):
 		scanner = self.scanner
 		html = []
+		buffer = []
 		c = scanner.get_char()
 		while True:
 			if c.value == EOT:
@@ -99,69 +84,29 @@ class Lexer():
 					return Token(''.join(html), TOK_HTML)
 				else:
 					return Token('', EOT)
-			if self.in_block:  # lexing of actual language elements
-				val = c.value
-				# block closing characters
-				if val == '}':
-					# consume next char
-					c2 = scanner.get_char()
-					if c2.value == '}':
-						self.in_block = False
-					else:
-						sys.exit('Bad character.')
-					c = scanner.get_char()
-				
+			if self.command_start:  # lexing of actual language elements
 				# whitespace
-				elif is_whitespace(val):
+				elif is_whitespace(c.value):
 					c = scanner.get_char()
 				
 				# identifiers
-				elif is_identifier(val):
-					identifier = val
+				elif is_identifier(c.value):
+					identifier = c.value
 					c = scanner.get_char()
-					while is_identifier(c.value) or is_digit(c.value):
+					while is_identifier(c.value):
 						identifier += c.value
 						c = scanner.get_char()
 					if is_keyword(identifier):
 						return Token(identifier, TOK_KEYWORD)
 					else:
 						return Token(identifier, TOK_ID)
-				
-				# digits
-				elif is_digit(val):
-					num = val
-					c = scanner.get_char()
-					while is_digit(c.value):
-						num += c.value
-						c = scanner.get_char()
-					# check if last character is an identifier
-					if is_identifier(c.value):
-						sys.exit('Invalid identifier after number: {!r}'.format(c.value))
-					else:
-						return Token(num, TOK_DIGIT)
-				
-				# operators
-				elif is_symbol(val):
-					op = val
-					c = scanner.get_char()
-					if is_double_symbol(op + c.value):
-						return Token(op + c.value, TOK_SYMBOL)
-					else:
-						return Token(op, TOK_SYMBOL)
 				else:
 					sys.exit('Not a valid character: {!r}'.format(c.value))
-			else: # not inside a template tag
-				if c.value == '{':
-					# consume next char
-					c2 = scanner.get_char()
-					if c2.value == '{':
-						self.in_block = True
-						return Token(''.join(html), TOK_HTML)
-					else:
-						# not a block, so append the two read chars
-						# '{' and something else
-						html.append(c.value)
-						html.append(c2.value)
+			else:
+				if val == '#':
+					self.command_start = True
+					buffer.append(c.value)
+					#return Token(''.join(html), TOK_HTML)
 				else:
 					html.append(c.value)
 				c = scanner.get_char()
