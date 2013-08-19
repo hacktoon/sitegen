@@ -1,18 +1,4 @@
 <html>
-	#list(page.children, 4)
-		<li>$item</li>
-	#end
-	
-	#equals(page.slug, home)
-		ssss
-	#end
-	
-	#print(site.title)
-	
-	#list"()
-	
-	#ifdef(page.is_home)
-		<li>$item</li>
-	#end
+	<li>{{site.title}}</li>
 	
 </html>

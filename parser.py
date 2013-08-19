@@ -13,6 +13,7 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 '''
 
 import sys
+import re
 from lexer import *
 
 class ParserException(Exception):
@@ -124,62 +125,87 @@ class Include(Node):
 		return self.text
 
 
+class Variable(Node):
+	def parse_token(self, value):
+		self.value = value
+
+	def render(self, context):
+		if '.' in self.value:
+			key, value = self.value.split('.', 1)
+		else:
+			key, value = self.value, ''
+		try:
+			if value:
+				return context[key][value]
+			else:
+				return context[key]
+		except KeyError:
+			return ''
+
+
 class HTML(Node):
-	def parse_token(self, token):
-		self.text = token.value
+	def parse_token(self, text):
+		self.text = text
 
 	def render(self, context):
 		return self.text
 
 
-def parse(template, context):
-	root = Root()
-	stack = [root]
+def parse(template):
+	tree = Root()
+	stack = [tree]
 	lex = Lexer(template)
-	
+
 	token = lex.get_token()
-	while token.value:  # loop until EOT
+	while token:
+		if token.type == TOK_COMMENT:
+			continue
+
 		node = None
 		top_stack = stack[-1]
-		print(token)
-		continue
-		
+
 		if token.type == TOK_HTML:
-			node = HTML(token)
+			node = HTML(token.value)
 
-		if token.value == 'set':
-				node = Attribution(token)
-		if token.value == 'list':
-			node = List(token)
-		if token.value == 'if':
-			node = Branch(token)
-		if token.value == 'else':
-			node = top_stack
-			if isinstance(node, Branch):
-				node.set_alternative()
-			continue
-		if token.value == 'include':
-			node = Include(token)
+		if token.type == TOK_VARIABLE:
+			node = Variable(token.value)
 
-		'''if token.type == CLOSE_BLOCK_TOKEN:
-			if len(stack) == 1:
-				sys.exit('Unexpected end tag!')
-			if top_stack.has_scope:
+		if token.type == TOK_BLOCK:
+			expr = re.split(r'\s+', token.value)
+			command, args = expr[0], []
+			if len(expr) > 1:
+				args = expr[1:]
+			if command == 'set':
+				node = Attribution(args)
+			elif command == 'list':
+				node = List(args)
+			elif command == 'if:equal':
+				node = Equal(args)
+			elif command == 'if:diff':
+				node = Diff(args)
+			elif command == 'if:def':
+				node = IsDef(args)
+			elif command == 'if:notdef':
+				node = IsNotDef(args)
+			elif command == 'include':
+				node = Include(args)
+			elif command == 'end':
 				stack.pop()
-		'''
+			else:
+				sys.exit("{!r} command not recognized!".format(command))
 		if node:
-			top_stack.add_node(node);
+			top_stack.add_node(node)
 			if node.has_scope:
 				stack.append(node)
-		
-	return root.render(context)
+		token = lex.get_token()
+	return tree
 
 env = {
-	'site_title': 'Home page',
 	'title': 'Home teste',
+	'site': {'title': 'Hacktoon!'},
 	'pages': [{'title': 'pagina 1'}, {'title': 'pagina 2'}, {'title': 'pagina 3'}]
 }
 
 template = open('template').read()
 
-parse(template, env)
+print(parse(template).render(env))
