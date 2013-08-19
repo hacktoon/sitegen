@@ -69,15 +69,6 @@ class Lexer():
 		elif self.is_comment(raw_fragment):
 			tok_type = TOK_COMMENT
 		else:
-			tok_type = TOK_HTML
+			return Token(raw_fragment, TOK_HTML)
 		fragment = self.clear_fragment(raw_fragment)
 		return Token(fragment, tok_type)
-
-'''
-template = open('template').read()
-lex = Lexer(template)
-token = lex.get_token()
-while token:
-	print(token)
-	token = lex.get_token()
-'''

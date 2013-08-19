@@ -1,4 +1,8 @@
 <html>
-	<li>{{site.title}}</li>
-	
+	{% set x 3 %}
+	{% if:defined a %}
+		x eh igual a 2
+	{% else %}
+		x eh igual a 3
+	{% end %}
 </html>

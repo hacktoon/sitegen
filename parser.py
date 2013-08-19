@@ -36,6 +36,19 @@ class Node():
 	def add_node(self, node):
 		self.children.append(node)
 
+	def lookup(self, name, context):
+		if '.' in name:
+			key, prop = name.split('.', 1)
+		else:
+			key, prop = name, ''
+		try:
+			if prop:
+				return context[key][prop]
+			else:
+				return context[key]
+		except KeyError:
+			return name
+
 	def render(self, context):
 		pass
 
@@ -49,18 +62,6 @@ class Root(Node):
 		def render_child(child):
 			return child.render(context)
 		return ''.join(map(render_child, self.children))
-
-
-class Attribution(Node):
-	def parse_token(self, token):
-		command, expr = self.get_params(token)
-		var, value = expr.split('=', 1)
-		self.var_name = var.strip()
-		self.value = value.strip()
-
-	def render(self, context):
-		context[self.var_name] = self.value
-		return ''
 
 
 class List(ScopeNode):
@@ -87,24 +88,26 @@ class List(ScopeNode):
 
 
 class Branch(ScopeNode):
-	def parse_token(self, token):
-		command, self.expr = self.get_params(token)
-		self.has_alternative = False
+	def process_condition(self, args):
+		pass
+	
+	def parse_token(self, args):
+		self.args = args
+		self.alternative_branch = False
 		self.consequent = []
 		self.alternate = []
 
 	def set_alternative(self):
-		self.has_alternative = True
+		self.alternative_branch = True
 	
 	def add_node(self, node):
-		if self.has_alternative:
+		if self.alternative_branch:
 			self.alternate.append(node)
 		else:
 			self.consequent.append(node)
 
 	def render(self, context):
-		condition = True
-		if condition:
+		if self.process_condition(self.args, context):
 			children = self.consequent
 		elif self.alternate:
 			children = self.alternate
@@ -116,13 +119,59 @@ class Branch(ScopeNode):
 		return ''.join(content)
 
 
+class EqualBranch(Branch):
+	def process_condition(self, args, context):
+		if len(args) != 2:
+			sys.exit("Comparison mal-formed.")
+		lvar_name, rvar_name = args
+		lvalue = self.lookup(lvar_name, context)
+		rvalue = self.lookup(rvar_name, context)
+		return lvalue == rvalue
+
+
+class DifferentBranch(Branch):
+	def process_condition(self, args, context):
+		if len(args) != 2:
+			sys.exit("Comparison mal-formed.")
+		lvar_name, rvar_name = args
+		lvalue = self.lookup(lvar_name, context)
+		rvalue = self.lookup(rvar_name, context)
+		return lvalue != rvalue
+
+
+class DefinedBranch(Branch):
+	def process_condition(self, args, context):
+		if len(args) != 1:
+			sys.exit("Comparison mal-formed.")
+		return args[0] != self.lookup(args[0], context)
+
+
+class UndefinedBranch(Branch):
+	def process_condition(self, args, context):
+		if len(args) != 1:
+			sys.exit("Comparison mal-formed.")
+		return args[0] == self.lookup(args[0], context)
+
+
 class Include(Node):
-	def parse_token(self, token):
-		command, tpl = self.get_params(token)
-		self.tpl = tpl.strip()
+	def parse_token(self, args):
+		if len(args) > 1:
+			sys.exit('Wrong number of arguments.')
+		self.tpl = args
 
 	def render(self, context):
 		return self.text
+
+
+class Attribution(Node):
+	def parse_token(self, args):
+		if not args:
+			sys.exit("Expected arguments in 'set' command!")
+		self.name, self.value = args
+		
+	def render(self, context):
+		context[self.name] = self.value
+		return ''
 
 
 class Variable(Node):
@@ -130,17 +179,7 @@ class Variable(Node):
 		self.value = value
 
 	def render(self, context):
-		if '.' in self.value:
-			key, value = self.value.split('.', 1)
-		else:
-			key, value = self.value, ''
-		try:
-			if value:
-				return context[key][value]
-			else:
-				return context[key]
-		except KeyError:
-			return ''
+		return self.lookup(self.value, context)
 
 
 class HTML(Node):
@@ -158,9 +197,6 @@ def parse(template):
 
 	token = lex.get_token()
 	while token:
-		if token.type == TOK_COMMENT:
-			continue
-
 		node = None
 		top_stack = stack[-1]
 
@@ -175,21 +211,28 @@ def parse(template):
 			command, args = expr[0], []
 			if len(expr) > 1:
 				args = expr[1:]
+
 			if command == 'set':
 				node = Attribution(args)
 			elif command == 'list':
 				node = List(args)
-			elif command == 'if:equal':
-				node = Equal(args)
-			elif command == 'if:diff':
-				node = Diff(args)
-			elif command == 'if:def':
-				node = IsDef(args)
-			elif command == 'if:notdef':
-				node = IsNotDef(args)
 			elif command == 'include':
 				node = Include(args)
+			elif command == 'if:equal':
+				node = EqualBranch(args)
+			elif command == 'if:different':
+				node = DifferentBranch(args)
+			elif command == 'if:defined':
+				node = DefinedBranch(args)
+			elif command == 'if:undefined':
+				node = UndefinedBranch(args)
+			elif command == 'else':
+				if not isinstance(top_stack, Branch):
+					sys.exit("Unexpected 'else' tag.")
+				top_stack.set_alternative()
 			elif command == 'end':
+				if len(stack) == 1:
+					sys.exit("Unmatched closing block.")
 				stack.pop()
 			else:
 				sys.exit("{!r} command not recognized!".format(command))
