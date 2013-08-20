@@ -1,8 +1,5 @@
 <html>
-	{% set x 3 %}
-	{% if:defined a %}
-		x eh igual a 2
-	{% else %}
-		x eh igual a 3
+	{% list pages -2 %}
+		x eh igual a {{ title }}
 	{% end %}
 </html>

@@ -26,10 +26,6 @@ class Node():
 		self.children = []
 		self.parse_token(token)
 	
-	def get_params(self, token):
-		cmd, expr = map(lambda x: x.strip(), token.value.split(' ', 1))
-		return cmd, expr
-	
 	def parse_token(self, token):
 		pass
 
@@ -51,6 +47,9 @@ class Node():
 
 	def render(self, context):
 		pass
+	
+	def __str__(self):
+		pass
 
 
 class ScopeNode(Node):
@@ -65,17 +64,34 @@ class Root(Node):
 
 
 class List(ScopeNode):
-	def parse_token(self, token):
-		command, expr = self.get_params(token)
-		self.source = expr.strip()
+	def parse_token(self, args):
+		if not args:
+			sys.exit("Expected a collection to list.")
+		self.source = args[0]
+		if len(args) == 2:
+			try:
+				self.limit = int(args[1])
+			except ValueError:
+				sys.exit("Expected a number in list command.")
+		elif len(args) > 2:
+			sys.exit("Wrong number of arguments. Expected 2.")
+		else:
+			self.limit = None
 
 	def render(self, context):
-		if self.source not in context:
+		collection = self.lookup(self.source, context)
+		if collection == self.source:
 			sys.exit("Trying to list a non-existent property.")
-		if not isinstance(context[self.source], list):
+		if not isinstance(collection, list):
 			sys.exit("Trying to list a non-listable property.")
 		
-		collection = context[self.source]
+		if self.limit:	
+			if self.limit > 0:
+				# return the last x, as [1,2,3,4,5,6][-2:] => [5,6]
+				collection = collection[-self.limit:]  
+			else:
+				# return the first x
+				collection = collection[:-self.limit]
 		content = []
 		for item in collection:
 			iteration_content = []
@@ -85,6 +101,9 @@ class List(ScopeNode):
 				iteration_content.append(child.render(new_context))
 			content.append(''.join(iteration_content))
 		return ''.join(content).strip()
+
+	def __str__(self):
+		return 'list'
 
 
 class Branch(ScopeNode):
@@ -117,6 +136,9 @@ class Branch(ScopeNode):
 		for item in children:
 			content.append(item.render(context))
 		return ''.join(content)
+
+	def __str__(self):
+		return 'if'
 
 
 class EqualBranch(Branch):
@@ -167,6 +189,8 @@ class Attribution(Node):
 	def parse_token(self, args):
 		if not args:
 			sys.exit("Expected arguments in 'set' command!")
+		if len(args) != 2:
+			sys.exit("Wrong number of arguments in 'set' command!")
 		self.name, self.value = args
 		
 	def render(self, context):
@@ -241,6 +265,9 @@ def parse(template):
 			if node.has_scope:
 				stack.append(node)
 		token = lex.get_token()
+	if len(stack) > 1:
+		# {!s} call the str() method
+		sys.exit('Non-closed block: "{!s}".'.format(stack[-1]))
 	return tree
 
 env = {
