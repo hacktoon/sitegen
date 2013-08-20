@@ -94,11 +94,11 @@ class Lexer():
 class Node():
 	has_scope = False
 	
-	def __init__(self, token=None):
+	def __init__(self, args=None):
 		self.children = []
-		self.parse_token(token)
+		self.parse_args(args)
 	
-	def parse_token(self, token):
+	def parse_args(self, args):
 		pass
 
 	def add_node(self, node):
@@ -136,7 +136,7 @@ class Root(Node):
 
 
 class List(ScopeNode):
-	def parse_token(self, args):
+	def parse_args(self, args):
 		if not args:
 			sys.exit("Expected a collection to list.")
 		self.source = args[0]
@@ -182,7 +182,7 @@ class Branch(ScopeNode):
 	def process_condition(self, args):
 		pass
 	
-	def parse_token(self, args):
+	def parse_args(self, args):
 		self.args = args
 		self.alternative_branch = False
 		self.consequent = []
@@ -248,7 +248,7 @@ class UndefinedBranch(Branch):
 
 
 class Include(Node):
-	def parse_token(self, args):
+	def parse_args(self, args):
 		if len(args) != 1:
 			sys.exit('Wrong number of arguments.')
 		self.tpl = args[0]
@@ -258,7 +258,7 @@ class Include(Node):
 
 
 class Attribution(Node):
-	def parse_token(self, args):
+	def parse_args(self, args):
 		if not args:
 			sys.exit("Expected arguments in 'set' command!")
 		if len(args) != 2:
@@ -271,7 +271,7 @@ class Attribution(Node):
 
 
 class Variable(Node):
-	def parse_token(self, value):
+	def parse_args(self, value):
 		self.value = value
 
 	def render(self, context):
@@ -279,7 +279,7 @@ class Variable(Node):
 
 
 class HTML(Node):
-	def parse_token(self, text):
+	def parse_args(self, text):
 		self.text = text
 
 	def render(self, context):

@@ -1,5 +1,0 @@
-<html>
-	{% list pages -2 %}
-		x eh igual a {{ title }}
-	{% end %}
-</html>

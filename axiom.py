@@ -22,12 +22,9 @@ from datetime import datetime
 
 # Configuration values
 DATA_FILE = 'page.me'
-
-CONFIG_FILE = 'site.me'
+CONFIG_FILE = 'config.me'
 TEMPLATES_DIR = 'templates'
-INCLUDES_DIR = 'includes'
 DEFAULT_TEMPLATE = 'main.tpl'
-
 DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
 
 # Setting values based on config
@@ -45,6 +42,12 @@ def urljoin(base, *slug):
 	fragments = [base]
 	fragments.extend(filter(None, slug))
 	return '/'.join(s.strip('/') for s in fragments)
+
+
+def date_to_string(date, fmt=None):
+	if not fmt:
+		fmt = DATE_FORMAT
+	return date.strftime(fmt)
 
 
 def read_file(path):
@@ -95,23 +98,6 @@ def read_template(tpl_filename):
 	return read_file(tpl_filepath)
 
 
-def get_site_config():
-	'''returns the current site config'''
-	config_path = os.path.join(os.getcwd(), CONFIG_FILE)
-	if not os.path.exists(config_path):
-		return
-	return parse_input_file(read_file(config_path))
-
-
-def create_site():
-	if get_site_config():
-		sys.exit('Mnemonix is already installed in this folder!')
-	# copy the config file
-	shutil.copyfile(MODEL_CONFIG_FILE, CONFIG_FILE)
-	# copy the templates folder
-	shutil.copytree(MODEL_TEMPLATES_DIR, TEMPLATES_DIR)
-
-
 def create_page(path):
 	'''Creates a data.ion file in the folder passed as parameter'''
 	if not get_site_config():
@@ -144,107 +130,7 @@ def convert_page_date(page_data):
 	return date
 
 
-def get_page_data(env, path):
-	'''Returns a dictionary with the page data'''
-	#removing '.' of the path in the case of root directory of site
-	data_file = os.path.join(path, DATA_FILE)
-	# avoid directories that doesn't have a data file
-	if not os.path.exists(data_file):
-		return
-	page_data = parse_input_file(read_file(data_file))
-	page_data['path'] = path
-	page_data['date'] = convert_page_date(page_data)
-	# absolute link of the page
-	page_data['permalink'] = urljoin(env['base_url'], path)
-	# splits tags into a list
-	page_data['tags'] = extract_multivalues(page_data.get('tags'))
-	# get the page properties
-	page_data['props'] = extract_multivalues(page_data.get('props'))
-	# register group in the environment for feed generation
-	if 'group' in page_data['props']:
-		group_name = os.path.basename(path)
-		env['groups'].append(group_name)
-	
-	return page_data
 
-
-def get_page_children(env, path, folders):
-	'''Returns a list containing the full path of the children pages,
-	removing the ignored folders like templates'''
-	join = os.path.join
-	isdir = os.path.isdir
-	children = []
-	for folder in folders:
-		fullpath = join(path, folder)
-		if isdir(fullpath) and fullpath not in env['ignore_folders']:
-			children.append(fullpath)
-	return children
-
-
-def read_page_files(env, path, parent=None):
-	'''Read the folders recursively and creates a dictionary
-	containing the pages' data.'''
-	file_list = os.listdir(path)
-	page_data = None
-	# removing dot from path
-	path = re.sub(r'^\.$|\./|\.\\', '', path)
-	children = get_page_children(env, path, file_list)
-
-	# there's a data file in this path
-	if os.path.exists(os.path.join(path, DATA_FILE)):
-		page_data = get_page_data(env, path)
-		# inherit the template from parent, if not defined its own
-		if 'template' not in page_data:
-			template = env.get('default_template', DEFAULT_TEMPLATE)
-			if parent:
-				template = parent.get('template', template)
-			page_data['template'] = template
-		# stores the path of its children
-		page_data['children'] = children
-		env['pages'][path] = page_data
-
-	# process the children pages, passing the parent page
-	for child_path in children:
-		read_page_files(env, child_path, page_data)
-
-
-def paginate_groups(env):
-	groups = env['groups']
-	key = 'permalink'
-	for group in groups:
-		pages = list(env['pages'].copy().values())
-		pages = dataset_filter_group(pages, group)
-		pages = dataset_sort(pages, 'date', 'desc')
-		length = len(pages)
-		for index, page in enumerate(pages):
-			page['first'] = pages[0][key]
-			page['last'] = pages[-1][key]
-			next_index = index + 1 if index < length - 1 else -1
-			page['next'] = pages[next_index][key]
-			prev_index = index - 1 if index > 0 else 0
-			page['prev'] = pages[prev_index][key]
-
-
-def get_env():
-	'''Returns a dict containing the site data'''
-	env = get_site_config()
-	if not env:
-		sys.exit('Mnemonix is not installed in this folder!')
-	if not env.get('base_url'):
-		sys.exit('base_url was not set in config!')
-	# add a trailing slash to base url, if necessary
-	env['site_tags'] = extract_multivalues(env.get('site_tags'))
-	env['feed_sources'] = extract_multivalues(env.get('feed_sources'))
-	ignore_folders = extract_multivalues(env.get('ignore_folders'))
-	ignore_folders.extend([TEMPLATES_DIR, env.get('feed_dir')])
-	env['ignore_folders'] = ignore_folders
-	env['pages'] = {}
-	env['groups'] = []
-	env['feeds'] = []
-	# now let's read all the pages and groups from files 
-	read_page_files(env, os.curdir)
-	paginate_groups(env)
-	return env
 
 
 def dataset_filter_group(dataset, group_name):
@@ -263,28 +149,6 @@ def dataset_sort(dataset, field_sort, order='asc'):
 	return dataset
 
 
-def dataset_range(dataset, num_range):
-	if not num_range:
-		return dataset
-	# if an integer was passed, returns a slice
-	try:
-		num = int(num_range)
-		return dataset[:num]
-	except ValueError:
-		pass
-	# limit number of objects to show
-	start, end = num_range.partition(':')[::2]
-	try:
-		start = abs(int(start)) if start else 0
-		end = abs(int(end)) if end else None
-	except ValueError:
-		sys.exit('[{}, {}] Bad range argument!'.format(start, end))
-	if ':' in num_range:
-		return dataset[start:end]
-	else: # a single number means quantity of posts
-		return dataset[:start]
-
-
 def dataset_filter_props(dataset, props):
 	if not props:
 		return dataset
@@ -300,33 +164,7 @@ def apply_page_filters(pages, args):
 	pages = dataset_filter_group(pages, args.get('group'))
 	# listing order
 	pages = dataset_sort(pages, args.get('sort', 'date'), args.get('ord'))
-	# number must be the last one
-	pages = dataset_range(pages, args.get('num'))
 	return pages
-
-
-def query_pages(env, page, args):
-	'''Make queries to the environment data set'''
-	src = args.get('src', '')
-	sources = ['pages', 'feeds', 'children']
-	# calling the proper query function
-	if not src in sources:
-		sys.exit('"src" argument is'
-		' missing or invalid!'.format(src))
-	if src == 'feeds':
-		# feeds are already sorted and filtered
-		return env['feeds']
-	if src == 'pages':
-		dataset = list(env['pages'].values())
-	elif src == 'children':
-		pages = page.get('children', [])
-		dataset = [env['pages'][p] for p in pages if p in env['pages']]
-	return apply_page_filters(dataset, args)
-
-def date_to_string(date, fmt=None):
-	if not fmt:
-		fmt = DATE_FORMAT
-	return date.strftime(fmt)
 
 
 def build_external_tags(filenames, permalink, tpl):
@@ -421,3 +259,123 @@ def generate_feeds(env):
 			group_pages = axiom.dataset_filter_group(list(pages), group_name)
 			set_feed_source(env, group_pages)
 			write_feed_file(env, '{}.xml'.format(group_name))
+
+
+class Site():
+	def __init__(self):
+		'''returns the current site config'''
+		config_path = os.path.join(os.getcwd(), CONFIG_FILE)
+		if not os.path.exists(config_path):
+			return
+		self.config = parse_input_file(read_file(config_path))
+
+	def create():
+		if get_site_config():
+			sys.exit('Mnemonix is already installed in this folder!')
+		# copy the config file
+		shutil.copyfile(MODEL_CONFIG_FILE, CONFIG_FILE)
+		# copy the templates folder
+		shutil.copytree(MODEL_TEMPLATES_DIR, TEMPLATES_DIR)
+
+	def get_env():
+		'''Returns a dict containing the site data'''
+		env = self.config
+		if not env:
+			sys.exit('Mnemonix is not installed in this folder!')
+		if not env.get('base_url'):
+			sys.exit('base_url was not set in config!')
+		# add a trailing slash to base url, if necessary
+		env['site_tags'] = extract_multivalues(env.get('site_tags'))
+		env['feed_sources'] = extract_multivalues(env.get('feed_sources'))
+		ignore_folders = extract_multivalues(env.get('ignore_folders'))
+		ignore_folders.extend([TEMPLATES_DIR, env.get('feed_dir')])
+		env['ignore_folders'] = ignore_folders
+		env['pages'] = {}
+		env['groups'] = []
+		env['feeds'] = []
+		# now let's read all the pages and groups from files 
+		read_page_files(env, os.curdir)
+		paginate_groups(env)
+		return env
+
+class Database():
+	def __init__(self):
+		pass
+	def read(self, env, path, parent=None):
+		'''Read the folders recursively and creates a dictionary
+		containing the pages' data.'''
+		file_list = os.listdir(path)
+		page_data = None
+		# removing dot from path
+		path = re.sub(r'^\.$|\./|\.\\', '', path)
+		children = get_page_children(env, path, file_list)
+
+		# there's a data file in this path
+		if os.path.exists(os.path.join(path, DATA_FILE)):
+			page_data = get_page_data(env, path)
+			# inherit the template from parent, if not defined its own
+			if 'template' not in page_data:
+				template = env.get('default_template', DEFAULT_TEMPLATE)
+				if parent:
+					template = parent.get('template', template)
+				page_data['template'] = template
+			# stores the path of its children
+			page_data['children'] = children
+			env['pages'][path] = page_data
+
+		# process the children pages, passing the parent page
+		for child_path in children:
+			self.read(env, child_path, page_data)
+
+def get_page_data(env, path):
+	'''Returns a dictionary with the page data'''
+	#removing '.' of the path in the case of root directory of site
+	data_file = os.path.join(path, DATA_FILE)
+	# avoid directories that doesn't have a data file
+	if not os.path.exists(data_file):
+		return
+	page_data = parse_input_file(read_file(data_file))
+	page_data['path'] = path
+	page_data['date'] = convert_page_date(page_data)
+	# absolute link of the page
+	page_data['permalink'] = urljoin(env['base_url'], path)
+	# splits tags into a list
+	page_data['tags'] = extract_multivalues(page_data.get('tags'))
+	# get the page properties
+	page_data['props'] = extract_multivalues(page_data.get('props'))
+	# register group in the environment for feed generation
+	if 'group' in page_data['props']:
+		group_name = os.path.basename(path)
+		env['groups'].append(group_name)
+	
+	return page_data
+
+
+def get_page_children(env, path, folders):
+	'''Returns a list containing the full path of the children pages,
+	removing the ignored folders like templates'''
+	join = os.path.join
+	isdir = os.path.isdir
+	children = []
+	for folder in folders:
+		fullpath = join(path, folder)
+		if isdir(fullpath) and fullpath not in env['ignore_folders']:
+			children.append(fullpath)
+	return children
+
+
+def paginate_groups(env):
+	groups = env['groups']
+	key = 'permalink'
+	for group in groups:
+		pages = list(env['pages'].copy().values())
+		pages = dataset_filter_group(pages, group)
+		pages = dataset_sort(pages, 'date', 'desc')
+		length = len(pages)
+		for index, page in enumerate(pages):
+			page['first'] = pages[0][key]
+			page['last'] = pages[-1][key]
+			next_index = index + 1 if index < length - 1 else -1
+			page['next'] = pages[next_index][key]
+			prev_index = index - 1 if index > 0 else 0
+			page['prev'] = pages[prev_index][key]
