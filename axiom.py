@@ -19,7 +19,25 @@ import shutil
 import time
 from datetime import datetime
 
-import config
+
+# Configuration values
+DATA_FILE = 'page.me'
+
+CONFIG_FILE = 'site.me'
+TEMPLATES_DIR = 'templates'
+INCLUDES_DIR = 'includes'
+DEFAULT_TEMPLATE = 'main.tpl'
+
+DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
+
+# Setting values based on config
+script_path = os.path.dirname(os.path.abspath(__file__))
+data_dir = os.path.join(script_path, 'data')
+
+MODEL_FEED_FILE = os.path.join(data_dir, 'feed.tpl')
+MODEL_CONFIG_FILE = os.path.join(data_dir, CONFIG_FILE)
+MODEL_DATA_FILE = os.path.join(data_dir, DATA_FILE)
+MODEL_TEMPLATES_DIR = os.path.join(data_dir, TEMPLATES_DIR)
 
 
 def urljoin(base, *slug):
@@ -71,7 +89,7 @@ def read_template(tpl_filename):
 	'''Returns a template string from the template folder'''
 	if not tpl_filename.endswith('.tpl'):
 		tpl_filename = '{0}.tpl'.format(tpl_filename)
-	tpl_filepath = os.path.join(config.TEMPLATES_DIR, tpl_filename)
+	tpl_filepath = os.path.join(TEMPLATES_DIR, tpl_filename)
 	if not os.path.exists(tpl_filepath):
 		return ''
 	return read_file(tpl_filepath)
@@ -79,7 +97,7 @@ def read_template(tpl_filename):
 
 def get_site_config():
 	'''returns the current site config'''
-	config_path = os.path.join(os.getcwd(), config.CONFIG_FILE)
+	config_path = os.path.join(os.getcwd(), CONFIG_FILE)
 	if not os.path.exists(config_path):
 		return
 	return parse_input_file(read_file(config_path))
@@ -89,9 +107,9 @@ def create_site():
 	if get_site_config():
 		sys.exit('Mnemonix is already installed in this folder!')
 	# copy the config file
-	shutil.copyfile(config.MODEL_CONFIG_FILE, config.CONFIG_FILE)
+	shutil.copyfile(MODEL_CONFIG_FILE, CONFIG_FILE)
 	# copy the templates folder
-	shutil.copytree(config.MODEL_TEMPLATES_DIR, config.TEMPLATES_DIR)
+	shutil.copytree(MODEL_TEMPLATES_DIR, TEMPLATES_DIR)
 
 
 def create_page(path):
@@ -101,13 +119,13 @@ def create_page(path):
 	if not os.path.exists(path):
 		os.makedirs(path)
 	# full path of page data file
-	dest_file = os.path.join(path, config.DATA_FILE)
+	dest_file = os.path.join(path, DATA_FILE)
 	if os.path.exists(dest_file):
 		sys.exit('Page {!r} already exists.'.format(path))
 	# copy the skel page data file to new page
-	content = read_file(config.MODEL_DATA_FILE)
+	content = read_file(MODEL_DATA_FILE)
 	# saving date in the format configured
-	date = datetime.today().strftime(config.DATE_FORMAT)
+	date = datetime.today().strftime(DATE_FORMAT)
 	# need to write file contents to insert creation date
 	write_file(dest_file, content.format(date))
 	return dest_file
@@ -118,7 +136,7 @@ def convert_page_date(page_data):
 	if date:
 		try:
 			# converts date string to datetime object
-			date = datetime.strptime(date, config.DATE_FORMAT)
+			date = datetime.strptime(date, DATE_FORMAT)
 		except ValueError:
 			sys.exit('Wrong date format detected at {!r}!'.format(data_file))
 	else:
@@ -129,7 +147,7 @@ def convert_page_date(page_data):
 def get_page_data(env, path):
 	'''Returns a dictionary with the page data'''
 	#removing '.' of the path in the case of root directory of site
-	data_file = os.path.join(path, config.DATA_FILE)
+	data_file = os.path.join(path, DATA_FILE)
 	# avoid directories that doesn't have a data file
 	if not os.path.exists(data_file):
 		return
@@ -173,12 +191,11 @@ def read_page_files(env, path, parent=None):
 	children = get_page_children(env, path, file_list)
 
 	# there's a data file in this path
-	if os.path.exists(os.path.join(path, config.DATA_FILE)):
+	if os.path.exists(os.path.join(path, DATA_FILE)):
 		page_data = get_page_data(env, path)
 		# inherit the template from parent, if not defined its own
 		if 'template' not in page_data:
-			template = env.get('default_template', 
-								config.DEFAULT_TEMPLATE)
+			template = env.get('default_template', DEFAULT_TEMPLATE)
 			if parent:
 				template = parent.get('template', template)
 			page_data['template'] = template
@@ -219,7 +236,7 @@ def get_env():
 	env['site_tags'] = extract_multivalues(env.get('site_tags'))
 	env['feed_sources'] = extract_multivalues(env.get('feed_sources'))
 	ignore_folders = extract_multivalues(env.get('ignore_folders'))
-	ignore_folders.extend([config.TEMPLATES_DIR, env.get('feed_dir')])
+	ignore_folders.extend([TEMPLATES_DIR, env.get('feed_dir')])
 	env['ignore_folders'] = ignore_folders
 	env['pages'] = {}
 	env['groups'] = []
@@ -305,3 +322,102 @@ def query_pages(env, page, args):
 		pages = page.get('children', [])
 		dataset = [env['pages'][p] for p in pages if p in env['pages']]
 	return apply_page_filters(dataset, args)
+
+def date_to_string(date, fmt=None):
+	if not fmt:
+		fmt = DATE_FORMAT
+	return date.strftime(fmt)
+
+
+def build_external_tags(filenames, permalink, tpl):
+	tag_list = []
+	for filename in filenames:
+		url = axiom.urljoin(permalink, filename)
+		tag_list.append(tpl.format(url))
+	return '\n'.join(tag_list)
+
+
+def build_style_tags(filenames, permalink):
+	tpl = '<link rel="stylesheet" type="text/css" href="{0}"/>'
+	filenames = axiom.extract_multivalues(filenames)
+	filenames = [f for f in filenames if f.endswith('.css')]
+	return build_external_tags(filenames, permalink, tpl)
+
+
+def build_script_tags(filenames, permalink):
+	tpl = '<script src="{0}"></script>'
+	filenames = axiom.extract_multivalues(filenames)
+	filenames = [f for f in filenames if f.endswith('.js')]
+	return build_external_tags(filenames, permalink, tpl)
+
+
+def save_json(env, page):
+	page = page.copy()
+	page['date'] = date_to_string(page['date'])
+	json_filepath = os.path.join(page['path'], 'index.json')
+	axiom.write_file(json_filepath, json.dumps(page))
+
+
+def save_html(env, page):
+	page = page.copy()
+	# get css and javascript found in the folder
+	page['styles'] = build_style_tags(page.get('styles', ''), page['permalink'])
+	page['scripts'] = build_script_tags(page.get('scripts', ''), page['permalink'])
+	html_templ = axiom.read_template(page['template'])
+	if not html_templ:
+		sys.exit('Zap! Template file {!r} '
+				 'couldn\'t be found for '
+				 'page {!r}!'.format(page['template'], page['path']))
+
+	# replace template with page data and listings
+	html = render_template(html_templ, env, page)
+	path = page['path']
+	axiom.write_file(os.path.join(path, 'index.html'), html)
+	if env['output_enabled']:
+		print('"{0}" page generated.'.format(path or 'Home'))
+
+
+def write_feed_file(env, filename):
+	feed_dir = env.get('feed_dir', 'feed')
+	feed_data = {
+		'description': env.get('site_description'),
+		'build_date': datetime.today()  # sets lastBuildDate
+	}
+	# create the feed directory
+	if not os.path.exists(feed_dir):
+		os.makedirs(feed_dir)
+	feed_tpl = axiom.read_file(MODEL_FEED_FILE)
+	feed_data['link'] = axiom.urljoin(env['base_url'], feed_dir, filename)
+	feed_content = render_template(feed_tpl, env, feed_data)
+	feed_path = os.path.join(feed_dir, filename)
+	axiom.write_file(feed_path, feed_content)
+	if env['output_enabled']:
+		print('Feed {!r} generated.'.format(feed_path))
+
+
+def set_feed_source(env, pages):
+	items_listed = int(env.get('feed_num', 8))  # default value
+	pages = axiom.dataset_sort(pages, 'date', 'desc')
+	pages = axiom.dataset_range(pages, items_listed)
+	env['feeds'] = pages
+
+
+def generate_feeds(env):
+	sources = env.get('feed_sources')
+	if not sources:
+		print('No feeds generated.')
+		return
+	pages = env['pages'].values()
+	# filtering the pages that shouldn't be listed in feeds
+	pages = axiom.dataset_filter_props(pages, ['draft', 'nofeed'])
+	
+	if 'all' in sources:
+		# copy the list
+		set_feed_source(env, list(pages))
+		write_feed_file(env, 'default.xml')
+	if 'group' in sources:
+		for group_name in env['groups']:
+			# copy the list each iteration
+			group_pages = axiom.dataset_filter_group(list(pages), group_name)
+			set_feed_source(env, group_pages)
+			write_feed_file(env, '{}.xml'.format(group_name))
