@@ -15,8 +15,8 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 import sys
 import argparse
 
-import reader
-import axiom
+import templex
+from axiom import Site, Page, Config
 
 
 VERSION = "0.2.0-beta"
@@ -25,6 +25,12 @@ VERSION = "0.2.0-beta"
 def gen(args):
 	'''Read recursively every directory under path and
 	outputs HTML/JSON for each page file'''
+	
+	site = Site()
+	site.load(config)
+	site.generate()
+	
+	'''
 	env = axiom.get_env()
 	env['output_enabled'] = args.output_enabled
 	pages = env['pages']
@@ -39,25 +45,36 @@ def gen(args):
 		if not 'nohtml' in page['props']:
 			reader.save_html(env, page)
 			total_rendered += 1
-	print("{}\nTotal of pages read: {}.".format("-" * 30, len(pages)))
-	print("Total of pages generated: {}.\n".format(total_rendered))
+	'''
+	#print("{}\nTotal of pages read: {}.".format("-" * 30, len(pages)))
+	#print("Total of pages generated: {}.\n".format(total_rendered))
+	
 	# after generating all pages, update feed
-	reader.generate_feeds(env)
+	#reader.generate_feeds(env)
 
 
 def add(args):
-	path = args.path
 	'''Create a new page in specified path'''
+	path = args.path
+	
+	site = Site()
+	site.load(config)
+	
+	page = Page(path)
+	page.create()
+	
 	# copy source file to new path
-	file_path = axiom.create_page(path)
+	file_path = site.add_page(page)
 	print('Page {!r} successfully created!'.format(path))
 	print('Edit the file {!r} and call "mnemonix gen"!'.format(file_path))
 
 
 def init(args):
 	'''Install Mnemonic in the current folder'''
-	print('Installing Mnemonic...')
-	axiom.create_site()
+	print('Installing Mnemonix...')
+	site = Site()
+	site.create(args)
+
 	print('\nMnemonic was successfully installed!\n\n'
 	'Next steps:\n1 - Edit the "site" file.\n'
 	'2 - Run "mnemonix add [path]" to start creating pages!\n')

@@ -287,7 +287,7 @@ class HTML(Node):
 
 
 class Template():
-	def __init__(self, template)
+	def __init__(self, template):
 		self.template = template
 
 	def parse(self):
