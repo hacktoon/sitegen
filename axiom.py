@@ -41,6 +41,9 @@ MODEL_TEMPLATES_DIR = os.path.join(data_dir, TEMPLATES_DIR)
 class ConfigNotFoundException(Exception):
 	pass
 
+class SiteAlreadyInstalledException(Exception):
+	pass
+
 
 def urljoin(base, *slug):
 	'''Custom URL join function to concatenate and add slashes'''
@@ -101,11 +104,6 @@ def read_template(tpl_filename):
 	if not os.path.exists(tpl_filepath):
 		return ''
 	return read_file(tpl_filepath)
-
-
-
-
-
 
 
 def build_external_tags(filenames, permalink, tpl):
@@ -229,22 +227,45 @@ class Page:
 
 
 class Site:
-	def __init__(self, title):
-		self.title = title
-
+	def __init__(self):
+		self.config_path = os.path.join(os.getcwd(), CONFIG_FILE)
+		self.config = None
+		self.env = {}
+	
 	def load_config(self):
-		'''returns the current site config'''
-		config_path = os.path.join(os.getcwd(), CONFIG_FILE)
 		if not os.path.exists(config_path):
 			raise ConfigNotFoundException()
 		self.config = parse_input_file(read_file(config_path))
 
 	def create(self):
+		if os.path.exists(self.config_path):
+			raise SiteAlreadyInstalledException()
 		# copy the templates folder
 		shutil.copytree(MODEL_TEMPLATES_DIR, TEMPLATES_DIR)
 		# copy the config file
 		shutil.copyfile(MODEL_CONFIG_FILE, CONFIG_FILE)
-	
+
+	def load(self):
+		'''Returns a dict containing the site data'''
+		config = self.load_config()
+		self.env = {}
+		if not config.get('base_url'):
+			sys.exit('base_url was not set in config!')
+		
+		# add a trailing slash to base url, if necessary
+		env['site_tags'] = extract_multivalues(env.get('site_tags'))
+		env['feed_sources'] = extract_multivalues(env.get('feed_sources'))
+		ignore_folders = extract_multivalues(env.get('ignore_folders'))
+		ignore_folders.extend([TEMPLATES_DIR, env.get('feed_dir')])
+		env['ignore_folders'] = ignore_folders
+		env['pages'] = {}
+		env['groups'] = []
+		env['feeds'] = []
+		# now let's read all the pages and groups from files 
+		read_page_files(env, os.curdir)
+		paginate_groups(env)
+		return env
+
 	def generate_feeds(self, env):
 		sources = env.get('feed_sources')
 		if not sources:
@@ -264,27 +285,6 @@ class Site:
 				group_pages = axiom.dataset_filter_group(list(pages), group_name)
 				set_feed_source(env, group_pages)
 				write_feed_file(env, '{}.xml'.format(group_name))
-	
-	def get_env(self):
-		'''Returns a dict containing the site data'''
-		env = self.config
-		if not env:
-			sys.exit('Mnemonix is not installed in this folder!')
-		if not env.get('base_url'):
-			sys.exit('base_url was not set in config!')
-		# add a trailing slash to base url, if necessary
-		env['site_tags'] = extract_multivalues(env.get('site_tags'))
-		env['feed_sources'] = extract_multivalues(env.get('feed_sources'))
-		ignore_folders = extract_multivalues(env.get('ignore_folders'))
-		ignore_folders.extend([TEMPLATES_DIR, env.get('feed_dir')])
-		env['ignore_folders'] = ignore_folders
-		env['pages'] = {}
-		env['groups'] = []
-		env['feeds'] = []
-		# now let's read all the pages and groups from files 
-		read_page_files(env, os.curdir)
-		paginate_groups(env)
-		return env
 
 
 class Database():

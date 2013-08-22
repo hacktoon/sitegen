@@ -16,7 +16,7 @@ import sys
 import argparse
 
 import templex
-from axiom import Site, Page
+from axiom import *
 
 
 VERSION = "0.2.0-beta"
@@ -27,6 +27,7 @@ def gen(args):
 	outputs HTML/JSON for each page file'''
 	
 	site = Site()
+	site.load()
 	site.generate()
 	
 	'''
@@ -57,7 +58,10 @@ def add(args):
 	path = args.path
 	
 	site = Site()
-	site.load(config)
+	try:
+		site.load()
+	except ConfigNotFoundException:
+		sys.exit('Mnemonix is not installed in this folder!')
 	
 	page = Page(path)
 	page.create()
@@ -70,7 +74,10 @@ def init(args):
 	'''Install Mnemonic in the current folder'''
 	print('Installing Mnemonix...')
 	site = Site()
-	site.create(args)
+	try:
+		site.create()
+	except SiteAlreadyInstalledException:
+		sys.exit("Site already installed!")
 
 	print('\nMnemonic was successfully installed!\n\n'
 	'Next steps:\n1 - Edit the "site" file.\n'
@@ -104,8 +111,10 @@ def main():
 	parser_gen.set_defaults(method=gen)
 
 	args = parser.parse_args()
-	args.method(args)
-
+	try:
+		args.method(args)
+	except AttributeError:
+		parser.error("Expected a command.")
 
 if __name__ == '__main__':
 	main()
