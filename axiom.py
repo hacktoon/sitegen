@@ -157,7 +157,7 @@ def set_feed_source(env, pages):
 
 
 class Page:
-	def __init__(self, path, params):
+	def __init__(self, path):
 		self.path = path
 	
 	def create(self, title):
@@ -207,14 +207,14 @@ class Page:
 		page = page.copy()
 		page['date'] = date_to_string(page['date'])
 		json_filepath = os.path.join(page['path'], 'index.json')
-		axiom.write_file(json_filepath, json.dumps(page))
+		write_file(json_filepath, json.dumps(page))
 
 	def to_html(env, page):
 		page = page.copy()
 		# get css and javascript found in the folder
 		page['styles'] = build_style_tags(page.get('styles', ''), page['permalink'])
 		page['scripts'] = build_script_tags(page.get('scripts', ''), page['permalink'])
-		html_templ = axiom.read_template(page['template'])
+		html_templ = read_template(page['template'])
 		if not html_templ:
 			sys.exit('Zap! Template file {!r} '
 					 'couldn\'t be found for '
@@ -223,7 +223,7 @@ class Page:
 		# replace template with page data and listings
 		html = render_template(html_templ, env, page)
 		path = page['path']
-		axiom.write_file(os.path.join(path, 'index.html'), html)
+		write_file(os.path.join(path, 'index.html'), html)
 		if env['output_enabled']:
 			print('"{0}" page generated.'.format(path or 'Home'))
 
@@ -231,17 +231,19 @@ class Page:
 class Site:
 	def __init__(self, title):
 		self.title = title
-		self.env = {}
 
-	def create(self, config):
+	def load_config(self):
+		'''returns the current site config'''
+		config_path = os.path.join(os.getcwd(), CONFIG_FILE)
+		if not os.path.exists(config_path):
+			raise ConfigNotFoundException()
+		self.config = parse_input_file(read_file(config_path))
+
+	def create(self):
 		# copy the templates folder
-		config = Config()
-		try:
-			config.load()
-		except ConfigNotFoundException:
-			config.create()
 		shutil.copytree(MODEL_TEMPLATES_DIR, TEMPLATES_DIR)
-		self.env.update(config)
+		# copy the config file
+		shutil.copyfile(MODEL_CONFIG_FILE, CONFIG_FILE)
 	
 	def generate_feeds(self, env):
 		sources = env.get('feed_sources')
@@ -283,24 +285,6 @@ class Site:
 		read_page_files(env, os.curdir)
 		paginate_groups(env)
 		return env
-
-
-		
-class Config():
-	def __init__(self, filepath=None):
-		self.filepath = filepath
-		self.keys = {}
-	
-	def load(self):
-		'''returns the current site config'''
-		config_path = os.path.join(os.getcwd(), CONFIG_FILE)
-		if not os.path.exists(config_path):
-			raise ConfigNotFoundException()
-		self.keys = parse_input_file(read_file(config_path))
-	
-	def create(self):
-		# copy the config file
-		shutil.copyfile(MODEL_CONFIG_FILE, CONFIG_FILE)
 
 
 class Database():

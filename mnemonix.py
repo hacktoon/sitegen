@@ -16,7 +16,7 @@ import sys
 import argparse
 
 import templex
-from axiom import Site, Page, Config
+from axiom import Site, Page
 
 
 VERSION = "0.2.0-beta"
@@ -27,7 +27,6 @@ def gen(args):
 	outputs HTML/JSON for each page file'''
 	
 	site = Site()
-	site.load(config)
 	site.generate()
 	
 	'''
@@ -63,10 +62,8 @@ def add(args):
 	page = Page(path)
 	page.create()
 	
-	# copy source file to new path
-	file_path = site.add_page(page)
 	print('Page {!r} successfully created!'.format(path))
-	print('Edit the file {!r} and call "mnemonix gen"!'.format(file_path))
+	#print('Edit the file {!r} and call "mnemonix gen"!'.format(file_path))
 
 
 def init(args):
