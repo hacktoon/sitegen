@@ -59,12 +59,15 @@ def add(args):
 	
 	site = Site()
 	try:
-		site.load()
+		site.load_config()
 	except ConfigNotFoundException:
 		sys.exit('Mnemonix is not installed in this folder!')
 	
 	page = Page(path)
-	page.create()
+	try:
+		site.create_page(page)
+	except PageExistsException:
+		sys.exit('Page {!r} already exists.'.format(path))
 	
 	print('Page {!r} successfully created!'.format(path))
 	#print('Edit the file {!r} and call "mnemonix gen"!'.format(file_path))

@@ -44,6 +44,9 @@ class ConfigNotFoundException(Exception):
 class SiteAlreadyInstalledException(Exception):
 	pass
 
+class PageExistsException(Exception):
+	pass
+
 
 def urljoin(base, *slug):
 	'''Custom URL join function to concatenate and add slashes'''
@@ -158,24 +161,6 @@ class Page:
 	def __init__(self, path):
 		self.path = path
 	
-	def create(self, title):
-		'''Creates a data.ion file in the folder passed as parameter'''
-		if not get_site_config():
-			sys.exit('Mnemonix is not installed!')
-		if not os.path.exists(path):
-			os.makedirs(path)
-		# full path of page data file
-		dest_file = os.path.join(path, DATA_FILE)
-		if os.path.exists(dest_file):
-			sys.exit('Page {!r} already exists.'.format(path))
-		# copy the skel page data file to new page
-		content = read_file(MODEL_DATA_FILE)
-		# saving date in the format configured
-		date = datetime.today().strftime(DATE_FORMAT)
-		# need to write file contents to insert creation date
-		write_file(dest_file, content.format(date))
-		return dest_file
-	
 	def load(self, params):
 		self.date = self.convert_date(params['date'])
 		# absolute link of the page
@@ -233,10 +218,27 @@ class Site:
 		self.env = {}
 	
 	def load_config(self):
-		if not os.path.exists(config_path):
+		if not os.path.exists(self.config_path):
 			raise ConfigNotFoundException()
-		self.config = parse_input_file(read_file(config_path))
-
+		self.config = parse_input_file(read_file(self.config_path))
+	
+	def create_page(self, page):
+		if not os.path.exists(self.config_path):
+			raise ConfigNotFoundException()
+		if not os.path.exists(page.path):
+			os.makedirs(page.path)
+		# full path of page data file
+		dest_file = os.path.join(page.path, DATA_FILE)
+		if os.path.exists(dest_file):
+			raise PageExistsException()
+		# copy the model page data file to a new file
+		content = read_file(MODEL_DATA_FILE)
+		# saving date in the format configured
+		date = datetime.today().strftime(DATE_FORMAT)
+		# need to write file contents to insert creation date
+		write_file(dest_file, content.format(date))
+		return dest_file
+	
 	def create(self):
 		if os.path.exists(self.config_path):
 			raise SiteAlreadyInstalledException()
