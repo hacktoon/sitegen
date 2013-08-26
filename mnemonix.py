@@ -82,8 +82,8 @@ def init(args):
 	except SiteAlreadyInstalledException:
 		sys.exit("Site already installed!")
 
-	print('\nMnemonic was successfully installed!\n\n'
-	'Next steps:\n1 - Edit the "site" file.\n'
+	print('\nMnemonix was successfully installed!\n\n'
+	'Next steps:\n1 - Edit the "config.me" file.\n'
 	'2 - Run "mnemonix add [path]" to start creating pages!\n')
 
 
