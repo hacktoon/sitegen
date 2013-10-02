@@ -46,11 +46,14 @@ MODEL_TEMPLATES_DIR = os.path.join(data_dir, TEMPLATES_DIR)
 class ConfigNotFoundException(Exception):
 	pass
 
+
 class SiteAlreadyInstalledException(Exception):
 	pass
 
+
 class PageExistsException(Exception):
 	pass
+
 
 class PageValuesNotDefined(Exception):
 	def __init__(self, message):
@@ -65,12 +68,10 @@ def urljoin(base, *slug):
 	fragments.extend(filter(None, slug))
 	return '/'.join(s.strip('/') for s in fragments)
 
-
 def date_to_string(date, fmt=None):
 	if not fmt:
 		fmt = DATE_FORMAT
 	return date.strftime(fmt)
-
 
 def read_file(path):
 	if not os.path.exists(path):
@@ -78,11 +79,9 @@ def read_file(path):
 	with open(path, 'r') as f:
 		return f.read()
 
-
 def write_file(path, content=''):
 	with open(path, 'w') as f:
 		f.write(content)
-
 
 def parse_input_file(file_string):
 	file_data = {}
@@ -100,7 +99,6 @@ def parse_input_file(file_string):
 		file_data[key] = value
 	return file_data
 
-
 def extract_multivalues(tag_string):
 	'''Converts a comma separated list of tags into a list'''
 	tag_list = []
@@ -108,7 +106,6 @@ def extract_multivalues(tag_string):
 		tags = tag_string.strip(',').split(',')
 		tag_list = [tag.strip() for tag in tags]
 	return tag_list
-
 
 def read_template(tpl_filename):
 	'''Returns a template string from the template folder'''
@@ -119,7 +116,6 @@ def read_template(tpl_filename):
 		return ''
 	return read_file(tpl_filepath)
 
-
 def build_external_tags(filenames, permalink, tpl):
 	tag_list = []
 	for filename in filenames:
@@ -127,21 +123,17 @@ def build_external_tags(filenames, permalink, tpl):
 		tag_list.append(tpl.format(url))
 	return '\n'.join(tag_list)
 
-
 def build_style_tags(filenames, permalink):
 	tpl = '<link rel="stylesheet" type="text/css" href="{0}"/>'
 	filenames = axiom.extract_multivalues(filenames)
 	filenames = [f for f in filenames if f.endswith('.css')]
 	return build_external_tags(filenames, permalink, tpl)
 
-
 def build_script_tags(filenames, permalink):
 	tpl = '<script src="{0}"></script>'
 	filenames = axiom.extract_multivalues(filenames)
 	filenames = [f for f in filenames if f.endswith('.js')]
 	return build_external_tags(filenames, permalink, tpl)
-
-
 
 def write_feed_file(env, filename):
 	feed_dir = env.get('feed_dir', 'feed')
@@ -172,14 +164,17 @@ class Page:
 	def __init__(self, page_data):
 		self.children = []
 		mandatory_keys = ['path', 'title', 'date', 'content']
+		# define attributes dynamically
 		for key in page_data.keys():
 			method_name = 'set_{}'.format(key)
+			# if setter method exists, call it
 			if hasattr(self, method_name):
 				getattr(self, method_name)(page_data[key])
 			else:
 				setattr(self, key, page_data[key])
 			if key in mandatory_keys:
 				mandatory_keys.remove(key)
+		# if any mandatory key wasn't set, raise exception
 		if len(mandatory_keys):
 			raise PageValuesNotDefined('One or more page properties '
 			'were not defined in {!r}: {!r}.'.format(page_data['path'],
@@ -251,7 +246,6 @@ class Site:
 	def __init__(self):
 		self.config_path = os.path.join(os.getcwd(), CONFIG_FILE)
 		self.config = None
-		self.env = {}
 
 	def load_config(self):
 		if not os.path.exists(self.config_path):
@@ -283,33 +277,28 @@ class Site:
 		# copy the config file
 		shutil.copyfile(MODEL_CONFIG_FILE, CONFIG_FILE)
 
-	def load(self):
+	def generate(self):
 		'''Loads the site's data into memory'''
 		config = self.config
-		env = {}
 		if not config.get('base_url'):
 			sys.exit('base_url was not set in config!')
 		# add a trailing slash to base url, if necessary
-		env['base_url'] = urljoin(config.get('base_url'), '/')
+		self.base_url = urljoin(config.get('base_url'), '/')
 		self.tags = extract_multivalues(config.get('site_tags'))
-		env['feed_sources'] = extract_multivalues(config.get('feed_sources'))
-		ignore_folders = extract_multivalues(config.get('ignore_folders'))
-		ignore_folders.extend([TEMPLATES_DIR, config.get('feed_dir')])
-		env['ignore_folders'] = ignore_folders
-		env['pages'] = []
-		env['groups'] = []
-		env['feeds'] = []
+		#self.feed_sources = extract_multivalues(config.get('feed_sources'))
+		self.ignore_folders = extract_multivalues(config.get('ignore_folders'))
+		self.ignore_folders.extend([TEMPLATES_DIR, config.get('feed_dir')])
+		# TODO: check if path not in env['ignore_folders']
+		self.groups = []
+		self.feeds = []
+		
 		# now let's read all the pages and groups from files
 		db = Database()
 		db.load(os.curdir)
-		for p in db.query():
+		self.pages = db.query()
+		
+		for p in self.pages:
 			print(vars(p))
-		# TODO: check if path not in env['ignore_folders']
-		#paginate_groups(env)
-		self.env = env
-
-	def generate(self):
-		pass
 		#page_data['permalink'] = urljoin(self.env['base_url'], path)
 
 	'''
@@ -383,37 +372,6 @@ class Database:
 			parent_page.children.append(page)
 		for subpage_path in self._get_subpages_list(path):
 			self._build_index(subpage_path, page)
-
-	'''
-	def dataset_filter_group(self, dataset, group_name):
-		if not group_name:
-			return dataset
-		from_group = lambda page: page.get('group') == group_name
-		dataset = [page for page in dataset if from_group(page)]
-		return dataset
-
-	def dataset_sort(self, dataset, field_sort, order='asc'):
-		reverse = (order == 'desc')
-		# all pages have a date, even if not specified in data files
-		sort_by = lambda page: page[field_sort]
-		dataset = sorted(dataset, key=sort_by, reverse=reverse)
-		return dataset
-
-	def dataset_filter_props(self, dataset, props):
-		if not props:
-			return dataset
-		has_props = lambda p: any(x in p.get('props', []) for x in props)
-		dataset = [page for page in dataset if not has_props(page)]
-		return dataset
-
-	def apply_page_filters(self, pages, args):
-		# pages with these props will be filtered
-		pages = dataset_filter_props(pages, ['draft', 'nolist'])
-		# must limit the group first
-		pages = dataset_filter_group(pages, args.get('group'))
-		# listing order
-		pages = dataset_sort(pages, args.get('sort', 'date'), args.get('ord'))
-		return pages'''
 
 
 def paginate_groups(env):

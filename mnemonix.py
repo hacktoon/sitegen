@@ -32,7 +32,7 @@ def gen(args):
 	except ConfigNotFoundException:
 		sys.exit('Mnemonix is not installed in this folder!')
 	
-	site.load()
+	site.generate()
 	
 	'''
 	env = axiom.get_env()
