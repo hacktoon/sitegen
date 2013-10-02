@@ -19,6 +19,8 @@ import shutil
 import time
 from datetime import datetime
 
+# aliases
+regex_replace = re.sub
 
 # Configuration values
 DATA_FILE = 'page.me'
@@ -27,6 +29,9 @@ TEMPLATES_DIR = 'templates'
 DEFAULT_TEMPLATE = 'main.tpl'
 # format in which the date will be stored
 DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
+
+# Regex pattern to remove the dot from file pathname
+PATH_DOT_PATTERN = r'^\.$|\./|\.\\'
 
 # Setting values based on config
 script_path = os.path.dirname(os.path.abspath(__file__))
@@ -46,6 +51,12 @@ class SiteAlreadyInstalledException(Exception):
 
 class PageExistsException(Exception):
 	pass
+
+class PageValuesNotDefined(Exception):
+	def __init__(self, message):
+		self.message = message
+	def __str__(self):
+		return self.message
 
 
 def urljoin(base, *slug):
@@ -158,34 +169,51 @@ def set_feed_source(env, pages):
 
 
 class Page:
-	def __init__(self, path):
-		self.path = path
-	
-	def load(self, params):
-		self.date = self.convert_date(params['date'])
-		# absolute link of the page
-		self.permalink = urljoin(env['base_url'], path)
-		# splits tags into a list
-		self.tags = extract_multivalues(params.get('tags'))
-		# get the page properties
-		self.props = extract_multivalues(params.get('props'))
-		# register group in the environment for feed generation
-		if 'group' in self.props:
-			group_name = os.path.basename(path)
-			env['groups'].append(group_name)
-	
-	def convert_date(self, page_data):
-		date = page_data.get('date')
+	def __init__(self, page_data):
+		self.children = []
+		mandatory_keys = ['path', 'title', 'date', 'content']
+		for key in page_data.keys():
+			method_name = 'set_{}'.format(key)
+			if hasattr(self, method_name):
+				getattr(self, method_name)(page_data[key])
+			else:
+				setattr(self, key, page_data[key])
+			if key in mandatory_keys:
+				mandatory_keys.remove(key)
+		if len(mandatory_keys):
+			raise PageValuesNotDefined('One or more page properties '
+			'were not defined in {!r}: {!r}.'.format(page_data['path'],
+			', '.join(mandatory_keys)))
+
+	def set_date(self, date):
+		'''converts date string to datetime object'''
 		if date:
 			try:
-				# converts date string to datetime object
 				date = datetime.strptime(date, DATE_FORMAT)
 			except ValueError:
-				sys.exit('Wrong date format detected at {!r}!'.format(data_file))
+				sys.exit('Wrong date format '
+				'detected at {!r}!'.format(self.path))
 		else:
 			date = datetime.now()
-		return date
-	
+		self.date = date
+
+	def set_tags(self, tags):
+		'''splits tags into a list'''
+		self.tags = extract_multivalues(tags)
+
+	def set_props(self, props):
+		'''get the page properties'''
+		self.props = extract_multivalues(props)
+
+	def set_template(self, template):
+		self.template = template
+
+	# register group in the environment for feed generation
+	#if 'group' in self.props:
+		#group_name = os.path.basename(path)
+		#env['groups'].append(group_name)
+
+
 	def to_json(env, page):
 		page = page.copy()
 		page['date'] = date_to_string(page['date'])
@@ -193,6 +221,14 @@ class Page:
 		write_file(json_filepath, json.dumps(page))
 
 	def to_html(env, page):
+
+		'''# inherit the template from parent, if not defined its own
+		if 'template' in page_data:
+			template = self.env.get('default_template', DEFAULT_TEMPLATE)
+			if parent_page and parent_page.template:
+				template = parent_page.template
+			page.template = template'''
+
 		page = page.copy()
 		# get css and javascript found in the folder
 		page['styles'] = build_style_tags(page.get('styles', ''), page['permalink'])
@@ -216,12 +252,12 @@ class Site:
 		self.config_path = os.path.join(os.getcwd(), CONFIG_FILE)
 		self.config = None
 		self.env = {}
-	
+
 	def load_config(self):
 		if not os.path.exists(self.config_path):
 			raise ConfigNotFoundException()
 		self.config = parse_input_file(read_file(self.config_path))
-	
+
 	def create_page(self, page):
 		if not os.path.exists(self.config_path):
 			raise ConfigNotFoundException()
@@ -238,7 +274,7 @@ class Site:
 		# need to write file contents to insert creation date
 		write_file(dest_file, content.format(date))
 		return dest_file
-	
+
 	def create(self):
 		if os.path.exists(self.config_path):
 			raise SiteAlreadyInstalledException()
@@ -248,26 +284,35 @@ class Site:
 		shutil.copyfile(MODEL_CONFIG_FILE, CONFIG_FILE)
 
 	def load(self):
-		'''Returns a dict containing the site data'''
-		config = self.load_config()
-		self.env = {}
+		'''Loads the site's data into memory'''
+		config = self.config
+		env = {}
 		if not config.get('base_url'):
 			sys.exit('base_url was not set in config!')
-		
 		# add a trailing slash to base url, if necessary
-		env['site_tags'] = extract_multivalues(env.get('site_tags'))
-		env['feed_sources'] = extract_multivalues(env.get('feed_sources'))
-		ignore_folders = extract_multivalues(env.get('ignore_folders'))
-		ignore_folders.extend([TEMPLATES_DIR, env.get('feed_dir')])
+		env['base_url'] = urljoin(config.get('base_url'), '/')
+		self.tags = extract_multivalues(config.get('site_tags'))
+		env['feed_sources'] = extract_multivalues(config.get('feed_sources'))
+		ignore_folders = extract_multivalues(config.get('ignore_folders'))
+		ignore_folders.extend([TEMPLATES_DIR, config.get('feed_dir')])
 		env['ignore_folders'] = ignore_folders
-		env['pages'] = {}
+		env['pages'] = []
 		env['groups'] = []
 		env['feeds'] = []
-		# now let's read all the pages and groups from files 
-		read_page_files(env, os.curdir)
-		paginate_groups(env)
-		return env
+		# now let's read all the pages and groups from files
+		db = Database()
+		db.load(os.curdir)
+		for p in db.query():
+			print(vars(p))
+		# TODO: check if path not in env['ignore_folders']
+		#paginate_groups(env)
+		self.env = env
 
+	def generate(self):
+		pass
+		#page_data['permalink'] = urljoin(self.env['base_url'], path)
+
+	'''
 	def generate_feeds(self, env):
 		sources = env.get('feed_sources')
 		if not sources:
@@ -276,7 +321,7 @@ class Site:
 		pages = env['pages'].values()
 		# filtering the pages that shouldn't be listed in feeds
 		pages = axiom.dataset_filter_props(pages, ['draft', 'nofeed'])
-		
+
 		if 'all' in sources:
 			# copy the list
 			set_feed_source(env, list(pages))
@@ -287,24 +332,59 @@ class Site:
 				group_pages = axiom.dataset_filter_group(list(pages), group_name)
 				set_feed_source(env, group_pages)
 				write_feed_file(env, '{}.xml'.format(group_name))
+	'''
 
 
-class Database():
+class Database:
 	def __init__(self):
-		pass
-	
-	def read_page(self, env, path):
-		'''Returns a dictionary with the page data'''
-		#removing '.' of the path in the case of root directory of site
+		self._page_index = []
+
+	def load(self, path):
+		self._build_index(path)
+
+	def query(self):
+		return self._page_index
+
+	def _get_page_data(self, path):
+		'''Return the page data specified by path'''
+		# removing dot from path, including Windows path style
+		path = regex_replace(PATH_DOT_PATTERN, '', path)
 		data_file = os.path.join(path, DATA_FILE)
-		# avoid directories that doesn't have a data file
+		# avoid directories that don't have a data file
 		if not os.path.exists(data_file):
 			return
 		page_data = parse_input_file(read_file(data_file))
-		page = Page(path)
-		page.load(page_data)
-		return page
-	
+		page_data['path'] = path
+		return page_data
+
+	def _get_subpages_list(self, path):
+		'''Return a list containing the full path of the subpages'''
+		join, isdir = os.path.join, os.path.isdir
+		subpages = []
+		for folder in os.listdir(path):
+			fullpath = join(path, folder)
+			if isdir(fullpath):
+				subpages.append(fullpath)
+		return subpages
+
+	def _build_index(self, path, parent_page=None):
+		'''Read the folders recursively and create a list
+		of page objects.'''
+		page_data = self._get_page_data(path)
+		if not page_data:
+			return
+		try:
+			page = Page(page_data)
+		except PageValuesNotDefined as e:
+			sys.exit(e)
+		page.parent = parent_page
+		self._page_index.append(page)
+		if parent_page:
+			parent_page.children.append(page)
+		for subpage_path in self._get_subpages_list(path):
+			self._build_index(subpage_path, page)
+
+	'''
 	def dataset_filter_group(self, dataset, group_name):
 		if not group_name:
 			return dataset
@@ -333,46 +413,7 @@ class Database():
 		pages = dataset_filter_group(pages, args.get('group'))
 		# listing order
 		pages = dataset_sort(pages, args.get('sort', 'date'), args.get('ord'))
-		return pages
-	
-	def read(self, env, path, parent=None):
-		'''Read the folders recursively and creates a dictionary
-		containing the pages' data.'''
-		file_list = os.listdir(path)
-		page_data = None
-		# removing dot from path
-		path = re.sub(r'^\.$|\./|\.\\', '', path)
-		children = get_page_children(env, path, file_list)
-
-		# there's a data file in this path
-		if os.path.exists(os.path.join(path, DATA_FILE)):
-			page_data = self.read_page(env, path)
-			# inherit the template from parent, if not defined its own
-			if 'template' not in page_data:
-				template = env.get('default_template', DEFAULT_TEMPLATE)
-				if parent:
-					template = parent.get('template', template)
-				page_data['template'] = template
-			# stores the path of its children
-			page_data['children'] = children
-			env['pages'][path] = page_data
-
-		# process the children pages, passing the parent page
-		for child_path in children:
-			self.read(env, child_path, page_data)
-
-
-	def get_page_children(self, env, path, folders):
-		'''Returns a list containing the full path of the children pages,
-		removing the ignored folders like templates'''
-		join = os.path.join
-		isdir = os.path.isdir
-		children = []
-		for folder in folders:
-			fullpath = join(path, folder)
-			if isdir(fullpath) and fullpath not in env['ignore_folders']:
-				children.append(fullpath)
-		return children
+		return pages'''
 
 
 def paginate_groups(env):

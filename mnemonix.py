@@ -27,8 +27,12 @@ def gen(args):
 	outputs HTML/JSON for each page file'''
 	
 	site = Site()
+	try:
+		site.load_config()
+	except ConfigNotFoundException:
+		sys.exit('Mnemonix is not installed in this folder!')
+	
 	site.load()
-	site.generate()
 	
 	'''
 	env = axiom.get_env()
@@ -113,11 +117,8 @@ def main():
 	parser_gen = subparsers.add_parser('gen', help='generate the pages')
 	parser_gen.set_defaults(method=gen)
 
-	args = parser.parse_args()
-	try:
-		args.method(args)
-	except AttributeError:
-		parser.error("Expected a command.")
+	args = parser.parse_args()	
+	args.method(args)
 
 if __name__ == '__main__':
 	main()
