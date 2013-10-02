@@ -32,24 +32,8 @@ def gen(args):
 	except ConfigNotFoundException:
 		sys.exit('Mnemonix is not installed in this folder!')
 	
-	site.generate()
+	site.generate(args)
 	
-	'''
-	env = axiom.get_env()
-	env['output_enabled'] = args.output_enabled
-	pages = env['pages']
-	if not pages:
-		sys.exit('No pages to generate.')
-	total_rendered = 0
-	for page in pages.values():
-		if 'draft' in page['props']:
-			continue
-		if not 'nojson' in page['props']:	
-			reader.save_json(env, page)
-		if not 'nohtml' in page['props']:
-			reader.save_html(env, page)
-			total_rendered += 1
-	'''
 	#print("{}\nTotal of pages read: {}.".format("-" * 30, len(pages)))
 	#print("Total of pages generated: {}.\n".format(total_rendered))
 	
@@ -117,10 +101,7 @@ def main():
 	parser_gen.set_defaults(method=gen)
 
 	args = parser.parse_args()	
-	try:
-		args.method(args)
-	except AttributeError:
-		parser.print_help()
+	args.method(args)
 
 if __name__ == '__main__':
 	main()

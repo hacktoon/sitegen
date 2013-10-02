@@ -17,7 +17,9 @@ import sys
 import re
 import shutil
 import time
+import json
 from datetime import datetime
+from templex import Template
 
 # aliases
 regex_replace = re.sub
@@ -58,6 +60,9 @@ class PageExistsException(Exception):
 class PageValuesNotDefined(Exception):
 	pass
 
+class TemplateNotFound(Exception):
+	pass
+	
 
 def urljoin(base, *slug):
 	'''Custom URL join function to concatenate and add slashes'''
@@ -110,7 +115,7 @@ def read_template(tpl_filename):
 		tpl_filename = '{0}.tpl'.format(tpl_filename)
 	tpl_filepath = os.path.join(TEMPLATES_DIR, tpl_filename)
 	if not os.path.exists(tpl_filepath):
-		return ''
+		raise TemplateNotFound()
 	return read_file(tpl_filepath)
 
 def build_external_tags(filenames, permalink, tpl):
@@ -122,13 +127,13 @@ def build_external_tags(filenames, permalink, tpl):
 
 def build_style_tags(filenames, permalink):
 	tpl = '<link rel="stylesheet" type="text/css" href="{0}"/>'
-	filenames = axiom.extract_multivalues(filenames)
+	filenames = extract_multivalues(filenames)
 	filenames = [f for f in filenames if f.endswith('.css')]
 	return build_external_tags(filenames, permalink, tpl)
 
 def build_script_tags(filenames, permalink):
 	tpl = '<script src="{0}"></script>'
-	filenames = axiom.extract_multivalues(filenames)
+	filenames = extract_multivalues(filenames)
 	filenames = [f for f in filenames if f.endswith('.js')]
 	return build_external_tags(filenames, permalink, tpl)
 
@@ -160,6 +165,7 @@ def set_feed_source(env, pages):
 class Page:
 	def __init__(self):
 		self.children = []
+		self.props = []
 	
 	def load(self, page_data):
 		mandatory_keys = ['path', 'title', 'date', 'content']
@@ -198,47 +204,64 @@ class Page:
 	def set_props(self, props):
 		'''get the page properties'''
 		self.props = extract_multivalues(props)
-
-	def set_template(self, template):
+	
+	def set_styles(self):
+		if hasattr(self, 'styles'):
+			self.styles = build_style_tags(self.styles, self.permalink)
+	
+	def set_scripts(self):
+		if hasattr(self, 'scripts'):
+			self.scripts = build_script_tags(self.scripts, self.permalink)
+	
+	def config_template(self, default_template):
+		# inherit the template from parent, if haven't defined its own
+		if hasattr(self, 'template'):
+			return
+		template = default_template or DEFAULT_TEMPLATE
+		if self.parent and hasattr(self.parent, 'template'):
+			template = self.parent.template
 		self.template = template
+	
+	def to_json(self):
+		# copy a dictionary with the attributes
+		page_dict = vars(self).copy()
+		page_dict['date'] = date_to_string(page_dict['date'])
+		# these properties are not necessary in json
+		blocked_keys = ('children', 'parent', 'props', 'path')
+		for key in blocked_keys:
+			del page_dict[key]
+		json_filepath = os.path.join(self.path, 'index.json')
+		write_file(json_filepath, json.dumps(page_dict))
 
-	# register group in the environment for feed generation
-	#if 'group' in self.props:
-		#group_name = os.path.basename(path)
-		#env['groups'].append(group_name)
-
-
-	def to_json(env, page):
-		page = page.copy()
-		page['date'] = date_to_string(page['date'])
-		json_filepath = os.path.join(page['path'], 'index.json')
-		write_file(json_filepath, json.dumps(page))
-
-	def to_html(env, page):
-
-		'''# inherit the template from parent, if not defined its own
-		if 'template' in page_data:
-			template = self.env.get('default_template', DEFAULT_TEMPLATE)
-			if parent_page and parent_page.template:
-				template = parent_page.template
-			page.template = template'''
-
-		page = page.copy()
+	def to_html(self, site):
 		# get css and javascript found in the folder
-		page['styles'] = build_style_tags(page.get('styles', ''), page['permalink'])
-		page['scripts'] = build_script_tags(page.get('scripts', ''), page['permalink'])
-		html_templ = read_template(page['template'])
-		if not html_templ:
-			sys.exit('Zap! Template file {!r} '
-					 'couldn\'t be found for '
-					 'page {!r}!'.format(page['template'], page['path']))
+		self.set_styles()
+		self.set_scripts()
+		self.config_template(site.default_template)
 
+		try:
+			html_template = read_template(self.template)
+		except TemplateNotFound:
+			sys.exit('Template file {!r} couldn\'t be found for '
+					 'page {!r}!'.format(self.template, self.path))
+
+		#sys.exit(vars(site))
 		# replace template with page data and listings
-		html = render_template(html_templ, env, page)
-		path = page['path']
-		write_file(os.path.join(path, 'index.html'), html)
-		if env['output_enabled']:
-			print('"{0}" page generated.'.format(path or 'Home'))
+		renderer = Template(html_template)
+		output = renderer.render(site)
+		sys.exit(output)
+		write_file(os.path.join(self.path, 'index.html'), output)
+		if site.output_enabled:
+			print('"{0}" page generated.'.format(self.path or 'Home'))
+
+	def render(self, site):
+		if 'draft' in self.props:
+			return
+		self.permalink = urljoin(site.base_url, self.path)
+		if 'nojson' not in self.props:
+			self.to_json()
+		if 'nohtml' not in self.props:
+			self.to_html(site)
 
 
 class Site:
@@ -276,13 +299,14 @@ class Site:
 		# copy the config file
 		shutil.copyfile(MODEL_CONFIG_FILE, CONFIG_FILE)
 
-	def generate(self):
+	def generate(self, args):
 		'''Loads the site's data into memory'''
 		config = self.config
 		if not config.get('base_url'):
 			sys.exit('base_url was not set in config!')
 		# add a trailing slash to base url, if necessary
 		self.base_url = urljoin(config.get('base_url'), '/')
+		self.default_template = config.get('default_template', '')
 		self.tags = extract_multivalues(config.get('site_tags'))
 		#self.feed_sources = extract_multivalues(config.get('feed_sources'))
 		self.ignore_folders = extract_multivalues(config.get('ignore_folders'))
@@ -291,14 +315,22 @@ class Site:
 		self.groups = []
 		self.feeds = []
 		
+		# register group in the environment for feed generation
+		#if 'group' in self.props:
+			#group_name = os.path.basename(path)
+			#env['groups'].append(group_name)
+		
 		# now let's read all the pages and groups from files
 		db = Database()
 		db.load(os.curdir)
 		self.pages = db.query()
 		
-		for p in self.pages:
-			print(vars(p))
-		#page_data['permalink'] = urljoin(self.env['base_url'], path)
+		output_enabled = args.output_enabled
+		if not self.pages:
+			sys.exit('No pages to generate.')
+		
+		for page in self.pages:
+			page.render(self)
 
 	'''
 	def generate_feeds(self, env):
