@@ -56,10 +56,7 @@ class PageExistsException(Exception):
 
 
 class PageValuesNotDefined(Exception):
-	def __init__(self, message):
-		self.message = message
-	def __str__(self):
-		return self.message
+	pass
 
 
 def urljoin(base, *slug):
@@ -161,8 +158,10 @@ def set_feed_source(env, pages):
 
 
 class Page:
-	def __init__(self, page_data):
+	def __init__(self):
 		self.children = []
+	
+	def load(self, page_data):
 		mandatory_keys = ['path', 'title', 'date', 'content']
 		# define attributes dynamically
 		for key in page_data.keys():
@@ -252,13 +251,13 @@ class Site:
 			raise ConfigNotFoundException()
 		self.config = parse_input_file(read_file(self.config_path))
 
-	def create_page(self, page):
+	def create_page(self, path):
 		if not os.path.exists(self.config_path):
 			raise ConfigNotFoundException()
-		if not os.path.exists(page.path):
-			os.makedirs(page.path)
+		if not os.path.exists(path):
+			os.makedirs(path)
 		# full path of page data file
-		dest_file = os.path.join(page.path, DATA_FILE)
+		dest_file = os.path.join(path, DATA_FILE)
 		if os.path.exists(dest_file):
 			raise PageExistsException()
 		# copy the model page data file to a new file
@@ -363,7 +362,8 @@ class Database:
 		if not page_data:
 			return
 		try:
-			page = Page(page_data)
+			page = Page()
+			page.load(page_data)
 		except PageValuesNotDefined as e:
 			sys.exit(e)
 		page.parent = parent_page

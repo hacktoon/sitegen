@@ -67,9 +67,8 @@ def add(args):
 	except ConfigNotFoundException:
 		sys.exit('Mnemonix is not installed in this folder!')
 	
-	page = Page(path)
 	try:
-		site.create_page(page)
+		site.create_page(path)
 	except PageExistsException:
 		sys.exit('Page {!r} already exists.'.format(path))
 	
@@ -118,7 +117,10 @@ def main():
 	parser_gen.set_defaults(method=gen)
 
 	args = parser.parse_args()	
-	args.method(args)
+	try:
+		args.method(args)
+	except AttributeError:
+		parser.print_help()
 
 if __name__ == '__main__':
 	main()
