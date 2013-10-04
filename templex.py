@@ -157,10 +157,10 @@ class List(ScopeNode):
 		if not isinstance(collection, list):
 			sys.exit("Trying to list a non-listable property.")
 		
-		if self.limit:	
+		if self.limit:
 			if self.limit > 0:
 				# return the last x, as [1,2,3,4,5,6][-2:] => [5,6]
-				collection = collection[-self.limit:]  
+				collection = collection[-self.limit:]
 			else:
 				# return the first x
 				collection = collection[:-self.limit]

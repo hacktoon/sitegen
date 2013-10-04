@@ -231,7 +231,7 @@ class Page(Content):
 	
 	def to_json(self):
 		# copy a dictionary with the attributes
-		page_dict = vars(self).copy()
+		page_dict = self.serialize()
 		page_dict['date'] = date_to_string(page_dict['date'])
 		json_filepath = os.path.join(self._path, 'index.json')
 		write_file(json_filepath, json.dumps(page_dict))
@@ -240,20 +240,18 @@ class Page(Content):
 		# get css and javascript found in the folder
 		self.set_styles()
 		self.set_scripts()
-		self.config_template(default=env['default_template'])
+		self.config_template(default=env['site']['default_template'])
 		try:
 			html_template = read_template(self.template)
 		except TemplateNotFound:
 			sys.exit('Template file {!r} couldn\'t be found for '
 					 'page {!r}!'.format(self.template, self.path))
-
-		sys.exit(env)
 		# replace template with page data and listings
 		renderer = Template(html_template)
 		output = renderer.render(env)
 		write_file(os.path.join(self._path, 'index.html'), output)
-		if site.output_enabled:
-			print('"{0}" page generated.'.format(self._path or 'Home'))
+		#if site.output_enabled:
+		#	print('"{0}" page generated.'.format(self._path or 'Home'))
 
 	def render(self, env):
 		if 'draft' in self._props:
@@ -406,16 +404,16 @@ class Database:
 		'''Read the folders recursively and create a list
 		of page objects.'''
 		page_data = self._get_page_data(path)
-		if not page_data:
-			return
-		page = Page()
-		try:
-			page.load(page_data)
-		except PageValuesNotDefined as e:
-			sys.exit(e)
-		page._parent = parent_page
-		page._path = path
-		self._page_index.append(page)
+		page = None
+		if page_data:			
+			page = Page()
+			try:
+				page.load(page_data)
+			except PageValuesNotDefined as e:
+				sys.exit(e)
+			page._parent = parent_page
+			page._path = path
+			self._page_index.append(page)
 		for subpage_path in self._get_subpages_list(path):
 			self._build_index(subpage_path, page)
 
