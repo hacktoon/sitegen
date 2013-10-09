@@ -26,11 +26,15 @@ def gen(args):
 	'''Read recursively every directory under path and
 	outputs HTML/JSON for each page file'''
 	
-	site = Site()
+	db = Database()
 	try:
-		site.load_config()
+		config = db.load_config()
 	except ConfigNotFoundException:
 		sys.exit('Mnemonix is not installed in this folder!')
+	
+	site = Site()
+	site.build(config)
+	page_list = db.load_pages(os.curdir)
 	
 	site.generate(args)
 	
@@ -43,16 +47,15 @@ def gen(args):
 
 def add(args):
 	'''Create a new page in specified path'''
-	path = args.path
-	
-	site = Site()
+	db = Database()
 	try:
-		site.load_config()
+		db.load_config()
 	except ConfigNotFoundException:
 		sys.exit('Mnemonix is not installed in this folder!')
 	
+	path = args.path
 	try:
-		site.create_page(path)
+		db.write_page(path)
 	except PageExistsException:
 		sys.exit('Page {!r} already exists.'.format(path))
 	
@@ -63,9 +66,9 @@ def add(args):
 def init(args):
 	'''Install Mnemonic in the current folder'''
 	print('Installing Mnemonix...')
-	site = Site()
+	db = Database()
 	try:
-		site.create()
+		db.create_site()
 	except SiteAlreadyInstalledException:
 		sys.exit("Site already installed!")
 
