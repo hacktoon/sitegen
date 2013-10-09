@@ -193,6 +193,9 @@ class Page(ContentBase):
 		self._props = []
 		self._required_keys = ('title', 'date', 'content')
 
+	def build(self, data):
+		self.load(data)
+
 	def set_date(self, date):
 		'''converts date string to datetime object'''
 		if date:
@@ -343,7 +346,7 @@ class Database:
 		self.site_config = parse_input_file(read_file(self.config_path))
 		return self.site_config
 
-	def load_pages():
+	def load_pages(self, path):
 		self.build_index(path)
 		return self.page_index
 
@@ -380,16 +383,6 @@ class Database:
 		# copy the config file
 		shutil.copyfile(MODEL_CONFIG_FILE, CONFIG_FILE)
 	
-	def get_subpages_list(self, path):
-		'''Return a list containing the full path of the subpages'''
-		join, isdir = os.path.join, os.path.isdir
-		subpages = []
-		for folder in os.listdir(path):
-			fullpath = join(path, folder)
-			if isdir(fullpath):
-				subpages.append(fullpath)
-		return subpages
-
 	def paginate_groups(self):
 		key = 'permalink'
 		for group in groups:
@@ -404,6 +397,25 @@ class Database:
 				prev_index = index - 1 if index > 0 else 0
 				page['prev'] = pages[prev_index][key]
 
+	def get_subpages_list(self, path):
+		'''Return a list containing the full path of the subpages'''
+		join, isdir = os.path.join, os.path.isdir
+		subpages = []
+		for folder in os.listdir(path):
+			fullpath = join(path, folder)
+			if isdir(fullpath):
+				subpages.append(fullpath)
+		return subpages
+
+	def order_insert(self, page):
+		if not self.page_index:
+			self.page_index.append(page)
+			return
+		for i, val in enumerate(self.page_index):
+			if page.date >= val.date:
+				self.page_index.insert(i+1, page)
+				break
+
 	def build_index(self, path, parent_page=None):
 		'''Read the folders recursively and create a list
 		of page objects.'''
@@ -412,13 +424,12 @@ class Database:
 		if page_data:
 			page = Page(path)
 			try:
-				page.load(page_data)
+				page.build(page_data)
 			except PageValuesNotDefined as e:
 				sys.exit(e)
 			page._parent = parent_page
 			if parent_page and 'group' in parent_page._props:
 				page._group = os.path.basename(parent_page._path)
-				
-			self.page_index.append(page)
+			self.order_insert(page)
 		for subpage_path in self.get_subpages_list(path):
 			self.build_index(subpage_path, page)

@@ -35,8 +35,9 @@ def gen(args):
 	site = Site()
 	site.build(config)
 	page_list = db.load_pages(os.curdir)
-	
-	site.generate(args)
+	for page in page_list:
+		print(page._path, page.date)
+	#site.generate(args)
 	
 	#print("{}\nTotal of pages read: {}.".format("-" * 30, len(pages)))
 	#print("Total of pages generated: {}.\n".format(total_rendered))
