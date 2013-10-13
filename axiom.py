@@ -259,7 +259,6 @@ class Page(ContentBase):
 	def render(self, env):
 		if 'draft' in self._props:
 			return
-		self.permalink = urljoin(env['site']['base_url'], self._path)
 		if 'nojson' not in self._props:
 			self.to_json()
 		if 'nohtml' not in self._props:
@@ -408,13 +407,13 @@ class Database:
 		return subpages
 
 	def order_insert(self, page):
-		if not self.page_index:
-			self.page_index.append(page)
-			return
-		for i, val in enumerate(self.page_index):
-			if page.date >= val.date:
-				self.page_index.insert(i+1, page)
+		index = self.page_index
+		count = 0
+		while True:
+			if count == len(index) or page.date <= index[count].date:
+				index.insert(count, page)
 				break
+			count += 1
 
 	def build_index(self, path, parent_page=None):
 		'''Read the folders recursively and create a list
@@ -428,6 +427,7 @@ class Database:
 			except PageValuesNotDefined as e:
 				sys.exit(e)
 			page._parent = parent_page
+			page.permalink = urljoin(self.site_config['base_url'], path)
 			if parent_page and 'group' in parent_page._props:
 				page._group = os.path.basename(parent_page._path)
 			self.order_insert(page)
