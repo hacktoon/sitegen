@@ -28,7 +28,6 @@ regex_replace = re.sub
 DATA_FILE = 'page.me'
 CONFIG_FILE = 'config.me'
 TEMPLATES_DIR = 'templates'
-DEFAULT_TEMPLATE = 'main.tpl'
 # format in which the date will be stored
 DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
 
@@ -45,23 +44,32 @@ MODEL_DATA_FILE = os.path.join(data_dir, DATA_FILE)
 MODEL_TEMPLATES_DIR = os.path.join(data_dir, TEMPLATES_DIR)
 
 
-class ConfigNotFoundException(Exception):
-	pass
+class FileNotFoundError(Exception):
+	def __init__(self, msg):
+		self.msg = msg
+	def __str__(self):
+		return self.msg
 
 
-class SiteAlreadyInstalledException(Exception):
-	pass
+class SiteAlreadyInstalledError(Exception):
+	def __init__(self, msg):
+		self.msg = msg
+	def __str__(self):
+		return self.msg
 
 
-class PageExistsException(Exception):
-	pass
+class PageExistsError(Exception):
+	def __init__(self, msg):
+		self.msg = msg
+	def __str__(self):
+		return self.msg
 
 
-class PageValuesNotDefined(Exception):
-	pass
-
-class TemplateNotFound(Exception):
-	pass
+class ValuesNotDefined(Exception):
+	def __init__(self, msg):
+		self.msg = msg
+	def __str__(self):
+		return self.msg
 
 
 def urljoin(base, *slug):
@@ -115,7 +123,7 @@ def read_template(tpl_filename):
 		tpl_filename = '{0}.tpl'.format(tpl_filename)
 	tpl_filepath = os.path.join(TEMPLATES_DIR, tpl_filename)
 	if not os.path.exists(tpl_filepath):
-		raise TemplateNotFound()
+		raise FileNotFoundError()
 	return read_file(tpl_filepath)
 
 def build_external_tags(filenames, permalink, tpl):
@@ -178,7 +186,7 @@ class ContentBase:
 				required_keys.remove(key)
 		# if any required key wasn't set, raise exception
 		if len(required_keys):
-			raise PageValuesNotDefined()
+			raise ValuesNotDefined('Key not defined')
 
 	def serialize(self):
 		# convert an object to a dict
@@ -188,13 +196,19 @@ class ContentBase:
 
 
 class Page(ContentBase):
-	def __init__(self, path):
-		self._path = path
-		self._props = []
+	def __init__(self, path, parent, default_template=None):
+		self._path = regex_replace(PATH_DOT_PATTERN, '', path)
 		self._required_keys = ('title', 'date', 'content')
+		self._default_template = default_template
+		self._parent = parent
+		self._props = []
 
 	def build(self, data):
 		self.load(data)
+		self.permalink = urljoin(self.base_url, self._path)
+		# setting page group
+		if self._parent and 'group' in self._parent._props:
+			self._group = os.path.basename(self._parent._path)
 
 	def set_date(self, date):
 		'''converts date string to datetime object'''
@@ -215,6 +229,14 @@ class Page(ContentBase):
 	def set_props(self, props):
 		'''get the page properties'''
 		self._props = extract_multivalues(props)
+	
+	def set_template(self, tpl):
+		if hasattr(self, '_template') and self._template:
+			return
+		template = tpl
+		if self._parent and hasattr(self._parent, '_template'):
+			template = self._parent._template
+		self._template = template
 
 	def set_styles(self):
 		if hasattr(self, 'styles'):
@@ -223,15 +245,6 @@ class Page(ContentBase):
 	def set_scripts(self):
 		if hasattr(self, 'scripts'):
 			self.scripts = build_script_tags(self.scripts, self.permalink)
-
-	def set_template(self, default):
-		# inherit the template from parent, if haven't defined its own
-		if hasattr(self, 'template') and self._template:
-			return
-		template = default
-		if self._parent and hasattr(self._parent, 'template'):
-			template = self._parent._template
-		self._template = template
 
 	def to_json(self):
 		# copy a dictionary with the attributes
@@ -268,10 +281,10 @@ class Page(ContentBase):
 class Site(ContentBase):
 	def __init__(self):
 		self._required_keys = ('title', 'default_template', 'base_url')
-
-	def build(self, config):
-		self.load(config)
-
+		self._config_path = os.path.join(os.getcwd(), CONFIG_FILE)
+		self._page_index = []
+		#self.feed_sources = extract_multivalues(config.get('feed_sources'))
+		
 	def set_base_url(self, base_url):
 		if not base_url:
 			sys.exit('base_url was not set in config!')
@@ -279,37 +292,105 @@ class Site(ContentBase):
 		self.base_url = urljoin(base_url, '/')
 
 	def set_default_template(self, tpl):
-		self._default_template = tpl or DEFAULT_TEMPLATE
+		self._default_template = tpl
 
 	def set_tags(self, tags):
 		self.tags = extract_multivalues(tags)
 
 	def set_ignore_folders(self, folders):
-		pass
-		'''ignore_folders = extract_multivalues(folders)
+		ignore_folders = extract_multivalues(folders)
+		'''
 		ignore_folders.extend([TEMPLATES_DIR, config.get('feed_dir')])
 		self.ignore_folders = ignore_folders'''
 
-	def generate(self, args):
-		'''Loads the site's data into memory'''
-		#self.feed_sources = extract_multivalues(config.get('feed_sources'))
-		# TODO: check if path not in env['ignore_folders']
-		self.groups = []
-		self.feeds = []
+	def load_config(self):
+		if not os.path.exists(self._config_path):
+			raise FileNotFoundError()
+		config = parse_input_file(read_file(self._config_path))
+		self.load(config)
 
-		# now let's read all the pages and groups from files
-		'''
-		output_enabled = args.output_enabled
-		if not page_list:
-			sys.exit('No pages to generate.')
-		env = {
-			'site': self.serialize(),
-			'pages': page_list
-		}
-		for page in page_list:
-			page.render(env)
-		'''
+	def read_page(self, path):
+		'''Return the page data specified by path'''
+		data_file = os.path.join(path, DATA_FILE)
+		# avoid directories that don't have a data file
+		if not os.path.exists(data_file):
+			return
+		page_data = parse_input_file(read_file(data_file))
+		return page_data
 
+	def write_page(self, path):
+		if not os.path.exists(path):
+			os.makedirs(path)
+		# full path of page data file
+		dest_file = os.path.join(path, DATA_FILE)
+		if os.path.exists(dest_file):
+			raise PageExistsError()
+		# copy the model page data file to a new file
+		content = read_file(MODEL_DATA_FILE)
+		# saving date in the format configured
+		date = datetime.today().strftime(DATE_FORMAT)
+		# need to write file contents to insert creation date
+		write_file(dest_file, content.format(date))
+	
+	def create(self):
+		if os.path.exists(self.config_path):
+			raise SiteAlreadyInstalledError()
+		# copy the templates folder
+		shutil.copytree(MODEL_TEMPLATES_DIR, TEMPLATES_DIR)
+		# copy the config file
+		shutil.copyfile(MODEL_CONFIG_FILE, CONFIG_FILE)
+	
+	def paginate_groups(self):
+		key = 'permalink'
+		for group in groups:
+			pages = dataset_filter_group(pages, group)
+			length = len(pages)
+			for index, page in enumerate(pages):
+				page['first'] = pages[0][key]
+				page['last'] = pages[-1][key]
+				next_index = index + 1 if index < length - 1 else -1
+				page['next'] = pages[next_index][key]
+				prev_index = index - 1 if index > 0 else 0
+				page['prev'] = pages[prev_index][key]
+
+	def append_index(self, page):
+		index = self._page_index
+		count = 0
+		while True:
+			if count == len(index) or page.date <= index[count].date:
+				index.insert(count, page)
+				break
+			count += 1
+
+	def get_subpages_list(self, path):
+		'''Return a list containing the full path of the subpages'''
+		join, isdir = os.path.join, os.path.isdir
+		subpages = []
+		for folder in os.listdir(path):
+			fullpath = join(path, folder)
+			if isdir(fullpath):
+				subpages.append(fullpath)
+		return subpages
+	
+	def build_page_list(self, path, parent_page=None):
+		'''Read the folders recursively and create a list
+		of page objects.'''
+		page_data = self.read_page(path)
+		page = None
+		if page_data:
+			page = Page(path, parent_page)
+			try:
+				page.build(page_data)
+			except ValuesNotDefinedError as e:
+				sys.exit(e)
+			# append to index ordering by date
+			self.append_index(page)
+		for subpage_path in self.get_subpages_list(path):
+			self.build_page_list(subpage_path, page)
+	
+	def generate(self, path):
+		self.build_page_list(path)
+	
 	'''
 	def generate_feeds(self, env):
 		sources = env.get('feed_sources')
@@ -331,105 +412,3 @@ class Site(ContentBase):
 				set_feed_source(env, group_pages)
 				write_feed_file(env, '{}.xml'.format(group_name))
 	'''
-
-
-class Database:
-	def __init__(self):
-		self.config_path = os.path.join(os.getcwd(), CONFIG_FILE)
-		self.page_index = []
-		self.site_config = {}
-
-	def load_config(self):
-		if not os.path.exists(self.config_path):
-			raise ConfigNotFoundException()
-		self.site_config = parse_input_file(read_file(self.config_path))
-		return self.site_config
-
-	def load_pages(self, path):
-		self.build_index(path)
-		return self.page_index
-
-	def read_page(self, path):
-		'''Return the page data specified by path'''
-		# removing dot from path, including Windows path style
-		path = regex_replace(PATH_DOT_PATTERN, '', path)
-		data_file = os.path.join(path, DATA_FILE)
-		# avoid directories that don't have a data file
-		if not os.path.exists(data_file):
-			return
-		page_data = parse_input_file(read_file(data_file))
-		return page_data
-
-	def write_page(self, path):
-		if not os.path.exists(path):
-			os.makedirs(path)
-		# full path of page data file
-		dest_file = os.path.join(path, DATA_FILE)
-		if os.path.exists(dest_file):
-			raise PageExistsException()
-		# copy the model page data file to a new file
-		content = read_file(MODEL_DATA_FILE)
-		# saving date in the format configured
-		date = datetime.today().strftime(DATE_FORMAT)
-		# need to write file contents to insert creation date
-		write_file(dest_file, content.format(date))
-	
-	def create_site(self):
-		if os.path.exists(self.config_path):
-			raise SiteAlreadyInstalledException()
-		# copy the templates folder
-		shutil.copytree(MODEL_TEMPLATES_DIR, TEMPLATES_DIR)
-		# copy the config file
-		shutil.copyfile(MODEL_CONFIG_FILE, CONFIG_FILE)
-	
-	def paginate_groups(self):
-		key = 'permalink'
-		for group in groups:
-			pages = dataset_filter_group(pages, group)
-			pages = dataset_sort(pages, 'date', 'desc')
-			length = len(pages)
-			for index, page in enumerate(pages):
-				page['first'] = pages[0][key]
-				page['last'] = pages[-1][key]
-				next_index = index + 1 if index < length - 1 else -1
-				page['next'] = pages[next_index][key]
-				prev_index = index - 1 if index > 0 else 0
-				page['prev'] = pages[prev_index][key]
-
-	def get_subpages_list(self, path):
-		'''Return a list containing the full path of the subpages'''
-		join, isdir = os.path.join, os.path.isdir
-		subpages = []
-		for folder in os.listdir(path):
-			fullpath = join(path, folder)
-			if isdir(fullpath):
-				subpages.append(fullpath)
-		return subpages
-
-	def order_insert(self, page):
-		index = self.page_index
-		count = 0
-		while True:
-			if count == len(index) or page.date <= index[count].date:
-				index.insert(count, page)
-				break
-			count += 1
-
-	def build_index(self, path, parent_page=None):
-		'''Read the folders recursively and create a list
-		of page objects.'''
-		page_data = self.read_page(path)
-		page = None
-		if page_data:
-			page = Page(path)
-			try:
-				page.build(page_data)
-			except PageValuesNotDefined as e:
-				sys.exit(e)
-			page._parent = parent_page
-			page.permalink = urljoin(self.site_config['base_url'], path)
-			if parent_page and 'group' in parent_page._props:
-				page._group = os.path.basename(parent_page._path)
-			self.order_insert(page)
-		for subpage_path in self.get_subpages_list(path):
-			self.build_index(subpage_path, page)

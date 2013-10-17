@@ -21,26 +21,20 @@ from axiom import *
 
 VERSION = "0.2.0-beta"
 
-
 def gen(args):
 	'''Read recursively every directory under path and
 	outputs HTML/JSON for each page file'''
 	
-	db = Database()
-	try:
-		config = db.load_config()
-	except ConfigNotFoundException:
-		sys.exit('Mnemonix is not installed in this folder!')
-	
 	site = Site()
-	site.build(config)
-	page_list = db.load_pages(os.curdir)
-	for page in page_list:
-		print(page._path, page.date)
-	#site.generate(args)
+	site.load_config()
 	
-	#print("{}\nTotal of pages read: {}.".format("-" * 30, len(pages)))
-	#print("Total of pages generated: {}.\n".format(total_rendered))
+	# TODO: check if path not in env['ignore_folders']
+	
+	site.generate(os.curdir)
+	
+	#if args.output_enabled:
+	#	print("{}\nTotal of pages read: {}.".format("-" * 30, len(pages)))
+	#	print("Total of pages generated: {}.\n".format(total_rendered))
 	
 	# after generating all pages, update feed
 	#reader.generate_feeds(env)
@@ -48,16 +42,12 @@ def gen(args):
 
 def add(args):
 	'''Create a new page in specified path'''
-	db = Database()
-	try:
-		db.load_config()
-	except ConfigNotFoundException:
-		sys.exit('Mnemonix is not installed in this folder!')
 	
 	path = args.path
+	site = Site()
 	try:
-		db.write_page(path)
-	except PageExistsException:
+		site.write_page(path)
+	except PageExistsError:
 		sys.exit('Page {!r} already exists.'.format(path))
 	
 	print('Page {!r} successfully created!'.format(path))
@@ -67,10 +57,11 @@ def add(args):
 def init(args):
 	'''Install Mnemonic in the current folder'''
 	print('Installing Mnemonix...')
-	db = Database()
+	
+	site = Site()
 	try:
-		db.create_site()
-	except SiteAlreadyInstalledException:
+		site.create()
+	except SiteAlreadyInstalledError:
 		sys.exit("Site already installed!")
 
 	print('\nMnemonix was successfully installed!\n\n'
