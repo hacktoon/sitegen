@@ -65,7 +65,7 @@ class PageExistsError(Exception):
 		return self.msg
 
 
-class ValuesNotDefined(Exception):
+class ValuesNotDefinedError(Exception):
 	def __init__(self, msg):
 		self.msg = msg
 	def __str__(self):
@@ -196,19 +196,35 @@ class ContentBase:
 
 
 class Page(ContentBase):
-	def __init__(self, path, parent, default_template=None):
+	def __init__(self, path):
 		self._path = regex_replace(PATH_DOT_PATTERN, '', path)
 		self._required_keys = ('title', 'date', 'content')
-		self._default_template = default_template
-		self._parent = parent
+		self._parent = None
+		self._template = ''
 		self._props = []
 
 	def build(self, data):
 		self.load(data)
-		self.permalink = urljoin(self.base_url, self._path)
 		# setting page group
 		if self._parent and 'group' in self._parent._props:
-			self._group = os.path.basename(self._parent._path)
+			self.group = os.path.basename(self._parent._path)
+		# the parent page's template has precedence
+		if not self._template:
+			if self._parent:
+				self._template = self._parent._template
+			else:
+				self._template = 'default'
+		# setting permalink
+		self.permalink = urljoin(self._base_url, self._path)
+
+	def set_template(self, template):
+		self._template = template
+
+	def set_base_url(self, base_url):
+		self._base_url = base_url
+
+	def set_parent(self, parent):
+		self._parent = parent
 
 	def set_date(self, date):
 		'''converts date string to datetime object'''
@@ -229,14 +245,6 @@ class Page(ContentBase):
 	def set_props(self, props):
 		'''get the page properties'''
 		self._props = extract_multivalues(props)
-	
-	def set_template(self, tpl):
-		if hasattr(self, '_template') and self._template:
-			return
-		template = tpl
-		if self._parent and hasattr(self._parent, '_template'):
-			template = self._parent._template
-		self._template = template
 
 	def set_styles(self):
 		if hasattr(self, 'styles'):
@@ -284,7 +292,7 @@ class Site(ContentBase):
 		self._config_path = os.path.join(os.getcwd(), CONFIG_FILE)
 		self._page_index = []
 		#self.feed_sources = extract_multivalues(config.get('feed_sources'))
-		
+
 	def set_base_url(self, base_url):
 		if not base_url:
 			sys.exit('base_url was not set in config!')
@@ -331,7 +339,7 @@ class Site(ContentBase):
 		date = datetime.today().strftime(DATE_FORMAT)
 		# need to write file contents to insert creation date
 		write_file(dest_file, content.format(date))
-	
+
 	def create(self):
 		if os.path.exists(self.config_path):
 			raise SiteAlreadyInstalledError()
@@ -339,7 +347,7 @@ class Site(ContentBase):
 		shutil.copytree(MODEL_TEMPLATES_DIR, TEMPLATES_DIR)
 		# copy the config file
 		shutil.copyfile(MODEL_CONFIG_FILE, CONFIG_FILE)
-	
+
 	def paginate_groups(self):
 		key = 'permalink'
 		for group in groups:
@@ -371,26 +379,31 @@ class Site(ContentBase):
 			if isdir(fullpath):
 				subpages.append(fullpath)
 		return subpages
-	
+
 	def build_page_list(self, path, parent_page=None):
-		'''Read the folders recursively and create a list
+		'''Read the folders recursively and create an ordered list
 		of page objects.'''
 		page_data = self.read_page(path)
 		page = None
 		if page_data:
-			page = Page(path, parent_page)
+			page = Page(path)
 			try:
+				page_data['parent'] = parent_page
+				page_data['base_url'] = self.base_url
 				page.build(page_data)
 			except ValuesNotDefinedError as e:
 				sys.exit(e)
+
 			# append to index ordering by date
 			self.append_index(page)
 		for subpage_path in self.get_subpages_list(path):
 			self.build_page_list(subpage_path, page)
-	
+
 	def generate(self, path):
 		self.build_page_list(path)
-	
+		for page in self._page_index:
+			print(vars(page))
+
 	'''
 	def generate_feeds(self, env):
 		sources = env.get('feed_sources')

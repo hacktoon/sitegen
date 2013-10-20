@@ -289,7 +289,11 @@ class HTML(Node):
 class Template():
 	def __init__(self, template):
 		self.template = template
-
+		self.include_path = None
+	
+	def set_include_path(self, path):
+		self.include_path = path
+	
 	def parse(self):
 		tree = Root()
 		stack = [tree]
@@ -317,7 +321,7 @@ class Template():
 				elif command == 'list':
 					node = List(args)
 				elif command == 'include':
-					node = Include(args)
+					node = Include(self.include_path, args)
 				elif command == 'if:equal':
 					node = EqualBranch(args)
 				elif command == 'if:different':

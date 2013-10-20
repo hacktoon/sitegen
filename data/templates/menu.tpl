@@ -5,8 +5,8 @@
 		<ul>
 			{{list src=pages num=5}}
 				<li>
-					<a title="{{title}}" href="{{permalink}}">
-						{{date}} - {{title}}
+					<a title="{{page.title}}" href="{{page.permalink}}">
+						{{page.date}} - {{page.title}}
 					</a>
 				</li>
 			{{end}}
@@ -15,10 +15,10 @@
 	<div class="widget">
 		<h2>This page's children</h2>
 		<ul>
-			{{list src=children num=4 sort=date ord=desc}}
+			{{list num=4 sort=date ord=desc}}
 				<li>
-					<a title="{{title}}" href="{{permalink}}">
-						{{date}} - {{title}}
+					<a title="{{page.title}}" href="{{page.permalink}}">
+						{{page.date}} - {{page.title}}
 					</a>
 				</li>
 			{{end}}
