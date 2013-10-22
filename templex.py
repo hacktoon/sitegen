@@ -286,7 +286,7 @@ class HTML(Node):
 		return self.text
 
 
-class Template():
+class TemplateParser():
 	def __init__(self, template):
 		self.template = template
 		self.include_path = None

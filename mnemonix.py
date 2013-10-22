@@ -29,8 +29,8 @@ def gen(args):
 	site.load_config()
 	
 	# TODO: check if path not in env['ignore_folders']
-	
-	site.generate(os.curdir)
+	for page in site.get_pages(os.curdir):
+		site.generate(page)
 	
 	#if args.output_enabled:
 	#	print("{}\nTotal of pages read: {}.".format("-" * 30, len(pages)))
