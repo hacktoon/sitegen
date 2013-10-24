@@ -119,38 +119,6 @@ def extract_multivalues(tag_string):
 		tag_list = [tag.strip() for tag in tags]
 	return tag_list
 
-def read_template(tpl_filename):
-	'''Returns a template string from the template folder'''
-	if not tpl_filename.endswith('.tpl'):
-		tpl_filename = '{0}.tpl'.format(tpl_filename)
-	tpl_filepath = path_join(TEMPLATES_DIR, tpl_filename)
-	if not os.path.exists(tpl_filepath):
-		raise FileNotFoundError()
-	return read_file(tpl_filepath)
-
-def write_feed_file(env, filename):
-	feed_dir = env.get('feed_dir', 'feed')
-	feed_data = {
-		'description': env.get('site_description'),
-		'build_date': datetime.today()  # sets lastBuildDate
-	}
-	# create the feed directory
-	if not os.path.exists(feed_dir):
-		os.makedirs(feed_dir)
-	feed_tpl = axiom.read_file(MODEL_FEED_FILE)
-	feed_data['link'] = axiom.urljoin(env['base_url'], feed_dir, filename)
-	feed_content = render_template(feed_tpl, env, feed_data)
-	feed_path = path_join(feed_dir, filename)
-	axiom.write_file(feed_path, feed_content)
-	if env['output_enabled']:
-		print('Feed {!r} generated.'.format(feed_path))
-
-def set_feed_source(env, pages):
-	items_listed = int(env.get('feed_num', 8))  # default value
-	pages = axiom.dataset_sort(pages, 'date', 'desc')
-	pages = axiom.dataset_range(pages, items_listed)
-	env['feeds'] = pages
-
 
 class ContentRenderer():
 	def __init__(self, template):
@@ -200,7 +168,7 @@ class HTMLRenderer(ContentRenderer):
 		page_dict = page.serialize()
 		page_dict['styles'] = self.build_style_tags(page._styles)
 		page_dict['scripts'] = self.build_script_tags(page._scripts)
-		print(page_dict)
+		
 		return ''
 		#renderer = TemplateParser(self.template)
 		#return renderer.render(page_dict)
@@ -288,6 +256,10 @@ class Site(Serializable):
 		self._config_path = path_join(os.getcwd(), CONFIG_FILE)
 		self._page_list = []
 		self._groups = []
+		self._env = {
+			'site': {},
+			'pages': []
+		}
 
 	def set_base_url(self, base_url):
 		if not base_url:
@@ -297,6 +269,12 @@ class Site(Serializable):
 
 	def set_tags(self, tags):
 		self.tags = extract_multivalues(tags)
+	
+	def set_feed_num(self, feed_num):
+		try:
+			self._feed_num = int(feed_num)
+		except ValueError:
+			self._feed_num = 8
 	
 	def set_default_template(self, template):
 		self._default_template = template
@@ -312,7 +290,24 @@ class Site(Serializable):
 			raise FileNotFoundError()
 		config = parse_input_file(read_file(self._config_path))
 		self.initialize(config)
-
+	
+	def create(self):
+		if os.path.exists(self.config_path):
+			raise SiteAlreadyInstalledError()
+		# copy the templates folder
+		shutil.copytree(MODEL_TEMPLATES_DIR, TEMPLATES_DIR)
+		# copy the config file
+		shutil.copyfile(MODEL_CONFIG_FILE, CONFIG_FILE)
+	
+	def read_template(self, tpl_filename):
+		'''Returns a template string from the template folder'''
+		if not tpl_filename.endswith('.tpl'):
+			tpl_filename = '{0}.tpl'.format(tpl_filename)
+		tpl_filepath = path_join(TEMPLATES_DIR, tpl_filename)
+		if not os.path.exists(tpl_filepath):
+			raise FileNotFoundError()
+		return read_file(tpl_filepath)
+	
 	def read_page(self, path):
 		'''Return the page data specified by path'''
 		data_file = path_join(path, DATA_FILE)
@@ -336,14 +331,6 @@ class Site(Serializable):
 		# need to write file contents to insert creation date
 		write_file(dest_file, content.format(date))
 
-	def create(self):
-		if os.path.exists(self.config_path):
-			raise SiteAlreadyInstalledError()
-		# copy the templates folder
-		shutil.copytree(MODEL_TEMPLATES_DIR, TEMPLATES_DIR)
-		# copy the config file
-		shutil.copyfile(MODEL_CONFIG_FILE, CONFIG_FILE)
-
 	def paginate_groups(self):
 		'''Set the pagination info to the pages'''
 		def _pagination_data(page):
@@ -362,15 +349,14 @@ class Site(Serializable):
 				page.next = _pagination_data(pages[next_index])
 				prev_index = index - 1 if index > 0 else 0
 				page.prev = _pagination_data(pages[prev_index])
-
-	def update_groups(self, page):
-		'''Fill the groups definition list based on pages'''
-		group = page._group
-		if not group:
+	
+	def update_groups_info(self, page):
+		if not page.is_group():
 			return
-		if group not in self._groups:
-			self._groups.append(group)
-
+		group_name = os.path.basename(page._path)
+		if group_name not in self._groups.keys():
+			self._groups.append(group_name)
+	
 	def insert_page(self, page):
 		'''Insert page in list ordered by date'''
 		index = self._page_list
@@ -381,7 +367,43 @@ class Site(Serializable):
 				break
 			count += 1
 
-	def read_page_children(self, path):
+	def build_page(self, path, parent, page_data):
+		'''Page object factory'''
+		page = Page()
+		page._path = regex_replace(PATH_DOT_PATTERN, '', path)
+		page.permalink = urljoin(self.base_url, page._path)
+		page._parent = parent
+		try:
+			page.initialize(page_data)
+		except ValuesNotDefinedError as e:
+			sys.exit(e)
+		# the parent page template has precedence
+		if not page._template:
+			if page._parent:
+				page._template = page._parent._template
+			else:
+				page._template = self._default_template
+		# setting page group
+		if page._parent:
+			if page._parent.is_group():
+				page._group = os.path.basename(page._parent._path)
+			else:
+				page._group = page._parent._group
+		return page
+	
+	def read_page_tree(self, path, parent=None):
+		'''Read the folders recursively and create an ordered list
+		of page objects.'''
+		page_data = self.read_page(path)
+		page = None
+		if page_data:
+			page = self.build_page(path, parent, page_data)
+			self.insert_page(page)
+			self.update_groups_info(page)
+		for subpage_path in self.read_subpages_list(path):
+			self.read_page_tree(subpage_path, page)
+
+	def read_subpages_list(self, path):
 		'''Return a list containing the full path of the subpages'''
 		isdir = os.path.isdir
 		subpages = []
@@ -391,39 +413,6 @@ class Site(Serializable):
 				subpages.append(fullpath)
 		return subpages
 	
-	def build_page(self, page_data, path, parent):
-		'''Page object factory'''
-		page = Page()
-		page._path = path
-		page._parent = parent
-		page_url = regex_replace(PATH_DOT_PATTERN, '', path)
-		page.permalink = urljoin(self.base_url, page_url)
-		try:
-			page.initialize(page_data)
-		except ValuesNotDefinedError as e:
-			sys.exit(e)
-		# setting page group
-		if page._parent and page._parent.is_group():
-			page._group = os.path.basename(page._parent._path)
-		return page
-	
-	def read_page_tree(self, path, parent=None):
-		'''Read the folders recursively and create an ordered list
-		of page objects.'''
-		page_data = self.read_page(path)
-		page = None
-		if page_data:
-			page = self.build_page(page_data, path, parent)
-			self.update_groups(page)
-			self.insert_page(page)
-		for subpage_path in self.read_page_children(path):
-			self.read_page_tree(subpage_path, page)
-
-	def get_pages(self, path):
-		self.read_page_tree(path)
-		self.paginate_groups()
-		return self._page_list
-
 	def generate_json(self, page):
 		if not page.is_json_enabled():
 			return
@@ -433,23 +422,41 @@ class Site(Serializable):
 	def generate_html(self, page):
 		if not page.is_html_enabled():
 			return
-		# the parent page's template has precedence
-		if not page._template:
-			if page._parent:
-				page._template = page._parent._template
-			else:
-				page._template = self._default_template
-		template = read_template(page._template)
+		template = self.read_template(page._template)
 		renderer = HTMLRenderer(template)
 		output = renderer.render(page)
 		write_file(path_join(page._path, HTML_FILENAME), output)
 
 	def generate(self, page):
-		if page.is_draft():
-			return
-		self.generate_json(page)
-		self.generate_html(page)
+		self.read_page_tree(path)
+		self.paginate_groups()
+		env = {
+			'site': self.serialize(),
+			'pages': [p.serialize() for p in self._page_list]
+		}
+		for p in self._page_list:
+			if page.is_draft():
+				continue
+			self.generate_json(page)
+			self.generate_html(page)
 
+	def write_feed_file(env, filename):
+		feed_dir = env.get('feed_dir', 'feed')
+		feed_data = {
+			'description': env.get('site_description'),
+			'build_date': datetime.today()  # sets lastBuildDate
+		}
+		# create the feed directory
+		if not os.path.exists(feed_dir):
+			os.makedirs(feed_dir)
+		feed_tpl = axiom.read_file(MODEL_FEED_FILE)
+		feed_data['link'] = axiom.urljoin(env['base_url'], feed_dir, filename)
+		feed_content = render_template(feed_tpl, env, feed_data)
+		feed_path = path_join(feed_dir, filename)
+		axiom.write_file(feed_path, feed_content)
+		if env['output_enabled']:
+			print('Feed {!r} generated.'.format(feed_path))
+	
 	'''
 	def generate_feeds(self, env):
 		sources = env.get('feed_sources')

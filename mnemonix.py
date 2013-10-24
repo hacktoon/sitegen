@@ -29,7 +29,7 @@ def gen(args):
 	site.load_config()
 	
 	# TODO: check if path not in env['ignore_folders']
-	for page in site.get_pages(os.curdir):
+	for page in site.get_env(os.curdir):
 		site.generate(page)
 	
 	#if args.output_enabled:
