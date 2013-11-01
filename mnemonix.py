@@ -16,7 +16,7 @@ import sys
 import argparse
 
 from axiom import *
-from exceptions import *
+from errors import *
 
 
 VERSION = "0.2.0-beta"
@@ -26,7 +26,6 @@ def gen(args):
 	outputs HTML/JSON for each page file'''
 	
 	site = Site()
-	site.load_config()
 	
 	# TODO: check if path not in env['ignore_folders']
 	#for page in site.get_env(os.curdir):
@@ -61,8 +60,8 @@ def init(args):
 	site = Site()
 	try:
 		site.create()
-	except SiteAlreadyInstalledError:
-		sys.exit("Site already installed!")
+	except SiteAlreadyInstalledError as e:
+		sys.exit(e)
 
 	print('\nMnemonix was successfully installed!\n\n'
 	'Next steps:\n1 - Edit the "config.me" file.\n'

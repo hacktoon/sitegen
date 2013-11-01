@@ -1,9 +1,21 @@
+# coding: utf-8
 
+'''
+===============================================================================
+Mnemonix - The Static Publishing System of Nimus Ages
+
+Author: Karlisson M. Bezerra
+E-mail: contact@hacktoon.com
+URL: https://github.com/hacktoon/mnemonix
+License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
+
+===============================================================================
+'''
 
 import json
 
 import templex
-from exceptions import *
+from errors import *
 
 class ContentRenderer():
 	def __init__(self, template):
@@ -38,6 +50,10 @@ class RSSRenderer(ContentRenderer):
 
 
 class HTMLRenderer(ContentRenderer):
+	def __init__(self):
+		self.link_tpl = '<link rel="stylesheet" type="text/css" href="{0}"/>'
+		self.script_tpl = '<script src="{0}"></script>'
+
 	def build_external_tags(self, links, tpl):
 		tag_list = []
 		for link in links:
@@ -47,16 +63,14 @@ class HTMLRenderer(ContentRenderer):
 	def build_style_tags(self, links):
 		if not links:
 			return ''
-		tpl = '<link rel="stylesheet" type="text/css" href="{0}"/>'
 		links = [f for f in links if f.endswith('.css')]
-		return self.build_external_tags(links, tpl)
+		return self.build_external_tags(links, self.link_tpl)
 
 	def build_script_tags(self, links):
 		if not links:
 			return ''
-		tpl = '<script src="{0}"></script>'
 		links = [f for f in links if f.endswith('.js')]
-		return self.build_external_tags(links, tpl)
+		return self.build_external_tags(links, self.script_tpl)
 
 	def render(self, page):
 		page_dict = page.serialize()

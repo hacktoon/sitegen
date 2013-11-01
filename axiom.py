@@ -18,7 +18,7 @@ import re
 import shutil
 from datetime import datetime
 
-from exceptions import *
+from errors import *
 from templex import TemplateParser
 from renderers import (JSONRenderer, RSSRenderer, HTMLRenderer)
 
@@ -99,30 +99,33 @@ if len(required_keys):
 	.format(', '.join(required_keys)))
 '''
 
+class GroupCollection:
+	def __init__(self):
+		self.groups = {}
+		
+	def add_group(self, group):
+		self.groups[group.name] = group
+	
+	def has_group(self, name):
+		return name in self.groups.keys()
+	
+	def paginate(self, pages):
+		'''Set the pagination info for the pages'''
+		for page in pages:
+			pass
+		for index, page in enumerate(group):
+			page.first = self.page_data(group[0])
+			next_index = index + 1 if index < length - 1 else -1
+			page.next = self.page_data(group[next_index])
+			prev_index = index - 1 if index > 0 else 0
+			page.prev = self.page_data(group[prev_index])
+			page.last = self.page_data(group[-1])
+
+
 class Group:
 	def __init__(self, name):
 		self.name = name
-		self.pages = {}  # stores pages indexed by its path
-
-	def add_page(self, page):
-		self.pages.append(page)
-
-	def page_data(self, page):
-		return {
-			'title': page.title,
-			'permalink': page.permalink
-		}
-
-	def paginate(self, site):
-		'''Set the pagination info for the pages'''		
-		length = len(self.pages)
-		for index, page in enumerate(self.pages):
-			page.first = self.page_data(pages[0])
-			next_index = index + 1 if index < length - 1 else -1
-			page.next = self.page_data(pages[next_index])
-			prev_index = index - 1 if index > 0 else 0
-			page.prev = self.page_data(pages[prev_index])
-			page.last = self.page_data(pages[-1])
+		self.paged = False
 
 
 class Page:
@@ -134,7 +137,6 @@ class Page:
 		self.group = ''
 		self.styles = ''
 		self.scripts = ''
-		self.meta = {}
 
 	def set_template(self, template):
 		self.template = template
@@ -185,7 +187,7 @@ class Page:
 			return
 		renderer = HTMLRenderer()
 		output = renderer.render(page)
-		write_file(path_join(page._path, HTML_FILENAME), output)
+		write_file(path_join(page.path, HTML_FILENAME), output)
 	
 	def render(self, env):
 		self.generate_json()
@@ -196,7 +198,7 @@ class Site():
 	def __init__(self):
 		self.required_keys = ('title', 'default_template', 'feed_dir', 'base_url')
 		self.config_path = path_join(os.getcwd(), CONFIG_FILE)
-		self.groups = {}
+		self.group_collection = GroupCollection()
 		self.pages = []
 
 	def set_base_url(self, base_url):
@@ -217,25 +219,6 @@ class Site():
 	def set_default_template(self, template):
 		self.default_template = template
 
-	def set_ignore_folders(self, folders):
-		self.ignore_folders = extract_multivalues(folders)
-		'''
-		ignore_folders.extend([TEMPLATES_DIR, config.get('feed_dir')])
-		self.ignore_folders = ignore_folders'''
-
-	def load_config(self):
-		if not os.path.exists(self.config_path):
-			raise FileNotFoundError()
-		config = parse_input_file(read_file(self.config_path))
-
-	def create(self):
-		if os.path.exists(self.config_path):
-			raise SiteAlreadyInstalledError()
-		# copy the templates folder
-		shutil.copytree(MODEL_TEMPLATES_DIR, TEMPLATES_DIR)
-		# copy the config file
-		shutil.copyfile(MODEL_CONFIG_FILE, CONFIG_FILE)
-
 	def read_page(self, path):
 		'''Return the page data specified by path'''
 		data_file = path_join(path, DATA_FILE)
@@ -243,20 +226,6 @@ class Site():
 		if not os.path.exists(data_file):
 			return
 		return parse_input_file(read_file(data_file))
-
-	def write_page(self, path):
-		if not os.path.exists(path):
-			os.makedirs(path)
-		# full path of page data file
-		dest_file = path_join(path, DATA_FILE)
-		if os.path.exists(dest_file):
-			raise PageExistsError()
-		# copy the model page data file to a new file
-		content = read_file(MODEL_DATA_FILE)
-		# saving date in the format configured
-		date = datetime.today().strftime(DATE_FORMAT)
-		# need to write file contents to insert creation date
-		write_file(dest_file, content.format(date))
 
 	def build_page(self, path, parent, page_data):
 		'''Page object factory'''
@@ -274,22 +243,15 @@ class Site():
 				page.template = page.parent.template
 			else:
 				page.template = self.default_template
-		# creating group
-		if page.is_group():
-			group_name = basename(page.path)
-			if group_name not in self.groups.keys():
-				self.groups[group.name] = Group(group_name)
 		# setting page group
-		if page.parent:
+		if page.parent and not page.group:
 			if page.parent.is_group():
 				page.group = os.path.basename(page.parent.path)
 			else:
 				page.group = page.parent.group
-		if page.group:
-			self.groups[page.group].add_page(page)
 		return page
 
-	def insert_page(self, page):
+	def insert_page_in_order(self, page):
 		'''Insert page in list ordered by date'''
 		index = self.pages
 		count = 0
@@ -306,7 +268,13 @@ class Site():
 		page = None
 		if page_data:
 			page = self.build_page(path, parent, page_data)
-			self.insert_page(page)
+			# if page define a group, append to list of groups
+			if page.is_group():
+				group_name = basename(page.path)
+				if not self.group_collection.has_group(group_name):
+					self.group_collection.add_group(group_name)
+			# add page to ordered list of pages
+			self.insert_page_in_order(page)
 		for subpage_path in self.read_subpages_list(path):
 			self.read_page_tree(subpage_path, page)
 
@@ -318,16 +286,8 @@ class Site():
 			if isdir(fullpath):
 				subpages.append(fullpath)
 		return subpages
-
-	def generate(self):
-		self.read_page_tree(os.curdir)
-		for group in self.groups:
-			group.paginate()
-		for page in self.pages:
-			if page.is_draft():
-				continue
-			page.render(env)
-
+	
+	'''
 	def write_feed_file(env, filename):
 		feed_dir = env.get('feed_dir', 'feed')
 		feed_data = {
@@ -342,10 +302,9 @@ class Site():
 		feed_content = render_template(feed_tpl, env, feed_data)
 		feed_path = path_join(feed_dir, filename)
 		axiom.write_file(feed_path, feed_content)
-		if env['output_enabled']:
+		if self.env['output_enabled']:
 			print('Feed {!r} generated.'.format(feed_path))
-	
-	'''
+
 	def generate_feeds(self, env):
 		sources = env.get('feed_sources')
 		if not sources:
@@ -366,3 +325,42 @@ class Site():
 				set_feed_source(env, group_pages)
 				write_feed_file(env, '{}.xml'.format(group_name))
 	'''
+	def create(self):
+		if os.path.exists(self.config_path):
+			raise SiteAlreadyInstalledError("Site already installed!")
+		# copy the templates folder
+		shutil.copytree(MODEL_TEMPLATES_DIR, TEMPLATES_DIR)
+		# copy the config file
+		shutil.copyfile(MODEL_CONFIG_FILE, CONFIG_FILE)
+
+	def write_page(self, path):
+		if not os.path.exists(self.config_path):
+			raise FileNotFoundError("Site is not installed!")
+		if not os.path.exists(path):
+			os.makedirs(path)
+		# full path of page data file
+		dest_file = path_join(path, DATA_FILE)
+		if os.path.exists(dest_file):
+			raise PageExistsError()
+		# copy the model page data file to a new file
+		content = read_file(MODEL_DATA_FILE)
+		# saving date in the format configured
+		date = datetime.today().strftime(DATE_FORMAT)
+		# need to write file contents to insert creation date
+		write_file(dest_file, content.format(date))
+
+	def generate(self):
+		if not os.path.exists(self.config_path):
+			raise FileNotFoundError("Site is not installed!")
+
+		self.env = parse_input_file(read_file(self.config_path))
+		
+		sys.exit(self.env)
+		
+		self.read_page_tree(os.curdir)
+		self.group_collection.paginate()
+		
+		for page in self.pages:
+			if page.is_draft():
+				continue
+			page.render(env)
