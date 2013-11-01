@@ -15,8 +15,8 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 import sys
 import argparse
 
-import templex
 from axiom import *
+from exceptions import *
 
 
 VERSION = "0.2.0-beta"
@@ -29,8 +29,8 @@ def gen(args):
 	site.load_config()
 	
 	# TODO: check if path not in env['ignore_folders']
-	for page in site.get_env(os.curdir):
-		site.generate(page)
+	#for page in site.get_env(os.curdir):
+	site.generate()
 	
 	#if args.output_enabled:
 	#	print("{}\nTotal of pages read: {}.".format("-" * 30, len(pages)))
