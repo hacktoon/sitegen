@@ -16,7 +16,7 @@ import sys
 import argparse
 
 from axiom import *
-from errors import *
+from exceptions import *
 
 
 VERSION = "0.2.0-beta"
@@ -26,10 +26,7 @@ def gen(args):
 	outputs HTML/JSON for each page file'''
 	
 	site = Site()
-	
-	# TODO: check if path not in env['ignore_folders']
-	#for page in site.get_env(os.curdir):
-	site.generate()
+	site.generate(os.curdir)
 	
 	#if args.output_enabled:
 	#	print("{}\nTotal of pages read: {}.".format("-" * 30, len(pages)))

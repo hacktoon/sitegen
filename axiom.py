@@ -13,14 +13,15 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 '''
 
 import os
+import json
 import sys
 import re
 import shutil
 from datetime import datetime
 
-from errors import *
+from exceptions import (ValuesNotDefinedError, FileNotFoundError,
+						SiteAlreadyInstalledError, PageExistsError)
 from templex import TemplateParser
-from renderers import (JSONRenderer, RSSRenderer, HTMLRenderer)
 
 # aliases
 regex_replace = re.sub
@@ -92,57 +93,156 @@ def extract_multivalues(tag_string):
 		tag_list = [tag.strip() for tag in tags]
 	return tag_list
 
-'''
-# if any required key wasn't set, raise exception
-if len(required_keys):
-	raise ValuesNotDefinedError('The following values were not defined: {!r}'
-	.format(', '.join(required_keys)))
-'''
+def order_insert(collection, page):
+	'''Insert page in list ordered by date'''
+	count = 0
+	while True:
+		if count == len(collection) or \
+		page.meta['date'] <= collection[count].meta['date']:
+			collection.insert(count, page)
+			break
+		count += 1
+
 
 class GroupCollection:
 	def __init__(self):
 		self.groups = {}
-		
-	def add_group(self, group):
-		self.groups[group.name] = group
-	
-	def has_group(self, name):
-		return name in self.groups.keys()
-	
-	def paginate(self, pages):
+
+	def add_group(self, group_name):
+		if group_name in self.groups.keys() or not group_name:
+			return
+		self.groups[group_name] = Group(group_name)
+
+	def add_page(self, group_name, page):
+		if not group_name:
+			return
+		self.groups[page.group].add_page(page)
+
+	def paginate(self):
 		'''Set the pagination info for the pages'''
-		for page in pages:
-			pass
-		for index, page in enumerate(group):
-			page.first = self.page_data(group[0])
-			next_index = index + 1 if index < length - 1 else -1
-			page.next = self.page_data(group[next_index])
-			prev_index = index - 1 if index > 0 else 0
-			page.prev = self.page_data(group[prev_index])
-			page.last = self.page_data(group[-1])
+		for group in self.groups.values():
+			length = len(group.pages)
+			for index, page in enumerate(group.pages):
+				meta = page.meta
+				meta['first'] = group.page_data(0)
+				next_index = index + 1 if index < length - 1 else -1
+				meta['next'] = group.page_data(next_index)
+				prev_index = index - 1 if index > 0 else 0
+				meta['prev'] = group.page_data(prev_index)
+				meta['last'] = group.page_data(-1)
 
 
 class Group:
 	def __init__(self, name):
 		self.name = name
-		self.paged = False
+		self.pages = []
+
+	def page_data(self, index):
+		page = self.pages[index].meta
+		return {
+			'permalink': page['permalink'],
+			'title': page['title'],
+		}
+
+	def add_page(self, page):
+		order_insert(self.pages, page)
 
 
-class Page:
+class ContentRenderer():
+	def __init__(self, template):
+		self.template = self.read_template(template)
+
+	def read_template(self, tpl_filename):
+		'''Returns a template string from the template folder'''
+		if not tpl_filename.endswith('.tpl'):
+			tpl_filename = '{0}.tpl'.format(tpl_filename)
+		tpl_filepath = path_join(TEMPLATES_DIR, tpl_filename)
+		if not os.path.exists(tpl_filepath):
+			raise FileNotFoundError()
+		return read_file(tpl_filepath)
+
+	def render(self):
+		pass
+
+
+class JSONRenderer(ContentRenderer):
+	def __init__(self):
+		self.date_format = '%Y-%m-%d %H:%M:%S'
+
+	def render(self, page):
+		page.meta['date'] = page.meta['date'].strftime(self.date_format)
+		return json.dumps(page.meta)
+
+
+class RSSRenderer(ContentRenderer):
+	def render(self, page_dict):
+		pass
+
+
+class HTMLRenderer(ContentRenderer):
+	def __init__(self, template):
+		super().__init__(template)
+		self.link_tpl = '<link rel="stylesheet" type="text/css" href="{0}"/>'
+		self.script_tpl = '<script src="{0}"></script>'
+
+	def build_external_tags(self, links, tpl):
+		tag_list = []
+		for link in links:
+			tag_list.append(tpl.format(link))
+		return '\n'.join(tag_list)
+
+	def build_style_tags(self, links):
+		if not links:
+			return ''
+		links = [f for f in links if f.endswith('.css')]
+		return self.build_external_tags(links, self.link_tpl)
+
+	def build_script_tags(self, links):
+		if not links:
+			return ''
+		links = [f for f in links if f.endswith('.js')]
+		return self.build_external_tags(links, self.script_tpl)
+
+	def render(self, page, env):
+		page.meta['styles'] = self.build_style_tags(page.styles)
+		page.meta['scripts'] = self.build_script_tags(page.scripts)
+		env['page'] = page.meta
+		renderer = TemplateParser(self.template)
+		return renderer.render(env)
+
+
+class Content:
+	def initialize(self, params):
+		# define properties dynamically
+		required_keys_cache = list(self.required_keys)
+		for key in params.keys():
+			method_name = 'set_{}'.format(key)
+			# if setter method exists, call it
+			if hasattr(self, method_name):
+				getattr(self, method_name)(params[key])
+			else:
+				self.meta[key] = params[key]
+			if key in required_keys_cache:
+				required_keys_cache.remove(key)
+		# if any required key wasn't set, raise exception
+		if len(required_keys_cache):
+			raise ValuesNotDefinedError('The following values were not defined: {!r}'
+			.format(', '.join(required_keys_cache)))
+
+
+class Page(Content):
 	def __init__(self):
 		self.required_keys = ('title', 'date')
-		self.template = ''
-		self.props = []
 		self.parent = None
-		self.group = ''
+		self.template = ''
 		self.styles = ''
 		self.scripts = ''
+		self.props = []
+		self.group = ''
+		self.meta = {}
 
 	def set_template(self, template):
 		self.template = template
-
-	def set_tags(self, tags):
-		self.tags = extract_multivalues(tags)
 
 	def set_props(self, props):
 		self.props = extract_multivalues(props)
@@ -153,62 +253,66 @@ class Page:
 	def set_scripts(self, scripts):
 		self.scripts = extract_multivalues(scripts)
 
-	def is_draft(self):
-		return 'draft' in self.props
-	
-	def is_group(self):
-		return 'group' in self.props
+	def set_tags(self, tags):
+		self.meta['tags'] = extract_multivalues(tags)
 
-	def is_html_enabled(self):
-		return 'nohtml' not in self.props
-
-	def is_json_enabled(self):
-		return 'nojson' not in self.props
-		
 	def set_date(self, date):
 		'''converts date string to datetime object'''
 		if date:
 			try:
-				self.date = datetime.strptime(date, DATE_FORMAT)
+				date = datetime.strptime(date, DATE_FORMAT)
 			except ValueError:
 				sys.exit('Wrong date format '
 				'detected at {!r}!'.format(self.path))
 		else:
-			self.date = datetime.now()
-	
+			date = datetime.now()
+		self.meta['date'] = date
+
+	def is_group(self):
+		return 'group' in self.props
+
 	def generate_json(self):
-		if not self.is_json_enabled():
+		if 'nojson' in self.props:
 			return
 		output = JSONRenderer().render(self)
 		write_file(path_join(self.path, JSON_FILENAME), output)
 
-	def generate_html(self, page):
-		if not page.is_html_enabled():
+	def generate_html(self, env):
+		if 'nohtml' in self.props:
 			return
-		renderer = HTMLRenderer()
-		output = renderer.render(page)
+		renderer = HTMLRenderer(self.template)
+		output = renderer.render(self, env)
 		write_file(path_join(page.path, HTML_FILENAME), output)
-	
+
 	def render(self, env):
+		if 'draft' in self.props:
+			return
 		self.generate_json()
 		self.generate_html(env)
 
 
-class Site():
+class Site(Content):
 	def __init__(self):
 		self.required_keys = ('title', 'default_template', 'feed_dir', 'base_url')
 		self.config_path = path_join(os.getcwd(), CONFIG_FILE)
-		self.group_collection = GroupCollection()
+		self.page_groups = GroupCollection()
 		self.pages = []
+		self.meta = {}
+
+	def load_config(self):
+		if not os.path.exists(self.config_path):
+			raise FileNotFoundError("Site is not installed!")
+		config = parse_input_file(read_file(self.config_path))
+		self.initialize(config)
 
 	def set_base_url(self, base_url):
 		if not base_url:
 			sys.exit('base_url was not set in config!')
 		# add a trailing slash to base url, if necessary
-		self.base_url = urljoin(base_url, '/')
+		self.meta['base_url'] = urljoin(base_url, '/')
 
 	def set_tags(self, tags):
-		self.tags = extract_multivalues(tags)
+		self.meta['tags'] = extract_multivalues(tags)
 
 	def set_feed_num(self, feed_num):
 		try:
@@ -231,8 +335,8 @@ class Site():
 		'''Page object factory'''
 		page = Page()
 		page.path = regex_replace(PATH_DOT_PATTERN, '', path)
-		page.permalink = urljoin(self.base_url, page.path)
 		page.parent = parent
+		page.meta['permalink'] = urljoin(self.meta['base_url'], page.path)
 		try:
 			page.initialize(page_data)
 		except ValuesNotDefinedError as e:
@@ -249,17 +353,8 @@ class Site():
 				page.group = os.path.basename(page.parent.path)
 			else:
 				page.group = page.parent.group
+			self.page_groups.add_page(page.group, page)
 		return page
-
-	def insert_page_in_order(self, page):
-		'''Insert page in list ordered by date'''
-		index = self.pages
-		count = 0
-		while True:
-			if count == len(index) or page.date <= index[count].date:
-				index.insert(count, page)
-				break
-			count += 1
 
 	def read_page_tree(self, path, parent=None):
 		'''Read the folders recursively and create an ordered list
@@ -271,10 +366,9 @@ class Site():
 			# if page define a group, append to list of groups
 			if page.is_group():
 				group_name = basename(page.path)
-				if not self.group_collection.has_group(group_name):
-					self.group_collection.add_group(group_name)
+				self.page_groups.add_group(group_name)
 			# add page to ordered list of pages
-			self.insert_page_in_order(page)
+			order_insert(self.pages, page)
 		for subpage_path in self.read_subpages_list(path):
 			self.read_page_tree(subpage_path, page)
 
@@ -286,45 +380,7 @@ class Site():
 			if isdir(fullpath):
 				subpages.append(fullpath)
 		return subpages
-	
-	'''
-	def write_feed_file(env, filename):
-		feed_dir = env.get('feed_dir', 'feed')
-		feed_data = {
-			'description': env.get('site_description'),
-			'build_date': datetime.today()  # sets lastBuildDate
-		}
-		# create the feed directory
-		if not os.path.exists(feed_dir):
-			os.makedirs(feed_dir)
-		feed_tpl = axiom.read_file(MODEL_FEED_FILE)
-		feed_data['link'] = urljoin(env['base_url'], feed_dir, filename)
-		feed_content = render_template(feed_tpl, env, feed_data)
-		feed_path = path_join(feed_dir, filename)
-		axiom.write_file(feed_path, feed_content)
-		if self.env['output_enabled']:
-			print('Feed {!r} generated.'.format(feed_path))
 
-	def generate_feeds(self, env):
-		sources = env.get('feed_sources')
-		if not sources:
-			print('No feeds generated.')
-			return
-		pages = env['pages'].values()
-		# filtering the pages that shouldn't be listed in feeds
-		pages = axiom.dataset_filter_props(pages, ['draft', 'nofeed'])
-
-		if 'all' in sources:
-			# copy the list
-			set_feed_source(env, list(pages))
-			write_feed_file(env, 'default.xml')
-		if 'group' in sources:
-			for group_name in env['groups']:
-				# copy the list each iteration
-				group_pages = axiom.dataset_filter_group(list(pages), group_name)
-				set_feed_source(env, group_pages)
-				write_feed_file(env, '{}.xml'.format(group_name))
-	'''
 	def create(self):
 		if os.path.exists(self.config_path):
 			raise SiteAlreadyInstalledError("Site already installed!")
@@ -349,18 +405,11 @@ class Site():
 		# need to write file contents to insert creation date
 		write_file(dest_file, content.format(date))
 
-	def generate(self):
-		if not os.path.exists(self.config_path):
-			raise FileNotFoundError("Site is not installed!")
-
-		self.env = parse_input_file(read_file(self.config_path))
-		
-		sys.exit(self.env)
-		
-		self.read_page_tree(os.curdir)
-		self.group_collection.paginate()
-		
+	def generate(self, path):
+		self.load_config()
+		self.read_page_tree(path)
+		self.page_groups.paginate()
+		# preparing environment
+		self.meta['pages'] = [p.meta for p in self.pages]
 		for page in self.pages:
-			if page.is_draft():
-				continue
-			page.render(env)
+			page.render(self.meta)
