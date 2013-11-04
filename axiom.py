@@ -39,9 +39,6 @@ DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
 JSON_FILENAME = 'data.json'
 HTML_FILENAME = 'index.html'
 
-# Regex pattern to remove the dot from file pathname
-PATH_DOT_PATTERN = r'^\.$|\./|\.\\'
-
 # Setting values based on config
 script_path = os.path.dirname(os.path.abspath(__file__))
 data_dir = path_join(script_path, 'data')
@@ -57,7 +54,7 @@ def urljoin(base, *slug):
 	'''Custom URL join function to concatenate and add slashes'''
 	fragments = [base]
 	fragments.extend(filter(None, slug))
-	return '/'.join(s.strip('/') for s in fragments)
+	return '/'.join(s.replace('\\', '/').strip('/') for s in fragments)
 
 def read_file(path):
 	if not os.path.exists(path):
@@ -307,7 +304,7 @@ class Site(Content):
 
 	def set_base_url(self, base_url):
 		if not base_url:
-			sys.exit('base_url was not set in config!')
+			base_url = 'http://localhost'
 		# add a trailing slash to base url, if necessary
 		self.meta['base_url'] = urljoin(base_url, '/')
 
@@ -334,7 +331,7 @@ class Site(Content):
 	def build_page(self, path, parent, page_data):
 		'''Page object factory'''
 		page = Page()
-		page.path = regex_replace(PATH_DOT_PATTERN, '', path)
+		page.path = regex_replace(r'^\.$|\./|\.\\', '', path)
 		page.parent = parent
 		page.meta['permalink'] = urljoin(self.meta['base_url'], page.path)
 		try:
@@ -412,4 +409,5 @@ class Site(Content):
 		# preparing environment
 		self.meta['pages'] = [p.meta for p in self.pages]
 		for page in self.pages:
-			page.render(self.meta)
+			print(page.meta)
+			#page.render(self.meta)

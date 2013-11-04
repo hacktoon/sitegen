@@ -13,10 +13,11 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 '''
 
 import sys
+import os
 import argparse
 
-from axiom import (PageExistsError, SiteAlreadyInstalledError)
-from exceptions import *
+from axiom import Site
+from exceptions import (PageExistsError, SiteAlreadyInstalledError)
 
 
 VERSION = "0.2.0-beta"
