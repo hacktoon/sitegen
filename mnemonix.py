@@ -15,7 +15,7 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 import sys
 import argparse
 
-from axiom import *
+from axiom import (PageExistsError, SiteAlreadyInstalledError)
 from exceptions import *
 
 
