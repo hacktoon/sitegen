@@ -94,8 +94,7 @@ def order_insert(collection, page):
 	'''Insert page in list ordered by date'''
 	count = 0
 	while True:
-		if count == len(collection) or \
-		page.meta['date'] <= collection[count].meta['date']:
+		if count == len(collection) or page <= collection[count]:
 			collection.insert(count, page)
 			break
 		count += 1
@@ -104,7 +103,11 @@ def order_insert(collection, page):
 class GroupCollection:
 	def __init__(self):
 		self.groups = {}
-
+	
+	def __iter__(self):
+		for group in self.groups.values():
+			yield group
+	
 	def add_group(self, group_name):
 		if group_name in self.groups.keys() or not group_name:
 			return
@@ -172,8 +175,8 @@ class JSONRenderer(ContentRenderer):
 
 
 class RSSRenderer(ContentRenderer):
-	def render(self, page_dict):
-		pass
+	def render(self, page_list):
+		print(self.template)
 
 
 class HTMLRenderer(ContentRenderer):
@@ -238,6 +241,9 @@ class Page(Content):
 		self.group = ''
 		self.meta = {}
 
+	def __le__(self, other):
+		return self.meta['date'] <= other.meta['date']
+		
 	def set_template(self, template):
 		self.template = template
 
@@ -311,6 +317,9 @@ class Site(Content):
 	def set_tags(self, tags):
 		self.meta['tags'] = extract_multivalues(tags)
 
+	def set_feed_dir(self, feed_dir):
+		self.feed_dir = feed_dir or 'feed'
+		
 	def set_feed_num(self, feed_num):
 		try:
 			self.feed_num = int(feed_num)
@@ -344,6 +353,7 @@ class Site(Content):
 				page.template = page.parent.template
 			else:
 				page.template = self.default_template
+
 		# setting page group
 		if page.parent and not page.group:
 			if page.parent.is_group():
@@ -394,20 +404,32 @@ class Site(Content):
 		# full path of page data file
 		dest_file = path_join(path, DATA_FILE)
 		if os.path.exists(dest_file):
-			raise PageExistsError()
+			raise PageExistsError("Page {!r} already exists!".format(dest_file))
 		# copy the model page data file to a new file
 		content = read_file(MODEL_DATA_FILE)
 		# saving date in the format configured
 		date = datetime.today().strftime(DATE_FORMAT)
 		# need to write file contents to insert creation date
 		write_file(dest_file, content.format(date))
-
+	
+	def generate_feeds(self):
+		renderer = RSSRenderer(MODEL_FEED_FILE)
+		feed_dir = self.feed_dir
+		# generate feeds based on groups
+		for group in self.page_groups:
+			print(group.pages)
+			#output = renderer.render([])
+		
+	
 	def generate(self, path):
 		self.load_config()
 		self.read_page_tree(path)
 		self.page_groups.paginate()
+		self.generate_feeds()
+
 		# preparing environment
 		self.meta['pages'] = [p.meta for p in self.pages]
 		for page in self.pages:
-			print(page.meta)
+			pass
+			#print(page.meta)
 			#page.render(self.meta)
