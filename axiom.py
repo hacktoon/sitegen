@@ -90,14 +90,23 @@ def extract_multivalues(tag_string):
 		tag_list = [tag.strip() for tag in tags]
 	return tag_list
 
-def order_insert(collection, page):
-	'''Insert page in list ordered by date'''
-	count = 0
-	while True:
-		if count == len(collection) or page <= collection[count]:
-			collection.insert(count, page)
-			break
-		count += 1
+
+class PageCollection:
+	def __init__(self):
+		self.pages = []
+	
+	def __iter__(self):
+		for page in self.pages():
+			yield page
+	
+	def insert(self, page):
+		'''Insert page in list ordered by date'''
+		count = 0
+		while True:
+			if count == len(self.pages) or page <= self.pages[count]:
+				self.pages.insert(count, page)
+				break
+			count += 1
 
 
 class GroupCollection:
@@ -299,7 +308,7 @@ class Site(Content):
 		self.required_keys = ('title', 'default_template', 'feed_dir', 'base_url')
 		self.config_path = path_join(os.getcwd(), CONFIG_FILE)
 		self.page_groups = GroupCollection()
-		self.pages = []
+		self.pages = PageCollection()
 		self.meta = {}
 
 	def load_config(self):
@@ -375,7 +384,7 @@ class Site(Content):
 				group_name = basename(page.path)
 				self.page_groups.add_group(group_name)
 			# add page to ordered list of pages
-			order_insert(self.pages, page)
+			self.pages.insert(page)
 		for subpage_path in self.read_subpages_list(path):
 			self.read_page_tree(subpage_path, page)
 
