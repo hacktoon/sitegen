@@ -96,8 +96,14 @@ class PageCollection:
 		self.pages = []
 	
 	def __iter__(self):
-		for page in self.pages():
+		for page in self.pages:
 			yield page
+			
+	def __len__(self):
+		return len(self.pages)
+	
+	def __getitem__(self, key):
+		return self.pages[key]
 	
 	def insert(self, page):
 		'''Insert page in list ordered by date'''
@@ -123,9 +129,9 @@ class GroupCollection:
 		self.groups[group_name] = Group(group_name)
 
 	def add_page(self, group_name, page):
-		if not group_name:
+		if group_name not in self.groups.keys() or not group_name:
 			return
-		self.groups[page.group].add_page(page)
+		self.groups[group_name].add_page(page)
 
 	def paginate(self):
 		'''Set the pagination info for the pages'''
@@ -144,17 +150,17 @@ class GroupCollection:
 class Group:
 	def __init__(self, name):
 		self.name = name
-		self.pages = []
+		self.pages = PageCollection()
 
 	def page_data(self, index):
-		page = self.pages[index].meta
+		page = self.pages[index]
 		return {
-			'permalink': page['permalink'],
-			'title': page['title'],
+			'permalink': page.meta['permalink'],
+			'title': page.meta['title'],
 		}
 
 	def add_page(self, page):
-		order_insert(self.pages, page)
+		self.pages.insert(page)
 
 
 class ContentRenderer():
