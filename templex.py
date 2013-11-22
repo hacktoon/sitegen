@@ -37,6 +37,7 @@ TAGS = (
 )
 
 PATTERN = r'({0}.+?{1}|{2}.+?{3}|{4}.+?{5})'.format(*TAGS)
+PARAMS_RE = re.compile('([a-zA-Z]+)\s*=\s*"(.+?)"')
 
 class Token():
 	def __init__(self, value, token_type):
@@ -94,11 +95,21 @@ class Lexer():
 class Node():
 	has_scope = False
 	
-	def __init__(self, args=None):
+	def __init__(self, params=''):
 		self.children = []
-		self.parse_args(args)
+		self.params = {}
+		self.parse_params(params)
+		self.process_params()
 	
-	def parse_args(self, args):
+	def parse_params(self, params):
+		if not params:
+			return
+		matches = re.findall(PARAMS_RE, params)
+		if params and not matches:
+			sys.exit('Encountered a malformed expression: {!r}'.format(params))
+		self.params = {a:b for a,b in matches}
+
+	def process_params(self):
 		pass
 
 	def add_node(self, node):
@@ -136,19 +147,12 @@ class Root(Node):
 
 
 class List(ScopeNode):
-	def parse_args(self, args):
-		if not args:
+	def process_params(self):
+		params = self.params
+		if 'src' not in params.keys():
 			sys.exit("Expected a collection to list.")
-		self.source = args[0]
-		if len(args) == 2:
-			try:
-				self.limit = int(args[1])
-			except ValueError:
-				sys.exit("Expected a number in list command.")
-		elif len(args) > 2:
-			sys.exit("Wrong number of arguments. Expected 2.")
-		else:
-			self.limit = None
+		self.source = params.get('src')
+		self.limit = int(params.get('num', 0))
 
 	def render(self, context):
 		collection = self.lookup(self.source, context)
@@ -182,7 +186,7 @@ class Branch(ScopeNode):
 	def process_condition(self, args):
 		pass
 	
-	def parse_args(self, args):
+	def process_params(self, args):
 		self.args = args
 		self.alternative_branch = False
 		self.consequent = []
@@ -248,17 +252,17 @@ class UndefinedBranch(Branch):
 
 
 class Include(Node):
-	def parse_args(self, args):
-		if len(args) != 1:
-			sys.exit('Wrong number of arguments.')
-		self.tpl = args[0]
+	def process_params(self):
+		
+		sys.exit('Wrong number of arguments.')
+		self.tpl = ''
 
 	def render(self, context):
 		return self.tpl
 
 
 class Attribution(Node):
-	def parse_args(self, args):
+	def process_params(self, args):
 		if not args:
 			sys.exit("Expected arguments in 'set' command!")
 		if len(args) != 2:
@@ -271,15 +275,16 @@ class Attribution(Node):
 
 
 class Variable(Node):
-	def parse_args(self, value):
-		self.value = value
+	def __init__(self, name, args):
+		super().__init__(args)
+		self.name = name
 
 	def render(self, context):
-		return self.lookup(self.value, context)
+		return self.lookup(self.name, context)
 
 
 class HTML(Node):
-	def parse_args(self, text):
+	def parse_params(self, text):
 		self.text = text
 
 	def render(self, context):
@@ -303,19 +308,16 @@ class TemplateParser():
 		while token:
 			node = None
 			top_stack = stack[-1]
-
+			
 			if token.type == TOK_HTML:
 				node = HTML(token.value)
 
 			if token.type == TOK_VARIABLE:
-				node = Variable(token.value)
+				name, _, args = token.value.partition(' ')
+				node = Variable(name, args)
 
 			if token.type == TOK_BLOCK:
-				expr = re.split(r'\s+', token.value)
-				command, args = expr[0], []
-				if len(expr) > 1:
-					args = expr[1:]
-
+				command, _, args = token.value.partition(' ')
 				if command == 'set':
 					node = Attribution(args)
 				elif command == 'list':

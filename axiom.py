@@ -94,17 +94,17 @@ def extract_multivalues(tag_string):
 class PageCollection:
 	def __init__(self):
 		self.pages = []
-	
+
 	def __iter__(self):
 		for page in self.pages:
 			yield page
-			
+
 	def __len__(self):
 		return len(self.pages)
-	
+
 	def __getitem__(self, key):
 		return self.pages[key]
-	
+
 	def insert(self, page):
 		'''Insert page in list ordered by date'''
 		count = 0
@@ -118,11 +118,11 @@ class PageCollection:
 class GroupCollection:
 	def __init__(self):
 		self.groups = {}
-	
+
 	def __iter__(self):
 		for group in self.groups.values():
 			yield group
-	
+
 	def add_group(self, group_name):
 		if group_name in self.groups.keys() or not group_name:
 			return
@@ -190,8 +190,9 @@ class JSONRenderer(ContentRenderer):
 
 
 class RSSRenderer(ContentRenderer):
-	def render(self, page_list):
-		print(self.template)
+	def render(self, context):
+		renderer = TemplateParser(self.template)
+		return renderer.render(context)
 
 
 class HTMLRenderer(ContentRenderer):
@@ -258,7 +259,7 @@ class Page(Content):
 
 	def __le__(self, other):
 		return self.meta['date'] <= other.meta['date']
-		
+
 	def set_template(self, template):
 		self.template = template
 
@@ -334,7 +335,7 @@ class Site(Content):
 
 	def set_feed_dir(self, feed_dir):
 		self.feed_dir = feed_dir or 'feed'
-		
+
 	def set_feed_num(self, feed_num):
 		try:
 			self.feed_num = int(feed_num)
@@ -426,25 +427,40 @@ class Site(Content):
 		date = datetime.today().strftime(DATE_FORMAT)
 		# need to write file contents to insert creation date
 		write_file(dest_file, content.format(date))
-	
+
 	def generate_feeds(self):
 		renderer = RSSRenderer(MODEL_FEED_FILE)
 		feed_dir = self.feed_dir
+		
+		# create the feed directory
+		if not os.path.exists(feed_dir):
+			os.makedirs(feed_dir)
+		env = { 'site': self.meta }
 		# generate feeds based on groups
 		for group in self.page_groups:
-			print(group.pages)
-			#output = renderer.render([])
-		
-	
+			fname = '{}.xml'.format(group.name)
+			env['feed'] = {
+				'link': urljoin(self.meta['base_url'], feed_dir, fname),
+				'build_date': datetime.today()
+			}
+			env['pages'] = [p.meta for p in group.pages]
+			output = renderer.render(env)
+			print(output)
+
+
 	def generate(self, path):
 		self.load_config()
 		self.read_page_tree(path)
-		self.page_groups.paginate()
-		self.generate_feeds()
-
+		self.page_groups.paginate() # TODO: paginate on the go, eliminate this method
+		
 		# preparing environment
-		self.meta['pages'] = [p.meta for p in self.pages]
+		env = {
+			'site': self.meta,
+			'pages': [p.meta for p in self.pages]
+		}
 		for page in self.pages:
 			pass
 			#print(page.meta)
 			#page.render(self.meta)
+
+		self.generate_feeds()
