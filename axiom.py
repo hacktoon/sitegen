@@ -372,7 +372,7 @@ class Site(Content):
 
 		# setting page group
 		if page.parent and not page.group:
-			if page.parent.is_group():
+			if page.parent.is_group():  # parent page defines a group
 				page.group = os.path.basename(page.parent.path)
 			else:
 				page.group = page.parent.group
@@ -443,9 +443,13 @@ class Site(Content):
 				'link': urljoin(self.meta['base_url'], feed_dir, fname),
 				'build_date': datetime.today()
 			}
-			env['pages'] = [p.meta for p in group.pages]
+			page_list =  [p.meta for p in group.pages]
+			page_list.reverse()
+			env['pages'] = page_list[:self.feed_num]
 			output = renderer.render(env)
-			print(output)
+			rss_file = path_join(feed_dir, fname)
+			print("Generated {!r}.".format(rss_file))
+			write_file(rss_file, output)
 
 
 	def generate(self, path):
@@ -458,9 +462,9 @@ class Site(Content):
 			'site': self.meta,
 			'pages': [p.meta for p in self.pages]
 		}
-		for page in self.pages:
-			pass
-			#print(page.meta)
-			#page.render(self.meta)
+		#for page in self.pages:
+		#	pass
+		
+		#page.render(self.meta)
 
 		self.generate_feeds()

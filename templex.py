@@ -15,6 +15,8 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 import re
 import sys
 
+from datetime import datetime
+
 TOK_HTML = 'HTML'
 TOK_COMMENT = 'Comment'
 TOK_VARIABLE = 'Variable'
@@ -38,6 +40,8 @@ TAGS = (
 
 PATTERN = r'({0}.+?{1}|{2}.+?{3}|{4}.+?{5})'.format(*TAGS)
 PARAMS_RE = re.compile('([a-zA-Z]+)\s*=\s*"(.+?)"')
+COND_EXPR_RE = re.compile('([a-zA-Z]+)\s*=\s*"(.+?)"')
+OP_RE = re.compile('(==|!=|)')
 
 class Token():
 	def __init__(self, value, token_type):
@@ -152,22 +156,21 @@ class List(ScopeNode):
 		if 'src' not in params.keys():
 			sys.exit("Expected a collection to list.")
 		self.source = params.get('src')
+		self.order = params.get('ord')
+		if self.order and self.order not in ['asc', 'desc']:
+			sys.exit("Wrong ordering values.")
 		self.limit = int(params.get('num', 0))
 
 	def render(self, context):
 		collection = self.lookup(self.source, context)
-		if collection == self.source:
-			sys.exit("Trying to list a non-existent property.")
-		if not isinstance(collection, list):
+		if collection == self.source or not isinstance(collection, list):
 			sys.exit("Trying to list a non-listable property.")
 		
+		if self.order and self.order == 'desc':
+			collection.reverse()
+		
 		if self.limit:
-			if self.limit > 0:
-				# return the last x, as [1,2,3,4,5,6][-2:] => [5,6]
-				collection = collection[-self.limit:]
-			else:
-				# return the first x
-				collection = collection[:-self.limit]
+			collection = collection[:self.limit]
 		content = []
 		for item in collection:
 			iteration_content = []
@@ -183,14 +186,26 @@ class List(ScopeNode):
 
 
 class Branch(ScopeNode):
-	def process_condition(self, args):
-		pass
-	
-	def process_params(self, args):
-		self.args = args
+	def __init__(self, args):
+		super().__init__(args)
 		self.alternative_branch = False
 		self.consequent = []
 		self.alternate = []
+
+	def parse_params(self, expr):
+		matches = re.findall(COND_EXPR_RE, expr)
+		sys.exit(matches)
+		if expr and not matches:
+			sys.exit('Encountered a malformed expression: {!r}'.format(expr))
+		self.params = {a:b for a,b in matches}
+		
+	def process_params(self):
+		self.value = self.params.get('value')
+		self.op = self.params.get('op')
+		
+	def process_condition(self, context):
+		lvalue = self.lookup(lvar_name, context)
+		rvalue = self.lookup(rvar_name, context)
 
 	def set_alternative(self):
 		self.alternative_branch = True
@@ -202,7 +217,7 @@ class Branch(ScopeNode):
 			self.consequent.append(node)
 
 	def render(self, context):
-		if self.process_condition(self.args, context):
+		if self.process_condition(context):
 			children = self.consequent
 		elif self.alternate:
 			children = self.alternate
@@ -214,64 +229,16 @@ class Branch(ScopeNode):
 		return ''.join(content)
 
 	def __str__(self):
-		return 'if'
-
-
-class EqualBranch(Branch):
-	def process_condition(self, args, context):
-		if len(args) != 2:
-			sys.exit("Comparison mal-formed.")
-		lvar_name, rvar_name = args
-		lvalue = self.lookup(lvar_name, context)
-		rvalue = self.lookup(rvar_name, context)
-		return lvalue == rvalue
-
-
-class DifferentBranch(Branch):
-	def process_condition(self, args, context):
-		if len(args) != 2:
-			sys.exit("Comparison mal-formed.")
-		lvar_name, rvar_name = args
-		lvalue = self.lookup(lvar_name, context)
-		rvalue = self.lookup(rvar_name, context)
-		return lvalue != rvalue
-
-
-class DefinedBranch(Branch):
-	def process_condition(self, args, context):
-		if len(args) != 1:
-			sys.exit("Comparison mal-formed.")
-		return args[0] != self.lookup(args[0], context)
-
-
-class UndefinedBranch(Branch):
-	def process_condition(self, args, context):
-		if len(args) != 1:
-			sys.exit("Comparison mal-formed.")
-		return args[0] == self.lookup(args[0], context)
+		return 'condition'
 
 
 class Include(Node):
 	def process_params(self):
-		
 		sys.exit('Wrong number of arguments.')
 		self.tpl = ''
 
 	def render(self, context):
 		return self.tpl
-
-
-class Attribution(Node):
-	def process_params(self, args):
-		if not args:
-			sys.exit("Expected arguments in 'set' command!")
-		if len(args) != 2:
-			sys.exit("Wrong number of arguments in 'set' command!")
-		self.name, self.value = args
-		
-	def render(self, context):
-		context[self.name] = self.value
-		return ''
 
 
 class Variable(Node):
@@ -280,7 +247,10 @@ class Variable(Node):
 		self.name = name
 
 	def render(self, context):
-		return self.lookup(self.name, context)
+		value = self.lookup(self.name, context)
+		if isinstance(value, datetime) and 'fmt' in self.params:
+			value = value.strftime(self.params['fmt'])
+		return value
 
 
 class HTML(Node):
@@ -318,20 +288,12 @@ class TemplateParser():
 
 			if token.type == TOK_BLOCK:
 				command, _, args = token.value.partition(' ')
-				if command == 'set':
-					node = Attribution(args)
-				elif command == 'list':
+				if command == 'list':
 					node = List(args)
 				elif command == 'include':
 					node = Include(self.include_path, args)
-				elif command == 'if:equal':
-					node = EqualBranch(args)
-				elif command == 'if:different':
-					node = DifferentBranch(args)
-				elif command == 'if:defined':
-					node = DefinedBranch(args)
-				elif command == 'if:undefined':
-					node = UndefinedBranch(args)
+				elif command == 'if':
+					node = Branch(args)
 				elif command == 'else':
 					if not isinstance(top_stack, Branch):
 						sys.exit("Unexpected 'else' tag.")
