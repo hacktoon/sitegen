@@ -19,6 +19,7 @@ import re
 import shutil
 from datetime import datetime
 
+import utils
 from exceptions import (ValuesNotDefinedError, FileNotFoundError,
 						SiteAlreadyInstalledError, PageExistsError)
 from templex import TemplateParser
@@ -47,48 +48,6 @@ MODEL_FEED_FILE = path_join(data_dir, 'feed.tpl')
 MODEL_CONFIG_FILE = path_join(data_dir, CONFIG_FILE)
 MODEL_DATA_FILE = path_join(data_dir, DATA_FILE)
 MODEL_TEMPLATES_DIR = path_join(data_dir, TEMPLATES_DIR)
-
-
-
-def urljoin(base, *slug):
-	'''Custom URL join function to concatenate and add slashes'''
-	fragments = [base]
-	fragments.extend(filter(None, slug))
-	return '/'.join(s.replace('\\', '/').strip('/') for s in fragments)
-
-def read_file(path):
-	if not os.path.exists(path):
-		sys.exit('File {!r} couldn\'t be found!'.format(path))
-	with open(path, 'r') as f:
-		return f.read()
-
-def write_file(path, content=''):
-	with open(path, 'w') as f:
-		f.write(content)
-
-def parse_input_file(file_string):
-	file_data = {}
-	lines = file_string.split('\n')
-	for num, line in enumerate(lines):
-		# avoids empty lines and comments
-		line = line.strip()
-		if not line or line.startswith('#'):
-			continue
-		if(line == 'content'):
-			# read the rest of the file
-			file_data['content'] = ''.join(lines[num + 1:])
-			break
-		key, value = [l.strip() for l in line.split('=', 1)]
-		file_data[key] = value
-	return file_data
-
-def extract_multivalues(tag_string):
-	'''Converts a comma separated list of tags into a list'''
-	tag_list = []
-	if tag_string:
-		tags = tag_string.strip(',').split(',')
-		tag_list = [tag.strip() for tag in tags]
-	return tag_list
 
 
 class PageCollection:
@@ -174,7 +133,7 @@ class ContentRenderer():
 		tpl_filepath = path_join(TEMPLATES_DIR, tpl_filename)
 		if not os.path.exists(tpl_filepath):
 			raise FileNotFoundError()
-		return read_file(tpl_filepath)
+		return utils.read_file(tpl_filepath)
 
 	def render(self):
 		pass
@@ -265,13 +224,13 @@ class Page(Content):
 		self.template = template
 
 	def set_props(self, props):
-		self.props = extract_multivalues(props)
+		self.props = utils.extract_multivalues(props)
 
 	def set_styles(self, styles):
-		self.styles = extract_multivalues(styles)
+		self.styles = utils.extract_multivalues(styles)
 
 	def set_scripts(self, scripts):
-		self.scripts = extract_multivalues(scripts)
+		self.scripts = utils.extract_multivalues(scripts)
 
 	def set_date(self, date):
 		'''converts date string to datetime object'''
@@ -292,14 +251,14 @@ class Page(Content):
 		if 'nojson' in self.props:
 			return
 		output = JSONRenderer().render(self)
-		write_file(path_join(self.path, JSON_FILENAME), output)
+		utils.write_file(path_join(self.path, JSON_FILENAME), output)
 
 	def generate_html(self, env):
 		if 'nohtml' in self.props:
 			return
 		renderer = HTMLRenderer(self.template)
 		output = renderer.render(self, env)
-		write_file(path_join(self.path, HTML_FILENAME), output)
+		utils.write_file(path_join(self.path, HTML_FILENAME), output)
 
 	def render(self, env):
 		if 'draft' in self.props:
@@ -319,7 +278,7 @@ class Site(Content):
 	def load_config(self):
 		if not os.path.exists(self.config_path):
 			raise FileNotFoundError("Site is not installed!")
-		config = parse_input_file(read_file(self.config_path))
+		config = utils.parse_input_file(utils.read_file(self.config_path))
 		self.initialize(config)
 
 	def set_base_url(self, base_url):
@@ -345,14 +304,14 @@ class Site(Content):
 		# avoid directories that don't have a data file
 		if not os.path.exists(data_file):
 			return
-		return parse_input_file(read_file(data_file))
+		return utils.parse_input_file(utils.read_file(data_file))
 
 	def build_page(self, path, parent, page_data):
 		'''Page object factory'''
 		page = Page()
 		page.path = regex_replace(r'^\.$|\./|\.\\', '', path)
 		page.parent = parent
-		page.meta['permalink'] = urljoin(self.meta['base_url'], page.path)
+		page.meta['permalink'] = utils.urljoin(self.meta['base_url'], page.path)
 		try:
 			page.initialize(page_data)
 		except ValuesNotDefinedError as e:
@@ -416,11 +375,11 @@ class Site(Content):
 		if os.path.exists(dest_file):
 			raise PageExistsError("Page {!r} already exists!".format(dest_file))
 		# copy the model page data file to a new file
-		content = read_file(MODEL_DATA_FILE)
+		content = utils.read_file(MODEL_DATA_FILE)
 		# saving date in the format configured
 		date = datetime.today().strftime(DATE_FORMAT)
 		# need to write file contents to insert creation date
-		write_file(dest_file, content.format(date))
+		utils.write_file(dest_file, content.format(date))
 
 	def generate_feeds(self):
 		renderer = RSSRenderer(MODEL_FEED_FILE)
@@ -434,7 +393,7 @@ class Site(Content):
 		for group in self.page_groups:
 			fname = '{}.xml'.format(group.name)
 			env['feed'] = {
-				'link': urljoin(self.meta['base_url'], feed_dir, fname),
+				'link': utils.urljoin(self.meta['base_url'], feed_dir, fname),
 				'build_date': datetime.today()
 			}
 			page_list =  [p.meta for p in group.pages]
@@ -443,7 +402,7 @@ class Site(Content):
 			output = renderer.render(env)
 			rss_file = path_join(feed_dir, fname)
 			print("Generated {!r}.".format(rss_file))
-			write_file(rss_file, output)
+			utils.write_file(rss_file, output)
 
 
 	def generate(self, path):

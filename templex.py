@@ -15,8 +15,9 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 import re
 import os
 import sys
-
 from datetime import datetime
+
+import utils
 
 TOK_HTML = 'HTML'
 TOK_COMMENT = 'Comment'
@@ -39,8 +40,8 @@ TAGS = (
 	END_COMMENT
 )
 
-PATTERN = r'({0}.+?{1}|{2}.+?{3}|{4}.+?{5})'.format(*TAGS)
-PARAMS_RE = re.compile('([a-zA-Z.]+)\s*=\s*"(.+?)"')
+TOKEN_RE = r'({0}.+?{1}|{2}.+?{3}|{4}.+?{5})'.format(*TAGS)
+PARAMS_RE = re.compile('([a-zA-Z_-]+)\s*=\s*"(.*?)"')
 
 class Token():
 	def __init__(self, value, token_type):
@@ -53,7 +54,7 @@ class Token():
 
 class Lexer():
 	def __init__(self, template):
-		regex = re.compile(PATTERN, re.DOTALL)
+		regex = re.compile(TOKEN_RE, re.DOTALL)
 		self.fragments = regex.split(template)
 		self.index = 0
 	
@@ -236,7 +237,7 @@ class Include(Node):
 	def process_params(self):
 		filename = self.params.get('file')
 		path = os.path.join(self.include_path, filename)
-		tpl = open(path).read()
+		tpl = utils.read_file(path)
 		self.parser = TemplateParser(tpl)
 
 	def render(self, context):
