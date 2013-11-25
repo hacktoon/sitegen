@@ -39,9 +39,7 @@ TAGS = (
 )
 
 PATTERN = r'({0}.+?{1}|{2}.+?{3}|{4}.+?{5})'.format(*TAGS)
-PARAMS_RE = re.compile('([a-zA-Z]+)\s*=\s*"(.+?)"')
-COND_EXPR_RE = re.compile('([a-zA-Z]+)\s*=\s*"(.+?)"')
-OP_RE = re.compile('(==|!=|)')
+PARAMS_RE = re.compile('([a-zA-Z.]+)\s*=\s*"(.+?)"')
 
 class Token():
 	def __init__(self, value, token_type):
@@ -130,7 +128,7 @@ class Node():
 			else:
 				return context[key]
 		except KeyError:
-			return name
+			return None
 
 	def render(self, context):
 		pass
@@ -150,34 +148,34 @@ class Root(Node):
 		return ''.join(map(render_child, self.children))
 
 
-class List(ScopeNode):
+class PageList(ScopeNode):
 	def process_params(self):
 		params = self.params
-		if 'src' not in params.keys():
-			sys.exit("Expected a collection to list.")
-		self.source = params.get('src')
 		self.order = params.get('ord')
+		self.group = params.get('group')
 		if self.order and self.order not in ['asc', 'desc']:
-			sys.exit("Wrong ordering values.")
+			sys.exit('Wrong ordering values.')
 		self.limit = int(params.get('num', 0))
 
 	def render(self, context):
-		collection = self.lookup(self.source, context)
-		if collection == self.source or not isinstance(collection, list):
-			sys.exit("Trying to list a non-listable property.")
-		
+		pages = self.lookup('pages', context)
+		if not pages or not isinstance(pages, list):
+			sys.exit('Trying to list a non-listable property.')
+
+		if self.group:
+			pages = filter(lambda p: p.group == self.group, pages)
+
 		if self.order and self.order == 'desc':
-			collection.reverse()
-		
+			pages.reverse()
+
 		if self.limit:
-			collection = collection[:self.limit]
+			pages = pages[:self.limit]
 		content = []
-		for item in collection:
+		for page in pages:
 			iteration_content = []
-			new_context = context.copy()
-			new_context.update(item)
+			context['each'] = page
 			for child in self.children:
-				iteration_content.append(child.render(new_context))
+				iteration_content.append(child.render(context))
 			content.append(''.join(iteration_content))
 		return ''.join(content).strip()
 
@@ -191,21 +189,16 @@ class Branch(ScopeNode):
 		self.alternative_branch = False
 		self.consequent = []
 		self.alternate = []
-
-	def parse_params(self, expr):
-		matches = re.findall(COND_EXPR_RE, expr)
-		sys.exit(matches)
-		if expr and not matches:
-			sys.exit('Encountered a malformed expression: {!r}'.format(expr))
-		self.params = {a:b for a,b in matches}
 		
 	def process_params(self):
-		self.value = self.params.get('value')
-		self.op = self.params.get('op')
+		self.reference = self.params.get('var')
+		self.value = self.params.get('equals')
 		
 	def process_condition(self, context):
-		lvalue = self.lookup(lvar_name, context)
-		rvalue = self.lookup(rvar_name, context)
+		reference = self.lookup(self.reference, context)
+		if not self.value:
+			return reference != None
+		return reference == self.value
 
 	def set_alternative(self):
 		self.alternative_branch = True
@@ -233,7 +226,12 @@ class Branch(ScopeNode):
 
 
 class Include(Node):
+	def __init__(self, include_path, args):
+		super().__init__(args)
+		self.include_path = include_path
+
 	def process_params(self):
+		filename = self.params.get('file')
 		sys.exit('Wrong number of arguments.')
 		self.tpl = ''
 
@@ -248,6 +246,8 @@ class Variable(Node):
 
 	def render(self, context):
 		value = self.lookup(self.name, context)
+		if not value:
+			return ''
 		if isinstance(value, datetime) and 'fmt' in self.params:
 			value = value.strftime(self.params['fmt'])
 		return value
@@ -288,8 +288,8 @@ class TemplateParser():
 
 			if token.type == TOK_BLOCK:
 				command, _, args = token.value.partition(' ')
-				if command == 'list':
-					node = List(args)
+				if command == 'pagelist':
+					node = PageList(args)
 				elif command == 'include':
 					node = Include(self.include_path, args)
 				elif command == 'if':

@@ -6,15 +6,15 @@
     <link>{{feed.link}}</link>
     <description>{{site.description}}</description>
     <lastBuildDate>{{feed.build_date fmt="%a, %d %b %Y %H:%M:%S +0000"}}</lastBuildDate>
-    {%list src="pages" %}
+    {% pagelist %}
         <item>
-		    <title>{{title}}</title>
-		    {%if permalink == "http://localhost/blog/post2" %}
-				<link>{{permalink}}</link>
+		    <title>{{each.title}}</title>
+		    {% if var="each.permalink" equals="http://localhost/about/page2" %}
+				<link>{{each.permalink}}</link>
 			{% end %}
-		    <pubDate>{{date fmt="%a, %d %b %Y %H:%M:%S +0000"}}</pubDate>
-		    <description><![CDATA[{{content}}]]></description>
-		    <guid>{{permalink}}</guid>
+		    <pubDate>{{each.date fmt="%a, %d %b %Y %H:%M:%S +0000"}}</pubDate>
+		    <description><![CDATA[{{each.content}}]]></description>
+		    <guid>{{each.permalink}}</guid>
 		</item>
     {%end%}
 </channel>

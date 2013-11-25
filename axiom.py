@@ -301,7 +301,7 @@ class Page(Content):
 			return
 		renderer = HTMLRenderer(self.template)
 		output = renderer.render(self, env)
-		write_file(path_join(page.path, HTML_FILENAME), output)
+		write_file(path_join(self.path, HTML_FILENAME), output)
 
 	def render(self, env):
 		if 'draft' in self.props:
@@ -462,9 +462,9 @@ class Site(Content):
 			'site': self.meta,
 			'pages': [p.meta for p in self.pages]
 		}
-		#for page in self.pages:
-		#	pass
-		
-		#page.render(self.meta)
+		for page in self.pages:
+			env['page'] = page.meta
+			page.render(env)
+			print("Generated page {!r}.".format(page.path))
 
 		self.generate_feeds()
