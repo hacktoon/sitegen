@@ -224,6 +224,7 @@ class HTMLRenderer(ContentRenderer):
 		page.meta['scripts'] = self.build_script_tags(page.scripts)
 		env['page'] = page.meta
 		renderer = TemplateParser(self.template)
+		renderer.set_include_path(TEMPLATES_DIR)
 		return renderer.render(env)
 
 
@@ -271,9 +272,6 @@ class Page(Content):
 
 	def set_scripts(self, scripts):
 		self.scripts = extract_multivalues(scripts)
-
-	def set_tags(self, tags):
-		self.meta['tags'] = extract_multivalues(tags)
 
 	def set_date(self, date):
 		'''converts date string to datetime object'''
@@ -327,11 +325,7 @@ class Site(Content):
 	def set_base_url(self, base_url):
 		if not base_url:
 			base_url = 'http://localhost'
-		# add a trailing slash to base url, if necessary
-		self.meta['base_url'] = urljoin(base_url, '/')
-
-	def set_tags(self, tags):
-		self.meta['tags'] = extract_multivalues(tags)
+		self.meta['base_url'] = base_url.strip('/')
 
 	def set_feed_dir(self, feed_dir):
 		self.feed_dir = feed_dir or 'feed'

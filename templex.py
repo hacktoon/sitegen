@@ -13,6 +13,7 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 '''
 
 import re
+import os
 import sys
 
 from datetime import datetime
@@ -227,16 +228,19 @@ class Branch(ScopeNode):
 
 class Include(Node):
 	def __init__(self, include_path, args):
-		super().__init__(args)
+		if not include_path:
+			sys.exit('Include path not specified.')
 		self.include_path = include_path
+		super().__init__(args)
 
 	def process_params(self):
 		filename = self.params.get('file')
-		sys.exit('Wrong number of arguments.')
-		self.tpl = ''
+		path = os.path.join(self.include_path, filename)
+		tpl = open(path).read()
+		self.parser = TemplateParser(tpl)
 
 	def render(self, context):
-		return self.tpl
+		return self.parser.render(context)
 
 
 class Variable(Node):
@@ -248,8 +252,11 @@ class Variable(Node):
 		value = self.lookup(self.name, context)
 		if not value:
 			return ''
-		if isinstance(value, datetime) and 'fmt' in self.params:
-			value = value.strftime(self.params['fmt'])
+		if isinstance(value, datetime): 
+			if 'fmt' in self.params:
+				value = value.strftime(self.params['fmt'])
+			else:
+				value = value.strftime('%Y-%m-%d %H:%M:%S')
 		return value
 
 

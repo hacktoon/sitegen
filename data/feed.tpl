@@ -9,9 +9,7 @@
     {% pagelist %}
         <item>
 		    <title>{{each.title}}</title>
-		    {% if var="each.permalink" equals="http://localhost/about/page2" %}
-				<link>{{each.permalink}}</link>
-			{% end %}
+		    <link>{{each.permalink}}</link>
 		    <pubDate>{{each.date fmt="%a, %d %b %Y %H:%M:%S +0000"}}</pubDate>
 		    <description><![CDATA[{{each.content}}]]></description>
 		    <guid>{{each.permalink}}</guid>
