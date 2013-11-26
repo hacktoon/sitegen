@@ -13,11 +13,12 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 '''
 
 import sys
-import os
 import argparse
 
 from axiom import Site
-from exceptions import (PageExistsError, SiteAlreadyInstalledError)
+from exceptions import (ValuesNotDefinedError, PageExistsError, 
+						SiteAlreadyInstalledError, FileNotFoundError,
+						TemplateError, PageValueError)
 
 
 VERSION = "0.2.0-beta"
@@ -27,14 +28,16 @@ def gen(args):
 	outputs HTML/JSON for each page file'''
 	
 	site = Site()
-	site.generate(os.curdir)
+	try:
+		site.generate_pages()
+		self.generate_feeds()
+	except (FileNotFoundError, ValuesNotDefinedError, 
+			TemplateError, PageValueError) as e:
+		sys.exit(e)
 	
 	#if args.output_enabled:
 	#	print("{}\nTotal of pages read: {}.".format("-" * 30, len(pages)))
 	#	print("Total of pages generated: {}.\n".format(total_rendered))
-	
-	# after generating all pages, update feed
-	#reader.generate_feeds(env)
 
 
 def add(args):
@@ -48,7 +51,7 @@ def add(args):
 		sys.exit('Page {!r} already exists.'.format(path))
 	
 	print('Page {!r} successfully created!'.format(path))
-	#print('Edit the file {!r} and call "mnemonix gen"!'.format(file_path))
+	print('Edit the file {!r} and call "mnemonix gen"!'.format(path))
 
 
 def init(args):

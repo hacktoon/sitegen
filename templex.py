@@ -18,6 +18,7 @@ import sys
 from datetime import datetime
 
 import utils
+from exceptions import TemplateError
 
 TOK_HTML = 'HTML'
 TOK_COMMENT = 'Comment'
@@ -110,7 +111,7 @@ class Node():
 			return
 		matches = re.findall(PARAMS_RE, params)
 		if params and not matches:
-			sys.exit('Encountered a malformed expression: {!r}'.format(params))
+			raise TemplateError('Encountered a malformed expression: {!r}'.format(params))
 		self.params = {a:b for a,b in matches}
 
 	def process_params(self):
@@ -156,22 +157,35 @@ class PageList(ScopeNode):
 		self.order = params.get('ord')
 		self.group = params.get('group')
 		if self.order and self.order not in ['asc', 'desc']:
-			sys.exit('Wrong ordering values.')
-		self.limit = int(params.get('num', 0))
-
+			raise TemplateError('Wrong ordering values for the "ord" parameter.')
+		try:
+			self.number = abs(int(params.get('num', 0)))
+		except ValueError:
+			raise TemplateError('The "num" parameter must be an integer.')
+	
+	def filter_group(self, pages):
+		if self.group:
+			return filter(lambda p: p.group == self.group, pages)
+		return pages
+	
+	def filter_number(self, pages):
+		if self.number:
+			pages = pages[:self.number]
+		return pages
+			
+	def set_order(self, pages):
+		if self.order and self.order == 'desc':
+			pages.reverse()
+	
 	def render(self, context):
 		pages = self.lookup('pages', context)
 		if not pages or not isinstance(pages, list):
-			sys.exit('Trying to list a non-listable property.')
+			raise TemplateError('Trying to list a non-listable property.')
 
-		if self.group:
-			pages = filter(lambda p: p.group == self.group, pages)
+		pages = self.filter_group(pages)
+		self.set_order(pages)
+		pages = self.filter_number(pages)
 
-		if self.order and self.order == 'desc':
-			pages.reverse()
-
-		if self.limit:
-			pages = pages[:self.limit]
 		content = []
 		for page in pages:
 			iteration_content = []
@@ -230,7 +244,7 @@ class Branch(ScopeNode):
 class Include(Node):
 	def __init__(self, include_path, args):
 		if not include_path:
-			sys.exit('Include path not specified.')
+			raise TemplateError('Include file not specified.')
 		self.include_path = include_path
 		super().__init__(args)
 
@@ -304,22 +318,21 @@ class TemplateParser():
 					node = Branch(args)
 				elif command == 'else':
 					if not isinstance(top_stack, Branch):
-						sys.exit("Unexpected 'else' tag.")
+						raise TemplateError('Unexpected "else" tag.')
 					top_stack.set_alternative()
 				elif command == 'end':
 					if len(stack) == 1:
-						sys.exit("Unmatched closing block.")
+						raise TemplateError('Unmatched closing block.')
 					stack.pop()
 				else:
-					sys.exit("{!r} command not recognized!".format(command))
+					raise TemplateError('{!r} command not recognized!'.format(command))
 			if node:
 				top_stack.add_node(node)
 				if node.has_scope:
 					stack.append(node)
 			token = lex.get_token()
 		if len(stack) > 1:
-			# {!s} calls the str() method
-			sys.exit('Non-closed block: "{!s}".'.format(stack[-1]))
+			raise TemplateError('Non-closed block: "{!s}".'.format(stack[-1]))
 		return tree
 	
 	def render(self, context):

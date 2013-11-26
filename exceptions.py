@@ -24,3 +24,9 @@ class PageExistsError(Exception):
 
 class ValuesNotDefinedError(Exception):
 	pass
+
+class TemplateError(Exception):
+	pass
+
+class PageValueError(Exception):	
+	pass

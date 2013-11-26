@@ -3,7 +3,7 @@
 	<div class="widget">
 		<h2>Last pages</h2>
 		<ul>
-			{%pagelist num=5%}
+			{%pagelist num="5"%}
 				<li>
 					<a title="{{title}}" href="{{permalink}}">
 						{{date}} - {{title}}

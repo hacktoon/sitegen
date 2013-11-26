@@ -20,9 +20,10 @@ import shutil
 from datetime import datetime
 
 import utils
-from exceptions import (ValuesNotDefinedError, FileNotFoundError,
-						SiteAlreadyInstalledError, PageExistsError)
 from templex import TemplateParser
+from exceptions import (ValuesNotDefinedError, FileNotFoundError,
+						SiteAlreadyInstalledError, PageExistsError,
+						PageValueError)
 
 # aliases
 regex_replace = re.sub
@@ -132,7 +133,7 @@ class ContentRenderer():
 			tpl_filename = '{0}.tpl'.format(tpl_filename)
 		tpl_filepath = path_join(TEMPLATES_DIR, tpl_filename)
 		if not os.path.exists(tpl_filepath):
-			raise FileNotFoundError()
+			raise FileNotFoundError('Template {!r} not found.'.format(tpl_filename))
 		return utils.read_file(tpl_filepath)
 
 	def render(self):
@@ -141,7 +142,7 @@ class ContentRenderer():
 
 class JSONRenderer(ContentRenderer):
 	def __init__(self):
-		self.date_format = '%Y-%m-%d %H:%M:%S'
+		self.date_format = DATE_FORMAT
 
 	def render(self, page):
 		page.meta['date'] = page.meta['date'].strftime(self.date_format)
@@ -238,7 +239,7 @@ class Page(Content):
 			try:
 				date = datetime.strptime(date, DATE_FORMAT)
 			except ValueError:
-				sys.exit('Wrong date format '
+				raise PageValueError('Wrong date format '
 				'detected at {!r}!'.format(self.path))
 		else:
 			date = datetime.now()
@@ -312,10 +313,9 @@ class Site(Content):
 		page.path = regex_replace(r'^\.$|\./|\.\\', '', path)
 		page.parent = parent
 		page.meta['permalink'] = utils.urljoin(self.meta['base_url'], page.path)
-		try:
-			page.initialize(page_data)
-		except ValuesNotDefinedError as e:
-			sys.exit(e)
+		
+		page.initialize(page_data)
+		
 		# the parent page template has precedence
 		if not page.template:
 			if page.parent:
@@ -405,9 +405,9 @@ class Site(Content):
 			utils.write_file(rss_file, output)
 
 
-	def generate(self, path):
+	def generate_pages(self):
 		self.load_config()
-		self.read_page_tree(path)
+		self.read_page_tree(os.curdir)
 		self.page_groups.paginate() # TODO: paginate on the go, eliminate this method
 		
 		# preparing environment
@@ -420,4 +420,3 @@ class Site(Content):
 			page.render(env)
 			print("Generated page {!r}.".format(page.path))
 
-		self.generate_feeds()
