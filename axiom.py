@@ -67,6 +67,8 @@ class PageCollection:
 
 	def insert(self, page):
 		'''Insert page in list ordered by date'''
+		if not page.is_listable():
+			return
 		count = 0
 		while True:
 			if count == len(self.pages) or page <= self.pages[count]:
@@ -247,6 +249,12 @@ class Page(Content):
 
 	def is_group(self):
 		return 'group' in self.props
+		
+	def is_listable(self):
+		return 'nolist' not in self.props
+
+	def is_feed_enabled(self):
+		return 'nofeed' not in self.props
 
 	def generate_json(self):
 		if 'nojson' in self.props:
@@ -396,7 +404,7 @@ class Site(Content):
 				'link': utils.urljoin(self.meta['base_url'], feed_dir, fname),
 				'build_date': datetime.today()
 			}
-			page_list =  [p.meta for p in group.pages]
+			page_list =  [p.meta for p in group.pages if p.is_feed_enabled()]
 			page_list.reverse()
 			env['pages'] = page_list[:self.feed_num]
 			output = renderer.render(env)
@@ -419,4 +427,3 @@ class Site(Content):
 			env['page'] = page.meta
 			page.render(env)
 			print("Generated page {!r}.".format(page.path))
-
