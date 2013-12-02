@@ -30,7 +30,7 @@ def gen(args):
 	site = Site()
 	try:
 		site.generate_pages()
-		self.generate_feeds()
+		site.generate_feeds()
 	except (FileNotFoundError, ValuesNotDefinedError, 
 			TemplateError, PageValueError) as e:
 		sys.exit(e)

@@ -165,7 +165,7 @@ class PageList(ScopeNode):
 	
 	def filter_group(self, pages):
 		if self.group:
-			return filter(lambda p: p.group == self.group, pages)
+			return [p for p in pages if p.get('group') == self.group]
 		return pages
 	
 	def filter_number(self, pages):
@@ -250,6 +250,8 @@ class Include(Node):
 
 	def process_params(self):
 		filename = self.params.get('file')
+		if not filename.endswith('.tpl'):
+			filename = '{0}.tpl'.format(filename)
 		path = os.path.join(self.include_path, filename)
 		tpl = utils.read_file(path)
 		self.parser = TemplateParser(tpl)

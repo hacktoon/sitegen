@@ -23,7 +23,7 @@ import utils
 from templex import TemplateParser
 from exceptions import (ValuesNotDefinedError, FileNotFoundError,
 						SiteAlreadyInstalledError, PageExistsError,
-						PageValueError)
+						PageValueError, TemplateError)
 
 # aliases
 regex_replace = re.sub
@@ -131,11 +131,9 @@ class ContentRenderer():
 
 	def read_template(self, tpl_filename):
 		'''Returns a template string from the template folder'''
-		if not tpl_filename.endswith('.tpl'):
-			tpl_filename = '{0}.tpl'.format(tpl_filename)
 		tpl_filepath = path_join(TEMPLATES_DIR, tpl_filename)
 		if not os.path.exists(tpl_filepath):
-			raise FileNotFoundError('Template {!r} not found.'.format(tpl_filename))
+			raise FileNotFoundError('Template {!r} not found'.format(tpl_filename))
 		return utils.read_file(tpl_filepath)
 
 	def render(self):
@@ -273,8 +271,13 @@ class Page(Content):
 		if 'draft' in self.props:
 			return
 		self.generate_json()
-		self.generate_html(env)
-
+		try:
+			self.generate_html(env)
+		except TemplateError as e:
+			raise TemplateError('{} at template {!r}'.format(e, 
+			self.template))
+		except FileNotFoundError as e:
+			raise FileNotFoundError('{} at page {!r}'.format(e, self.path))
 
 class Site(Content):
 	def __init__(self):
@@ -322,7 +325,10 @@ class Site(Content):
 		page.parent = parent
 		page.meta['permalink'] = utils.urljoin(self.meta['base_url'], page.path)
 		
-		page.initialize(page_data)
+		try:
+			page.initialize(page_data)
+		except ValuesNotDefinedError as e:
+			raise ValuesNotDefinedError('{} at page {!r}'.format(e, path))
 		
 		# the parent page template has precedence
 		if not page.template:
