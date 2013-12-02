@@ -368,10 +368,12 @@ class Site(Content):
 	def create(self):
 		if os.path.exists(self.config_path):
 			raise SiteAlreadyInstalledError("Site already installed!")
-		# copy the templates folder
-		shutil.copytree(MODEL_TEMPLATES_DIR, TEMPLATES_DIR)
-		# copy the config file
-		shutil.copyfile(MODEL_CONFIG_FILE, CONFIG_FILE)
+		if not os.path.exists(TEMPLATES_DIR):
+			# copy the templates folder
+			shutil.copytree(MODEL_TEMPLATES_DIR, TEMPLATES_DIR)
+		if not os.path.exists(CONFIG_FILE):
+			# copy the config file
+			shutil.copyfile(MODEL_CONFIG_FILE, CONFIG_FILE)
 
 	def write_page(self, path):
 		if not os.path.exists(self.config_path):
