@@ -210,6 +210,8 @@ class Branch(ScopeNode):
 		
 	def process_params(self):
 		self.var = self.params.get('var')
+		if not self.var:
+			raise TemplateError('Need a value to compare')
 		self.equal = self.params.get('equal')
 		self.diff = self.params.get('diff')
 		if self.equal and self.diff:

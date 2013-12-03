@@ -200,8 +200,9 @@ class Content:
 
 class Page(Content):
 	def __init__(self):
-		self.required_keys = ('title', 'date')
+		self.required_keys = ('title', )
 		self.parent = None
+		self.date = datetime.now()
 		self.template = ''
 		self.styles = ''
 		self.scripts = ''
@@ -243,15 +244,11 @@ class Page(Content):
 
 	def set_date(self, date):
 		'''converts date string to datetime object'''
-		if date:
-			try:
-				date = datetime.strptime(date, DATE_FORMAT)
-			except ValueError:
-				raise PageValueError('Wrong date format '
-				'detected at {!r}!'.format(self.path))
-		else:
-			date = datetime.now()
-		self.date = date
+		try:
+			self.date = datetime.strptime(date, DATE_FORMAT)
+		except ValueError:
+			raise PageValueError('Wrong date format '
+			'detected at {!r}!'.format(self.path))
 
 	def is_group(self):
 		return 'group' in self.props
