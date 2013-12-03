@@ -121,21 +121,21 @@ class Node():
 		self.children.append(node)
 
 	def lookup(self, name, context):
-		if '.' in name:
-			key, prop = name.split('.', 1)
-		else:
-			key, prop = name, ''
-		try:
-			if prop:
-				return context[key][prop]
-			else:
-				return context[key]
-		except KeyError:
+		keys = name.split('.')
+		if keys[0] not in context:
 			return None
+		if len(keys) <= 1:
+			return context.get(keys[0])
+		reference = context[keys[0]]
+		for k in keys[1:]:
+			if not hasattr(reference, k):
+				return None
+			reference = getattr(reference, k)
+		return reference
 
 	def render(self, context):
 		pass
-	
+
 	def __str__(self):
 		pass
 
@@ -165,7 +165,7 @@ class PageList(ScopeNode):
 	
 	def filter_group(self, pages):
 		if self.group:
-			return [p for p in pages if p.get('group') == self.group]
+			return [p for p in pages if p.group == self.group]
 		return pages
 	
 	def filter_number(self, pages):
@@ -179,8 +179,8 @@ class PageList(ScopeNode):
 	
 	def render(self, context):
 		pages = self.lookup('pages', context)
-		if not pages or not isinstance(pages, list):
-			raise TemplateError('Trying to list a non-listable property.')
+		if not pages:
+			raise TemplateError('Trying to list a non-listable property')
 
 		pages = self.filter_group(pages)
 		self.set_order(pages)
@@ -188,6 +188,8 @@ class PageList(ScopeNode):
 
 		content = []
 		for page in pages:
+			if not page.is_listable():
+				continue
 			iteration_content = []
 			context['each'] = page
 			for child in self.children:
@@ -207,14 +209,20 @@ class Branch(ScopeNode):
 		self.alternate = []
 		
 	def process_params(self):
-		self.reference = self.params.get('var')
-		self.value = self.params.get('equals')
-		
+		self.var = self.params.get('var')
+		self.equal = self.params.get('equal')
+		self.diff = self.params.get('diff')
+		if self.equal and self.diff:
+			raise TemplateError('Too much conditional clauses')
+
 	def process_condition(self, context):
-		reference = self.lookup(self.reference, context)
-		if not self.value:
-			return reference != None
-		return reference == self.value
+		var = self.lookup(self.var, context)
+		if not self.equal and not self.diff:
+			return bool(var)
+		if self.equal:
+			return var == self.equal
+		if self.diff:
+			return var != self.diff
 
 	def set_alternative(self):
 		self.alternative_branch = True

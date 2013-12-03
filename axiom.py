@@ -67,8 +67,6 @@ class PageCollection:
 
 	def insert(self, page):
 		'''Insert page in list ordered by date'''
-		if not page.is_listable():
-			return
 		count = 0
 		while True:
 			if count == len(self.pages) or page <= self.pages[count]:
@@ -100,26 +98,18 @@ class GroupCollection:
 		for group in self.groups.values():
 			length = len(group.pages)
 			for index, page in enumerate(group.pages):
-				meta = page.meta
-				meta['first'] = group.page_data(0)
+				page.first = group.pages[0]
 				next_index = index + 1 if index < length - 1 else -1
-				meta['next'] = group.page_data(next_index)
+				page.next = group.pages[next_index]
 				prev_index = index - 1 if index > 0 else 0
-				meta['prev'] = group.page_data(prev_index)
-				meta['last'] = group.page_data(-1)
+				page.prev = group.pages[prev_index]
+				page.last = group.pages[-1]
 
 
 class Group:
 	def __init__(self, name):
 		self.name = name
 		self.pages = PageCollection()
-
-	def page_data(self, index):
-		page = self.pages[index]
-		return {
-			'permalink': page.meta['permalink'],
-			'title': page.meta['title'],
-		}
 
 	def add_page(self, page):
 		self.pages.insert(page)
@@ -142,11 +132,11 @@ class ContentRenderer():
 
 class JSONRenderer(ContentRenderer):
 	def __init__(self):
-		self.date_format = DATE_FORMAT
-
+		pass
+	
 	def render(self, page):
-		page.meta['date'] = page.meta['date'].strftime(self.date_format)
-		return json.dumps(page.meta)
+		page = page.serialize()
+		return json.dumps(page)
 
 
 class RSSRenderer(ContentRenderer):
@@ -180,9 +170,9 @@ class HTMLRenderer(ContentRenderer):
 		return self.build_external_tags(links, self.script_tpl)
 
 	def render(self, page, env):
-		page.meta['styles'] = self.build_style_tags(page.styles)
-		page.meta['scripts'] = self.build_script_tags(page.scripts)
-		env['page'] = page.meta
+		page.styles = self.build_style_tags(page.styles)
+		page.scripts = self.build_script_tags(page.scripts)
+		env['page'] = page
 		renderer = TemplateParser(self.template)
 		renderer.set_include_path(TEMPLATES_DIR)
 		return renderer.render(env)
@@ -198,13 +188,14 @@ class Content:
 			if hasattr(self, method_name):
 				getattr(self, method_name)(params[key])
 			else:
-				self.meta[key] = params[key]
+				setattr(self, key, params[key])
 			if key in required_keys_cache:
 				required_keys_cache.remove(key)
 		# if any required key wasn't set, raise exception
 		if len(required_keys_cache):
 			raise ValuesNotDefinedError('The following values were not defined: {!r}'
 			.format(', '.join(required_keys_cache)))
+		del self.required_keys
 
 
 class Page(Content):
@@ -216,10 +207,27 @@ class Page(Content):
 		self.scripts = ''
 		self.props = []
 		self.group = ''
-		self.meta = {}
 
 	def __le__(self, other):
-		return self.meta['date'] <= other.meta['date']
+		return self.date <= other.date
+
+	def __str__(self):
+		return 'Page {!r}'.format(self.path)
+
+	def serialize(self, deep=True):
+		page = vars(self).copy()
+		page['date'] = self.date.strftime(DATE_FORMAT)
+		for key in ['first', 'last', 'prev', 'next']:
+			if key not in page.keys():
+				break
+			if deep:
+				page[key] = page[key].serialize(deep=False)
+			else:
+				del page[key]
+		for key in ['parent', 'styles', 'props', 'scripts',
+					'group', 'template']:
+			del page[key]
+		return page
 
 	def set_template(self, template):
 		self.template = template
@@ -243,7 +251,7 @@ class Page(Content):
 				'detected at {!r}!'.format(self.path))
 		else:
 			date = datetime.now()
-		self.meta['date'] = date
+		self.date = date
 
 	def is_group(self):
 		return 'group' in self.props
@@ -271,6 +279,7 @@ class Page(Content):
 		if 'draft' in self.props:
 			return
 		self.generate_json()
+		env['page'] = self
 		try:
 			self.generate_html(env)
 		except TemplateError as e:
@@ -279,13 +288,13 @@ class Page(Content):
 		except FileNotFoundError as e:
 			raise FileNotFoundError('{} at page {!r}'.format(e, self.path))
 
+
 class Site(Content):
 	def __init__(self):
 		self.required_keys = ('title', 'default_template', 'feed_dir', 'base_url')
 		self.config_path = path_join(os.getcwd(), CONFIG_FILE)
 		self.page_groups = GroupCollection()
 		self.pages = PageCollection()
-		self.meta = {}
 
 	def load_config(self):
 		if not os.path.exists(self.config_path):
@@ -296,7 +305,7 @@ class Site(Content):
 	def set_base_url(self, base_url):
 		if not base_url:
 			base_url = 'http://localhost'
-		self.meta['base_url'] = base_url.strip('/')
+		self.base_url = base_url.strip('/')
 
 	def set_feed_dir(self, feed_dir):
 		self.feed_dir = feed_dir or 'feed'
@@ -323,7 +332,7 @@ class Site(Content):
 		page = Page()
 		page.path = regex_replace(r'^\.$|\./|\.\\', '', path)
 		page.parent = parent
-		page.meta['permalink'] = utils.urljoin(self.meta['base_url'], page.path)
+		page.permalink = utils.urljoin(self.base_url, page.path)
 		
 		try:
 			page.initialize(page_data)
@@ -404,34 +413,18 @@ class Site(Content):
 		# create the feed directory
 		if not os.path.exists(feed_dir):
 			os.makedirs(feed_dir)
-		env = { 'site': self.meta }
+		env = { 'site': self }
 		# generate feeds based on groups
 		for group in self.page_groups:
 			fname = '{}.xml'.format(group.name)
 			env['feed'] = {
-				'link': utils.urljoin(self.meta['base_url'], feed_dir, fname),
+				'link': utils.urljoin(self.base_url, feed_dir, fname),
 				'build_date': datetime.today()
 			}
-			page_list =  [p.meta for p in group.pages if p.is_feed_enabled()]
+			page_list =  [p for p in group.pages if p.is_feed_enabled()]
 			page_list.reverse()
 			env['pages'] = page_list[:self.feed_num]
 			output = renderer.render(env)
 			rss_file = path_join(feed_dir, fname)
 			print("Generated {!r}.".format(rss_file))
 			utils.write_file(rss_file, output)
-
-
-	def generate_pages(self):
-		self.load_config()
-		self.read_page_tree(os.curdir)
-		self.page_groups.paginate() # TODO: paginate on the go, eliminate this method
-		
-		# preparing environment
-		env = {
-			'site': self.meta,
-			'pages': [p.meta for p in self.pages]
-		}
-		for page in self.pages:
-			env['page'] = page.meta
-			page.render(env)
-			print("Generated page {!r}.".format(page.path))
