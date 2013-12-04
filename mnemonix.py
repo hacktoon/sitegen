@@ -31,7 +31,6 @@ def gen(args):
 	try:
 		site.load_config()
 		site.read_page_tree('.')
-		site.page_groups.paginate() # TODO: paginate on the go, eliminate this method
 		
 		# preparing environment
 		env = {
@@ -40,7 +39,7 @@ def gen(args):
 		}
 		for page in site.pages:
 			page.render(env)
-			print("Generated page {!r}.".format(page.path))
+			#print("Generated page {!r}.".format(page.path))
 		site.generate_feeds()
 	except (FileNotFoundError, ValuesNotDefinedError, 
 			TemplateError, PageValueError) as e:

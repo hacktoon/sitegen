@@ -270,6 +270,24 @@ class Include(Node):
 		return self.parser.render(context)
 
 
+class Parse(Node):
+	def __init__(self, include_path, args):
+		if not include_path:
+			raise TemplateError('Include file not specified.')
+		self.include_path = include_path
+		super().__init__(args)
+
+	def process_params(self):
+		filename = self.params.get('file')
+		if not filename.endswith('.tpl'):
+			filename = '{0}.tpl'.format(filename)
+		path = os.path.join(self.include_path, filename)
+		self.text = utils.read_file(path)
+
+	def render(self, context):
+		return self.text
+
+
 class Variable(Node):
 	def __init__(self, name, args):
 		super().__init__(args)
@@ -303,6 +321,43 @@ class TemplateParser():
 	def set_include_path(self, path):
 		self.include_path = path
 	
+	def handle_token(self, token, stack):
+		node = None
+		top_stack = stack[-1]
+		
+		if token.type == TOK_HTML:
+			node = HTML(token.value)
+
+		if token.type == TOK_VARIABLE:
+			name, _, args = token.value.partition(' ')
+			node = Variable(name, args)
+
+		if token.type == TOK_BLOCK:
+			command, _, args = token.value.partition(' ')
+			if command == 'pagelist':
+				node = PageList(args)
+			elif command == 'include':
+				node = Include(self.include_path, args)
+			elif command == 'parse':
+				node = Parse(self.include_path, args)
+			elif command == 'if':
+				node = Branch(args)
+			elif command == 'else':
+				if not isinstance(top_stack, Branch):
+					raise TemplateError('Unexpected "else" tag.')
+				top_stack.set_alternative()
+			elif command == 'end':
+				if len(stack) == 1:
+					raise TemplateError('Unmatched closing block.')
+				stack.pop()
+			else:
+				raise TemplateError('{!r} command not recognized!'.format(command))
+		if node:
+			top_stack.add_node(node)
+			if node.has_scope:
+				stack.append(node)
+		return node
+
 	def parse(self):
 		tree = Root()
 		stack = [tree]
@@ -310,38 +365,7 @@ class TemplateParser():
 
 		token = lex.get_token()
 		while token:
-			node = None
-			top_stack = stack[-1]
-			
-			if token.type == TOK_HTML:
-				node = HTML(token.value)
-
-			if token.type == TOK_VARIABLE:
-				name, _, args = token.value.partition(' ')
-				node = Variable(name, args)
-
-			if token.type == TOK_BLOCK:
-				command, _, args = token.value.partition(' ')
-				if command == 'pagelist':
-					node = PageList(args)
-				elif command == 'include':
-					node = Include(self.include_path, args)
-				elif command == 'if':
-					node = Branch(args)
-				elif command == 'else':
-					if not isinstance(top_stack, Branch):
-						raise TemplateError('Unexpected "else" tag.')
-					top_stack.set_alternative()
-				elif command == 'end':
-					if len(stack) == 1:
-						raise TemplateError('Unmatched closing block.')
-					stack.pop()
-				else:
-					raise TemplateError('{!r} command not recognized!'.format(command))
-			if node:
-				top_stack.add_node(node)
-				if node.has_scope:
-					stack.append(node)
+			self.handle_token(token, stack)
 			token = lex.get_token()
 		if len(stack) > 1:
 			raise TemplateError('Non-closed block: "{!s}".'.format(stack[-1]))

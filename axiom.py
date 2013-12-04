@@ -54,6 +54,7 @@ MODEL_TEMPLATES_DIR = path_join(data_dir, TEMPLATES_DIR)
 class PageCollection:
 	def __init__(self):
 		self.pages = []
+		self.pagination = False
 
 	def __iter__(self):
 		for page in self.pages:
@@ -65,6 +66,18 @@ class PageCollection:
 	def __getitem__(self, key):
 		return self.pages[key]
 
+	def paginate(self):
+		if not self.pagination:
+			return
+		length = len(self.pages)
+		for index, page in enumerate(self.pages):
+			page.first = self.pages[0]
+			next_index = index + 1 if index < length - 1 else -1
+			page.next = self.pages[next_index]
+			prev_index = index - 1 if index > 0 else 0
+			page.prev = self.pages[prev_index]
+			page.last = self.pages[-1]
+
 	def insert(self, page):
 		'''Insert page in list ordered by date'''
 		count = 0
@@ -73,6 +86,7 @@ class PageCollection:
 				self.pages.insert(count, page)
 				break
 			count += 1
+		self.paginate()
 
 
 class GroupCollection:
@@ -93,23 +107,12 @@ class GroupCollection:
 			return
 		self.groups[group_name].add_page(page)
 
-	def paginate(self):
-		'''Set the pagination info for the pages'''
-		for group in self.groups.values():
-			length = len(group.pages)
-			for index, page in enumerate(group.pages):
-				page.first = group.pages[0]
-				next_index = index + 1 if index < length - 1 else -1
-				page.next = group.pages[next_index]
-				prev_index = index - 1 if index > 0 else 0
-				page.prev = group.pages[prev_index]
-				page.last = group.pages[-1]
-
 
 class Group:
 	def __init__(self, name):
 		self.name = name
 		self.pages = PageCollection()
+		self.pages.pagination = True
 
 	def add_page(self, page):
 		self.pages.insert(page)
@@ -208,6 +211,10 @@ class Page(Content):
 		self.scripts = ''
 		self.props = []
 		self.group = ''
+		self.first = None
+		self.last = None
+		self.prev = None
+		self.next = None
 
 	def __le__(self, other):
 		return self.date <= other.date
@@ -219,14 +226,12 @@ class Page(Content):
 		page = vars(self).copy()
 		page['date'] = self.date.strftime(DATE_FORMAT)
 		for key in ['first', 'last', 'prev', 'next']:
-			if key not in page.keys():
-				break
-			if deep:
+			if deep and page[key]:
 				page[key] = page[key].serialize(deep=False)
 			else:
 				del page[key]
-		for key in ['parent', 'styles', 'props', 'scripts',
-					'group', 'template']:
+		for key in ['parent', 'styles', 'props', 'scripts', 
+		'group', 'template']:
 			del page[key]
 		return page
 
