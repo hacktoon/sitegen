@@ -1,0 +1,26 @@
+<command-list> := <command> *
+<command> :=   <pagelist-stmt>
+			|  <print-stmt>
+			|  <include-stmt>
+			|  <parse-stmt>
+			|  <if-stmt>
+			|  <html>
+
+<parse-stmt> := "#parse(" <string> ")"
+<include-stmt> := "#include(" <string> ")"
+<print-stmt> := "#put(" <identifier> [, <args> ] ")"
+<pagelist-stmt> := "#pagelist(" <args> ")" <command-list> #endlist
+
+<if-stmt> : = "if(" <cond-expr> ) <command-list> 
+			   [ "#else" <command-list> | ( "#elseif(" <cond-expr> ")" <command-list> )* ] #endif
+
+
+<cond-expr> := <identifier> <logic-op> <literal>
+<args> := <identifier> "=" <literal> (, <identifier> "=" <literal>)*
+
+<logic-op> := "==" | "!="
+
+<literal> := <string> | <number> | "null"
+<string> := '"' <letter>* '"'
+<number> := <digit>+
+<identifier> := <letter> (<number> | <letter>)*
