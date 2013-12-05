@@ -25,29 +25,16 @@ TOK_COMMENT = 'Comment'
 TOK_VARIABLE = 'Variable'
 TOK_BLOCK = 'Block'
 
-START_BLOCK = '{%'
-END_BLOCK = '%}'
-START_VAR = '{{'
-END_VAR = '}}'
-START_COMMENT = '{#'
-END_COMMENT = '#}'
+CMD_START = '#'
 
-TAGS = (
-	START_BLOCK,
-	END_BLOCK,
-	START_VAR,
-	END_VAR,
-	START_COMMENT,
-	END_COMMENT
-)
 
-TOKEN_RE = r'({0}.+?{1}|{2}.+?{3}|{4}.+?{5})'.format(*TAGS)
-PARAMS_RE = re.compile('([a-zA-Z_-]+)\s*=\s*"(.*?)"')
 
 class Token():
 	def __init__(self, value, token_type):
 		self.value = value
 		self.type = token_type
+		self.column = 0
+		self.line = 0
 	
 	def __str__(self):
 		return '{!r} - {}'.format(self.type, self.value)
