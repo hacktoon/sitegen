@@ -35,7 +35,9 @@ listdir = os.listdir
 # Configuration values
 DATA_FILE = 'page.me'
 CONFIG_FILE = 'config.me'
+GROUP_FILE = 'group.me'
 TEMPLATES_DIR = 'templates'
+TEMPLATES_EXT = 'tpl'
 # format in which the date will be stored
 DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
 JSON_FILENAME = 'data.json'
@@ -47,6 +49,7 @@ data_dir = path_join(script_path, 'data')
 
 MODEL_FEED_FILE = path_join(data_dir, 'feed.tpl')
 MODEL_CONFIG_FILE = path_join(data_dir, CONFIG_FILE)
+MODEL_GROUP_FILE = path_join(data_dir, GROUP_FILE)
 MODEL_DATA_FILE = path_join(data_dir, DATA_FILE)
 MODEL_TEMPLATES_DIR = path_join(data_dir, TEMPLATES_DIR)
 
@@ -392,7 +395,7 @@ class Site(Content):
 			# copy the config file
 			shutil.copyfile(MODEL_CONFIG_FILE, CONFIG_FILE)
 
-	def write_page(self, path):
+	def create_page(self, path, create_group):
 		if not os.path.exists(self.config_path):
 			raise FileNotFoundError("Site is not installed!")
 		if not os.path.exists(path):
@@ -407,6 +410,8 @@ class Site(Content):
 		date = datetime.today().strftime(DATE_FORMAT)
 		# need to write file contents to insert creation date
 		utils.write_file(dest_file, content.format(date))
+		if create_group:
+			shutil.copyfile(MODEL_GROUP_FILE, path_join(path, GROUP_FILE))
 
 	def generate_feeds(self):
 		renderer = RSSRenderer(MODEL_FEED_FILE)
