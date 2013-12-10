@@ -330,14 +330,21 @@ class Site(Content):
 		# avoid directories that don't have a data file
 		if not os.path.exists(data_file):
 			return
-		return utils.parse_input_file(utils.read_file(data_file))
+		page_data = utils.parse_input_file(utils.read_file(data_file))
+		
+		group_file = path_join(path, GROUP_FILE)
+		if os.path.exists(group_file):
+			group_file_content = utils.read_file(group_file)
+			page_data['group-data'] = utils.parse_input_file(group_file_content)
+		return page_data
 
 	def build_page(self, path, parent, page_data):
 		'''Page object factory'''
 		page = Page()
 		page.path = regex_replace(r'^\.$|\./|\.\\', '', path)
-		page.parent = parent
+		page.slug = os.path.basename(page.path)
 		page.permalink = utils.urljoin(self.base_url, page.path)
+		page.parent = parent
 		
 		try:
 			page.initialize(page_data)
