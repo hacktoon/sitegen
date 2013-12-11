@@ -1,5 +1,6 @@
 <command-list> := <command> *
-<command> :=   <pagelist-stmt>
+<command> :=   <childlist-stmt>
+			|  <pagelist-stmt>
 			|  <print-stmt>
 			|  <include-stmt>
 			|  <parse-stmt>
@@ -9,10 +10,11 @@
 <parse-stmt> := "#parse(" <string> ")"
 <include-stmt> := "#include(" <string> ")"
 <print-stmt> := "#put(" <identifier> [, <args> ] ")"
-<pagelist-stmt> := "#pagelist(" <args> ")" <command-list> #endlist
+<pagelist-stmt> := "#pagelist(" <args> ")" <command-list> #end
+<childlist-stmt> := "#childlist(" <args> ")" <command-list> #end
 
 <if-stmt> : = "if(" <cond-expr> ) <command-list> 
-			   [ "#else" <command-list> | ( "#elseif(" <cond-expr> ")" <command-list> )* ] #endif
+			   [ "#else" <command-list> | ( "#elseif(" <cond-expr> ")" <command-list> )* ] #end
 
 
 <cond-expr> := <identifier> <logic-op> <literal>
