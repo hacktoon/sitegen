@@ -55,7 +55,7 @@ def add(args):
 	path = args.path
 	site = Site()
 	try:
-		site.create_page(path, args.group)
+		site.create_page(path)
 	except PageExistsError:
 		sys.exit('Page {!r} already exists.'.format(path))
 	
@@ -99,10 +99,6 @@ def main():
 	parser_add = subparsers.add_parser('add', 
 		help='create a empty page on the path specified')
 	parser_add.add_argument("path")
-	parser_add.add_argument("-g", "--group", 
-						help="create a group",
-						action="store_true")
-	
 	parser_add.set_defaults(method=add)
 
 	parser_gen = subparsers.add_parser('gen', help='generate the pages')

@@ -35,7 +35,6 @@ listdir = os.listdir
 # Configuration values
 DATA_FILE = 'page.me'
 CONFIG_FILE = 'config.me'
-GROUP_FILE = 'group.me'
 TEMPLATES_DIR = 'templates'
 TEMPLATES_EXT = 'tpl'
 # format in which the date will be stored
@@ -49,7 +48,6 @@ data_dir = path_join(script_path, 'data')
 
 MODEL_FEED_FILE = path_join(data_dir, 'feed.tpl')
 MODEL_CONFIG_FILE = path_join(data_dir, CONFIG_FILE)
-MODEL_GROUP_FILE = path_join(data_dir, GROUP_FILE)
 MODEL_DATA_FILE = path_join(data_dir, DATA_FILE)
 MODEL_TEMPLATES_DIR = path_join(data_dir, TEMPLATES_DIR)
 
@@ -208,6 +206,7 @@ class Page(Content):
 	def __init__(self):
 		self.required_keys = ('title', )
 		self.parent = None
+		self.children = PageCollection()
 		self.date = datetime.now()
 		self.template = ''
 		self.styles = ''
@@ -243,7 +242,7 @@ class Page(Content):
 
 	def set_props(self, props):
 		self.props = utils.extract_multivalues(props)
-
+	
 	def set_styles(self, styles):
 		self.styles = utils.extract_multivalues(styles)
 
@@ -326,17 +325,10 @@ class Site(Content):
 
 	def read_page(self, path):
 		'''Return the page data specified by path'''
-		data_file = path_join(path, DATA_FILE)
-		# avoid directories that don't have a data file
-		if not os.path.exists(data_file):
-			return
-		page_data = utils.parse_input_file(utils.read_file(data_file))
-		
-		group_file = path_join(path, GROUP_FILE)
-		if os.path.exists(group_file):
-			group_file_content = utils.read_file(group_file)
-			page_data['group-data'] = utils.parse_input_file(group_file_content)
-		return page_data
+		file_path = path_join(path, PAGE_FILE)
+		if os.path.exists(file_path):
+			return utils.parse_input_file(utils.read_file(file_path))
+		return
 
 	def build_page(self, path, parent, page_data):
 		'''Page object factory'''
@@ -345,7 +337,7 @@ class Site(Content):
 		page.slug = os.path.basename(page.path)
 		page.permalink = utils.urljoin(self.base_url, page.path)
 		page.parent = parent
-		
+
 		try:
 			page.initialize(page_data)
 		except ValuesNotDefinedError as e:
@@ -374,6 +366,8 @@ class Site(Content):
 		page = None
 		if page_data:
 			page = self.build_page(path, parent, page_data)
+			if parent:
+				parent.children.insert(page)
 			# if page define a group, append to list of groups
 			if page.is_group():
 				group_name = basename(page.path)
@@ -402,29 +396,22 @@ class Site(Content):
 			# copy the config file
 			shutil.copyfile(MODEL_CONFIG_FILE, CONFIG_FILE)
 
-	def create_page(self, path, create_group):
+	def create_page(self, path):
 		if not os.path.exists(self.config_path):
 			raise FileNotFoundError("Site is not installed!")
 		if not os.path.exists(path):
 			os.makedirs(path)
-		# full path of page data file
 		dest_file = path_join(path, DATA_FILE)
 		if os.path.exists(dest_file):
 			raise PageExistsError("Page {!r} already exists!".format(dest_file))
-		# copy the model page data file to a new file
 		content = utils.read_file(MODEL_DATA_FILE)
-		# saving date in the format configured
 		date = datetime.today().strftime(DATE_FORMAT)
 		# need to write file contents to insert creation date
 		utils.write_file(dest_file, content.format(date))
-		if create_group:
-			shutil.copyfile(MODEL_GROUP_FILE, path_join(path, GROUP_FILE))
 
 	def generate_feeds(self):
 		renderer = RSSRenderer(MODEL_FEED_FILE)
 		feed_dir = self.feed_dir
-		
-		# create the feed directory
 		if not os.path.exists(feed_dir):
 			os.makedirs(feed_dir)
 		env = { 'site': self }
