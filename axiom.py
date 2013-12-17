@@ -37,7 +37,6 @@ DATA_FILE = 'page.me'
 CONFIG_FILE = 'config.me'
 TEMPLATES_DIR = 'templates'
 TEMPLATES_EXT = 'tpl'
-# format in which the date will be stored
 DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
 JSON_FILENAME = 'data.json'
 HTML_FILENAME = 'index.html'
@@ -52,7 +51,7 @@ MODEL_DATA_FILE = path_join(data_dir, DATA_FILE)
 MODEL_TEMPLATES_DIR = path_join(data_dir, TEMPLATES_DIR)
 
 
-class PageCollection:
+class PageList:
 	def __init__(self):
 		self.pages = []
 		self.pagination = False
@@ -90,29 +89,29 @@ class PageCollection:
 		self.paginate()
 
 
-class GroupCollection:
+class CategoryList:
 	def __init__(self):
-		self.groups = {}
+		self.categories = {}
 
 	def __iter__(self):
-		for group in self.groups.values():
-			yield group
+		for category in self.categories.values():
+			yield category
 
-	def add_group(self, group_name):
-		if group_name in self.groups.keys() or not group_name:
+	def add_category(self, category_name):
+		if category_name in self.categories.keys() or not category_name:
 			return
-		self.groups[group_name] = Group(group_name)
+		self.categories[category_name] = Category(category_name)
 
-	def add_page(self, group_name, page):
-		if group_name not in self.groups.keys() or not group_name:
+	def add_page(self, category_name, page):
+		if category_name not in self.categories.keys() or not category_name:
 			return
-		self.groups[group_name].add_page(page)
+		self.categories[category_name].add_page(page)
 
 
-class Group:
+class Category:
 	def __init__(self, name):
 		self.name = name
-		self.pages = PageCollection()
+		self.pages = PageList()
 		self.pages.pagination = True
 
 	def add_page(self, page):
@@ -137,10 +136,10 @@ class ContentRenderer():
 class JSONRenderer(ContentRenderer):
 	def __init__(self):
 		pass
-	
+
 	def render(self, page):
-		page = page.serialize()
-		return json.dumps(page)
+		page = vars(page)
+		return json.dumps(page, skipkeys=True)
 
 
 class RSSRenderer(ContentRenderer):
@@ -184,18 +183,16 @@ class HTMLRenderer(ContentRenderer):
 
 class Content:
 	def initialize(self, params):
-		# define properties dynamically
+		''' Set properties dynamically '''
 		required_keys_cache = list(self.required_keys)
 		for key in params.keys():
 			method_name = 'set_{}'.format(key)
-			# if setter method exists, call it
 			if hasattr(self, method_name):
 				getattr(self, method_name)(params[key])
 			else:
 				setattr(self, key, params[key])
 			if key in required_keys_cache:
 				required_keys_cache.remove(key)
-		# if any required key wasn't set, raise exception
 		if len(required_keys_cache):
 			raise ValuesNotDefinedError('The following values were not defined: {!r}'
 			.format(', '.join(required_keys_cache)))
@@ -204,41 +201,29 @@ class Content:
 
 class Page(Content):
 	def __init__(self):
-		self.required_keys = ('title', )
+		self.required_keys = ('title', 'date')
+		self.children = PageList()
 		self.parent = None
-		self.children = PageCollection()
-		self.date = datetime.now()
-		self.template = ''
-		self.styles = ''
-		self.scripts = ''
 		self.props = []
-		self.group = ''
-		self.first = None
-		self.last = None
-		self.prev = None
-		self.next = None
+		self.styles = []
+		self.scripts = []
+		self.template = ''
+		self.category = ''
+		self.data = {}
 
 	def __le__(self, other):
-		return self.date <= other.date
+		return self['date'] <= other['date']
 
 	def __str__(self):
 		return 'Page {!r}'.format(self.path)
-
-	def serialize(self, deep=True):
-		page = vars(self).copy()
-		page['date'] = self.date.strftime(DATE_FORMAT)
-		for key in ['first', 'last', 'prev', 'next']:
-			if deep and page[key]:
-				page[key] = page[key].serialize(deep=False)
-			else:
-				del page[key]
-		for key in ['parent', 'styles', 'props', 'scripts', 
-		'group', 'template']:
-			del page[key]
-		return page
-
-	def set_template(self, template):
-		self.template = template
+	
+	def __getitem__(self, key):
+		if not key in self.data:
+			return None
+		return self.data[key]
+		
+	def add_child(self, page):
+		self.children.insert(page)
 
 	def set_props(self, props):
 		self.props = utils.extract_multivalues(props)
@@ -257,9 +242,6 @@ class Page(Content):
 			raise PageValueError('Wrong date format '
 			'detected at {!r}!'.format(self.path))
 
-	def is_group(self):
-		return 'group' in self.props
-		
 	def is_listable(self):
 		return 'nolist' not in self.props
 
@@ -297,8 +279,8 @@ class Site(Content):
 	def __init__(self):
 		self.required_keys = ('title', 'default_template', 'feed_dir', 'base_url')
 		self.config_path = path_join(os.getcwd(), CONFIG_FILE)
-		self.page_groups = GroupCollection()
-		self.pages = PageCollection()
+		self.categories = CategoryList()
+		self.pages = PageList()
 
 	def load_config(self):
 		if not os.path.exists(self.config_path):
@@ -330,33 +312,18 @@ class Site(Content):
 			return utils.parse_input_file(utils.read_file(file_path))
 		return
 
-	def build_page(self, path, parent, page_data):
+	def build_page(self, path, page_data):
 		'''Page object factory'''
 		page = Page()
 		page.path = regex_replace(r'^\.$|\./|\.\\', '', path)
-		page.slug = os.path.basename(page.path)
+		page.slug = basename(page.path)
 		page.permalink = utils.urljoin(self.base_url, page.path)
-		page.parent = parent
-
 		try:
 			page.initialize(page_data)
 		except ValuesNotDefinedError as e:
 			raise ValuesNotDefinedError('{} at page {!r}'.format(e, path))
-		
-		# the parent page template has precedence
 		if not page.template:
-			if page.parent:
-				page.template = page.parent.template
-			else:
-				page.template = self.default_template
-
-		# setting page group
-		if page.parent and not page.group:
-			if page.parent.is_group():  # parent page defines a group
-				page.group = os.path.basename(page.parent.path)
-			else:
-				page.group = page.parent.group
-			self.page_groups.add_page(page.group, page)
+			page.template = self.default_template
 		return page
 
 	def read_page_tree(self, path, parent=None):
@@ -365,13 +332,10 @@ class Site(Content):
 		page_data = self.read_page(path)
 		page = None
 		if page_data:
-			page = self.build_page(path, parent, page_data)
+			page = self.build_page(path, page_data)
+			page.parent = parent
 			if parent:
-				parent.children.insert(page)
-			# if page define a group, append to list of groups
-			if page.is_group():
-				group_name = basename(page.path)
-				self.page_groups.add_group(group_name)
+				parent.add_child(page)
 			# add page to ordered list of pages
 			self.pages.insert(page)
 		for subpage_path in self.read_subpages_list(path):
@@ -415,14 +379,14 @@ class Site(Content):
 		if not os.path.exists(feed_dir):
 			os.makedirs(feed_dir)
 		env = { 'site': self }
-		# generate feeds based on groups
-		for group in self.page_groups:
-			fname = '{}.xml'.format(group.name)
+		# generate feeds based on categories
+		for cat in self.categories:
+			fname = '{}.xml'.format(cat.name)
 			env['feed'] = {
 				'link': utils.urljoin(self.base_url, feed_dir, fname),
 				'build_date': datetime.today()
 			}
-			page_list =  [p for p in group.pages if p.is_feed_enabled()]
+			page_list =  [p for p in cat.pages if p.is_feed_enabled()]
 			page_list.reverse()
 			env['pages'] = page_list[:self.feed_num]
 			output = renderer.render(env)
