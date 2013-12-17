@@ -190,7 +190,7 @@ class Content:
 			if hasattr(self, method_name):
 				getattr(self, method_name)(params[key])
 			else:
-				setattr(self, key, params[key])
+				self[key] = params[key]
 			if key in required_keys_cache:
 				required_keys_cache.remove(key)
 		if len(required_keys_cache):
@@ -216,18 +216,18 @@ class Page(Content):
 
 	def __str__(self):
 		return 'Page {!r}'.format(self.path)
-	
+
 	def __getitem__(self, key):
 		if not key in self.data:
 			return None
 		return self.data[key]
-		
+
 	def add_child(self, page):
 		self.children.insert(page)
 
 	def set_props(self, props):
 		self.props = utils.extract_multivalues(props)
-	
+
 	def set_styles(self, styles):
 		self.styles = utils.extract_multivalues(styles)
 
@@ -281,6 +281,7 @@ class Site(Content):
 		self.config_path = path_join(os.getcwd(), CONFIG_FILE)
 		self.categories = CategoryList()
 		self.pages = PageList()
+		self.data = {}
 
 	def load_config(self):
 		if not os.path.exists(self.config_path):
@@ -317,7 +318,7 @@ class Site(Content):
 		page = Page()
 		page.path = regex_replace(r'^\.$|\./|\.\\', '', path)
 		page.slug = basename(page.path)
-		page.permalink = utils.urljoin(self.base_url, page.path)
+		page.url = utils.urljoin(self.base_url, page.path)
 		try:
 			page.initialize(page_data)
 		except ValuesNotDefinedError as e:

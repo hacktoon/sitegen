@@ -14,6 +14,7 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 
 import os
 import sys
+import unicodedata
 
 def urljoin(base, *slug):
 	'''Custom URL join function to concatenate and add slashes'''
@@ -54,3 +55,6 @@ def extract_multivalues(tag_string):
 		tags = tag_string.strip(',').split(',')
 		tag_list = [tag.strip() for tag in tags]
 	return tag_list
+
+def normalize(name):
+	return name.replace(' ', '-').lower()

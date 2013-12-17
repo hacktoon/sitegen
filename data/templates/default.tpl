@@ -12,12 +12,12 @@
 <body>
 	<div id="wrapper">
 		<header>
-			<h1><a href="{{base_url}}">{{site.title}}</a></h1>
+			<h1><a href="{{site.base_url}}">{{site.title}}</a></h1>
 			<p id="description">{{site.description}}</p>
 		</header>
 		<section id="content">
 			<article>
-				<h2><a href="{{page.permalink}}">{{page.title}}</a></h2>
+				<h2><a href="{{page.url}}">{{page.title}}</a></h2>
 				<span class="date">{{page.date fmt="%Y-%m-%d %H:%M:%S"}}</span>
 				<div class="entry">{{page.content}}</div>
 				Tags: <span class="tags">{{page.tags}}</span>
