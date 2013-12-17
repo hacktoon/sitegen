@@ -12,10 +12,11 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 ===============================================================================
 '''
 
-import sys
 import argparse
+import sys
+import os
 
-from axiom import Site
+from axiom import Library
 from exceptions import (ValuesNotDefinedError, PageExistsError, 
 						SiteAlreadyInstalledError, FileNotFoundError,
 						TemplateError, PageValueError)
@@ -23,59 +24,57 @@ from exceptions import (ValuesNotDefinedError, PageExistsError,
 
 VERSION = "0.2.0-beta"
 
-def gen(args):
+def update(args):
 	'''Read recursively every directory under path and
 	outputs HTML/JSON for each page file'''
 	
-	site = Site()
+	lib = Library()
 	try:
-		site.load_config()
-		site.read_page_tree('.')
+		specs = lib.load_specs()
+		lib.build(specs, args.path or os.curdir)
 		
 		# preparing environment
-		env = {
-			'site': site,
-			'pages': site.pages
-		}
+		
 		for page in site.pages:
 			page.render(env)
 			#print("Generated page {!r}.".format(page.path))
-		site.generate_feeds()
+		#site.generate_feeds()
 	except (FileNotFoundError, ValuesNotDefinedError, 
 			TemplateError, PageValueError) as e:
 		sys.exit(e)
 	
-	#if args.output_enabled:
-	#	print("{}\nTotal of pages read: {}.".format("-" * 30, len(pages)))
-	#	print("Total of pages generated: {}.\n".format(total_rendered))
+	if args.output_enabled:
+		print("{}\nTotal of pages read: {}.".format("-" * 30, len(pages)))
+		print("Total of pages generated: {}.\n".format(total_rendered))
 
 
-def add(args):
+def write(args):
 	'''Create a new page in specified path'''
 	path = args.path
-	site = Site()
+	lib = Library()
 	try:
-		site.create_page(path)
+		lib.create_page(path)
 	except PageExistsError:
 		sys.exit('Page {!r} already exists.'.format(path))
 	
 	print('Page {!r} successfully created!'.format(path))
-	print('Edit the file {!r} and call "mnemonix gen"!'.format(path))
+	print('Edit the file {!r} and call "mnemonix build"!'.format(path))
 
 
-def init(args):
+def build(args):
 	'''Install Mnemonic in the current folder'''
-	print('Installing Mnemonix...')
+	print('Writing the plans for the wonder library Mnemonix...')
+	print('Writing the plans for the wonder library Mnemonix...')
 	
-	site = Site()
+	lib = Library()
 	try:
-		site.create()
+		lib.write_specs(args.path)
 	except SiteAlreadyInstalledError as e:
 		sys.exit(e)
 
 	print('\nMnemonix was successfully installed!\n\n'
 	'Next steps:\n1 - Edit the "config.me" file.\n'
-	'2 - Run "mnemonix add [path]" to start creating pages!\n')
+	'2 - Run "mnemonix write [path]" to start creating pages!\n')
 
 
 def main():	
@@ -92,17 +91,18 @@ def main():
 
 	subparsers = parser.add_subparsers(title='Commands')
 
-	parser_init = subparsers.add_parser('init', 
-		help='install Mnemonic on current folder')
-	parser_init.set_defaults(method=init)
+	parser_build = subparsers.add_parser('build', 
+		help='build Mnemonic on current folder')
+	parser_build.set_defaults(method=build)
 
-	parser_add = subparsers.add_parser('add', 
+	parser_write = subparsers.add_parser('write',
 		help='create a empty page on the path specified')
-	parser_add.add_argument("path")
-	parser_add.set_defaults(method=add)
+	parser_write.add_argument("path")
+	parser_write.set_defaults(method=write)
 
-	parser_gen = subparsers.add_parser('gen', help='generate the pages')
-	parser_gen.set_defaults(method=gen)
+	parser_update = subparsers.add_parser('update', help='generate the pages')
+	parser_update.add_argument("path")
+	parser_update.set_defaults(method=update)
 
 	args = parser.parse_args()	
 	args.method(args)

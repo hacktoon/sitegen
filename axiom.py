@@ -20,35 +20,12 @@ import shutil
 from datetime import datetime
 
 import utils
+import mechaniscribe
+
 from templex import TemplateParser
 from exceptions import (ValuesNotDefinedError, FileNotFoundError,
 						SiteAlreadyInstalledError, PageExistsError,
 						PageValueError, TemplateError)
-
-# aliases
-regex_replace = re.sub
-path_join = os.path.join
-isdir = os.path.isdir
-basename = os.path.basename
-listdir = os.listdir
-
-# Configuration values
-DATA_FILE = 'page.me'
-CONFIG_FILE = 'config.me'
-TEMPLATES_DIR = 'templates'
-TEMPLATES_EXT = 'tpl'
-DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
-JSON_FILENAME = 'data.json'
-HTML_FILENAME = 'index.html'
-
-# Setting values based on config
-script_path = os.path.dirname(os.path.abspath(__file__))
-data_dir = path_join(script_path, 'data')
-
-MODEL_FEED_FILE = path_join(data_dir, 'feed.tpl')
-MODEL_CONFIG_FILE = path_join(data_dir, CONFIG_FILE)
-MODEL_DATA_FILE = path_join(data_dir, DATA_FILE)
-MODEL_TEMPLATES_DIR = path_join(data_dir, TEMPLATES_DIR)
 
 
 class PageList:
@@ -91,21 +68,21 @@ class PageList:
 
 class CategoryList:
 	def __init__(self):
-		self.categories = {}
+		self.items = {}
 
 	def __iter__(self):
-		for category in self.categories.values():
+		for category in self.items.values():
 			yield category
 
-	def add_category(self, category_name):
-		if category_name in self.categories.keys() or not category_name:
+	def add_category(self, name):
+		if name in self.items.keys() or not name:
 			return
-		self.categories[category_name] = Category(category_name)
+		self.items[category_name] = Category(category_name)
 
 	def add_page(self, category_name, page):
-		if category_name not in self.categories.keys() or not category_name:
+		if category_name not in self.items.keys() or not category_name:
 			return
-		self.categories[category_name].add_page(page)
+		self.items[category_name].add_page(page)
 
 
 class Category:
@@ -125,8 +102,9 @@ class ContentRenderer():
 	def read_template(self, tpl_filename):
 		'''Returns a template string from the template folder'''
 		tpl_filepath = path_join(TEMPLATES_DIR, tpl_filename)
+		tpl_filepath += TEMPLATES_EXT
 		if not os.path.exists(tpl_filepath):
-			raise FileNotFoundError('Template {!r} not found'.format(tpl_filename))
+			raise FileNotFoundError('Template {!r} not found'.format(tpl_filepath))
 		return utils.read_file(tpl_filepath)
 
 	def render(self):
@@ -181,23 +159,6 @@ class HTMLRenderer(ContentRenderer):
 		return renderer.render(env)
 
 
-class Content:
-	def initialize(self, params):
-		''' Set properties dynamically '''
-		required_keys_cache = list(self.required_keys)
-		for key in params.keys():
-			method_name = 'set_{}'.format(key)
-			if hasattr(self, method_name):
-				getattr(self, method_name)(params[key])
-			else:
-				self[key] = params[key]
-			if key in required_keys_cache:
-				required_keys_cache.remove(key)
-		if len(required_keys_cache):
-			raise ValuesNotDefinedError('The following values were not defined: {!r}'
-			.format(', '.join(required_keys_cache)))
-		del self.required_keys
-
 
 class Page(Content):
 	def __init__(self):
@@ -218,10 +179,26 @@ class Page(Content):
 		return 'Page {!r}'.format(self.path)
 
 	def __getitem__(self, key):
-		if not key in self.data:
+		if not key in self.data.keys():
 			return None
 		return self.data[key]
-
+	
+	def initialize(self, params):
+		''' Set properties dynamically '''
+		required_keys_cache = list(self.required_keys)
+		for key in params.keys():
+			method_name = 'set_{}'.format(key)
+			if hasattr(self, method_name):
+				getattr(self, method_name)(params[key])
+			else:
+				self[key] = params[key]
+			if key in required_keys_cache:
+				required_keys_cache.remove(key)
+		if len(required_keys_cache):
+			raise ValuesNotDefinedError('The following values were not defined: {!r}'
+			.format(', '.join(required_keys_cache)))
+		del self.required_keys
+	
 	def add_child(self, page):
 		self.children.insert(page)
 
@@ -275,19 +252,25 @@ class Page(Content):
 			raise FileNotFoundError('{} at page {!r}'.format(e, self.path))
 
 
-class Site(Content):
+class Library:
 	def __init__(self):
-		self.required_keys = ('title', 'default_template', 'feed_dir', 'base_url')
 		self.config_path = path_join(os.getcwd(), CONFIG_FILE)
 		self.categories = CategoryList()
 		self.pages = PageList()
-		self.data = {}
+		self.config = {}
 
 	def load_config(self):
 		if not os.path.exists(self.config_path):
 			raise FileNotFoundError("Site is not installed!")
-		config = utils.parse_input_file(utils.read_file(self.config_path))
-		self.initialize(config)
+		self.config = utils.parse_input_file(utils.read_file(self.config_path))
+		# Setting values based on config
+		script_path = os.path.dirname(os.path.abspath(__file__))
+		data_dir = path_join(script_path, 'data')
+
+		MODEL_FEED_FILE = path_join(data_dir, 'feed.tpl')
+		MODEL_CONFIG_FILE = path_join(data_dir, CONFIG_FILE)
+		MODEL_DATA_FILE = path_join(data_dir, DATA_FILE)
+		MODEL_TEMPLATES_DIR = path_join(data_dir, TEMPLATES_DIR)
 
 	def set_base_url(self, base_url):
 		if not base_url:
@@ -305,92 +288,3 @@ class Site(Content):
 
 	def set_default_template(self, template):
 		self.default_template = template
-
-	def read_page(self, path):
-		'''Return the page data specified by path'''
-		file_path = path_join(path, PAGE_FILE)
-		if os.path.exists(file_path):
-			return utils.parse_input_file(utils.read_file(file_path))
-		return
-
-	def build_page(self, path, page_data):
-		'''Page object factory'''
-		page = Page()
-		page.path = regex_replace(r'^\.$|\./|\.\\', '', path)
-		page.slug = basename(page.path)
-		page.url = utils.urljoin(self.base_url, page.path)
-		try:
-			page.initialize(page_data)
-		except ValuesNotDefinedError as e:
-			raise ValuesNotDefinedError('{} at page {!r}'.format(e, path))
-		if not page.template:
-			page.template = self.default_template
-		return page
-
-	def read_page_tree(self, path, parent=None):
-		'''Read the folders recursively and create an ordered list
-		of page objects.'''
-		page_data = self.read_page(path)
-		page = None
-		if page_data:
-			page = self.build_page(path, page_data)
-			page.parent = parent
-			if parent:
-				parent.add_child(page)
-			# add page to ordered list of pages
-			self.pages.insert(page)
-		for subpage_path in self.read_subpages_list(path):
-			self.read_page_tree(subpage_path, page)
-
-	def read_subpages_list(self, path):
-		'''Return a list containing the full path of the subpages'''
-		subpages = []
-		for folder in listdir(path):
-			fullpath = path_join(path, folder)
-			if isdir(fullpath):
-				subpages.append(fullpath)
-		return subpages
-
-	def create(self):
-		if os.path.exists(self.config_path):
-			raise SiteAlreadyInstalledError("Site already installed!")
-		if not os.path.exists(TEMPLATES_DIR):
-			# copy the templates folder
-			shutil.copytree(MODEL_TEMPLATES_DIR, TEMPLATES_DIR)
-		if not os.path.exists(CONFIG_FILE):
-			# copy the config file
-			shutil.copyfile(MODEL_CONFIG_FILE, CONFIG_FILE)
-
-	def create_page(self, path):
-		if not os.path.exists(self.config_path):
-			raise FileNotFoundError("Site is not installed!")
-		if not os.path.exists(path):
-			os.makedirs(path)
-		dest_file = path_join(path, DATA_FILE)
-		if os.path.exists(dest_file):
-			raise PageExistsError("Page {!r} already exists!".format(dest_file))
-		content = utils.read_file(MODEL_DATA_FILE)
-		date = datetime.today().strftime(DATE_FORMAT)
-		# need to write file contents to insert creation date
-		utils.write_file(dest_file, content.format(date))
-
-	def generate_feeds(self):
-		renderer = RSSRenderer(MODEL_FEED_FILE)
-		feed_dir = self.feed_dir
-		if not os.path.exists(feed_dir):
-			os.makedirs(feed_dir)
-		env = { 'site': self }
-		# generate feeds based on categories
-		for cat in self.categories:
-			fname = '{}.xml'.format(cat.name)
-			env['feed'] = {
-				'link': utils.urljoin(self.base_url, feed_dir, fname),
-				'build_date': datetime.today()
-			}
-			page_list =  [p for p in cat.pages if p.is_feed_enabled()]
-			page_list.reverse()
-			env['pages'] = page_list[:self.feed_num]
-			output = renderer.render(env)
-			rss_file = path_join(feed_dir, fname)
-			print("Generated {!r}.".format(rss_file))
-			utils.write_file(rss_file, output)
