@@ -17,25 +17,43 @@ import sys
 import os
 
 from axiom import Library
-from exceptions import (ValuesNotDefinedError, PageExistsError, 
-						SiteAlreadyInstalledError, FileNotFoundError,
-						TemplateError, PageValueError)
+from alarum import (ValuesNotDefinedError, 
+					PageExistsError, 
+					SiteAlreadyInstalledError,
+					FileNotFoundError,
+					TemplateError,
+					PageValueError
+					)
 
 
-VERSION = "0.2.0-beta"
+# default configuration values
+default_specs = {
+	'base_url': 'http://localhost/',
+	'default_template': 'default',
+	'feed_dir': 'feed',
+	'feed_num': 8,
+	'data_dir': 'data',
+	'data_file': 'page.me',
+	'config_file': 'config.me',
+	'templates_dir': 'templates',
+	'templates_ext': '.tpl',
+	'date_format': '%Y-%m-%d %H:%M:%S',
+	'json_filename': 'data.json',
+	'html_filename': 'index.html'
+}
 
-def update(args):
+
+def publish(args):
 	'''Read recursively every directory under path and
 	outputs HTML/JSON for each page file'''
 	
-	lib = Library()
+	lib = Library(default_specs)
+	meta = lib.get_metadata(path)
 	try:
 		specs = lib.get_specs()
 		path = args.path or os.curdir
 		lib.build(specs, path)
 		
-		categories = CategoryList()
-		pages = PageList()
 		for page in site.pages:
 			page.render(env)
 			#print("Generated page {!r}.".format(page.path))
@@ -52,7 +70,7 @@ def update(args):
 def write(args):
 	'''Create a new page in specified path'''
 	path = args.path
-	lib = Library()
+	lib = Library(default_specs)
 	try:
 		lib.create_page(path)
 	except PageExistsError:
@@ -63,13 +81,14 @@ def write(args):
 
 
 def build(args):
-	'''Install Mnemonic in the current folder'''
+	'''Builds Mnemonix in the current path'''
 	print('Writing the plans for the wonder library Mnemonix...')
-	print('Writing the plans for the wonder library Mnemonix...')
+	print('Building the foundations of the library...')
 	
+	path = args.path or os.curdir
 	lib = Library()
 	try:
-		lib.write_specs(args.path)
+		lib.build(path, default_specs)
 	except SiteAlreadyInstalledError as e:
 		sys.exit(e)
 
@@ -82,9 +101,6 @@ def main():
 	description = 'The Static Publishing System of Nimus Ages.'
 	parser = argparse.ArgumentParser(prog='mnemonix', 
 		description=description)
-	parser.add_argument('--version', action='version', 
-						help="show current version and quits", 
-						version=VERSION)
 
 	parser.add_argument("-o", "--output-enabled", 
 						help="show generation messages",
@@ -93,7 +109,8 @@ def main():
 	subparsers = parser.add_subparsers(title='Commands')
 
 	parser_build = subparsers.add_parser('build', 
-		help='build Mnemonic on current folder')
+		help='build Mnemonix on current folder')
+	parser_build.add_argument("path")
 	parser_build.set_defaults(method=build)
 
 	parser_write = subparsers.add_parser('write',
@@ -101,9 +118,9 @@ def main():
 	parser_write.add_argument("path")
 	parser_write.set_defaults(method=write)
 
-	parser_update = subparsers.add_parser('update', help='generate the pages')
-	parser_update.add_argument("path")
-	parser_update.set_defaults(method=update)
+	parser_publish = subparsers.add_parser('publish', help='generate the pages')
+	parser_publish.add_argument("path")
+	parser_publish.set_defaults(method=publish)
 
 	args = parser.parse_args()	
 	args.method(args)

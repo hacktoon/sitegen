@@ -17,8 +17,7 @@ import os
 import sys
 from datetime import datetime
 
-import utils
-from exceptions import TemplateError
+from alarum import TemplateError
 
 TOK_HTML = 'HTML'
 TOK_COMMENT = 'Comment'

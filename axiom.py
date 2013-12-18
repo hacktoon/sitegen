@@ -19,13 +19,22 @@ import re
 import shutil
 from datetime import datetime
 
-import utils
 import mechaniscribe
 
 from templex import TemplateParser
-from exceptions import (ValuesNotDefinedError, FileNotFoundError,
+from alarum import (ValuesNotDefinedError, FileNotFoundError,
 						SiteAlreadyInstalledError, PageExistsError,
 						PageValueError, TemplateError)
+
+
+class Category:
+	def __init__(self, name):
+		self.name = name
+		self.pages = PageList()
+		self.pages.pagination = True
+
+	def add_page(self, page):
+		self.pages.insert(page)
 
 
 class PageList:
@@ -63,7 +72,6 @@ class PageList:
 				self.pages.insert(count, page)
 				break
 			count += 1
-		self.paginate()
 
 
 class CategoryList:
@@ -85,23 +93,13 @@ class CategoryList:
 		self.items[category_name].add_page(page)
 
 
-class Category:
-	def __init__(self, name):
-		self.name = name
-		self.pages = PageList()
-		self.pages.pagination = True
-
-	def add_page(self, page):
-		self.pages.insert(page)
-
-
 class ContentRenderer():
 	def __init__(self, template):
 		self.template = self.read_template(template)
 
 	def read_template(self, tpl_filename):
 		'''Returns a template string from the template folder'''
-		tpl_filepath = path_join(TEMPLATES_DIR, tpl_filename)
+		tpl_filepath = os.path.join(TEMPLATES_DIR, tpl_filename)
 		tpl_filepath += TEMPLATES_EXT
 		if not os.path.exists(tpl_filepath):
 			raise FileNotFoundError('Template {!r} not found'.format(tpl_filepath))
@@ -160,7 +158,7 @@ class HTMLRenderer(ContentRenderer):
 
 
 
-class Page(Content):
+class Page():
 	def __init__(self):
 		self.required_keys = ('title', 'date')
 		self.children = PageList()
@@ -229,14 +227,14 @@ class Page(Content):
 		if 'nojson' in self.props:
 			return
 		output = JSONRenderer().render(self)
-		utils.write_file(path_join(self.path, JSON_FILENAME), output)
+		utils.write_file(os.path.join(self.path, JSON_FILENAME), output)
 
 	def generate_html(self, env):
 		if 'nohtml' in self.props:
 			return
 		renderer = HTMLRenderer(self.template)
 		output = renderer.render(self, env)
-		utils.write_file(path_join(self.path, HTML_FILENAME), output)
+		utils.write_file(os.path.join(self.path, HTML_FILENAME), output)
 
 	def render(self, env):
 		if 'draft' in self.props:
@@ -254,21 +252,34 @@ class Page(Content):
 
 class Library:
 	def __init__(self):
-		self.config_path = path_join(os.getcwd(), CONFIG_FILE)
-
-	def get_specs(self):
-		if not os.path.exists(self.config_path):
-			raise FileNotFoundError("Site is not installed!")
-		self.config = utils.parse_input_file(utils.read_file(self.config_path))
+		self.categories = CategoryList()
+		self.pages = PageList()
+		self.meta = {}
+	
+	def build(self, path, base_specs):
+		cwd = os.path.dirname(os.path.abspath(__file__))
+		data_dir = os.path.join(cwd, base_specs['data_dir'])
+		config_file = os.path.join(path, base_specs['config_file'])
+		templates_dir = os.path.join(path, base_specs['templates_dir'])
 		
-		# Setting values based on config
-		script_path = os.path.dirname(os.path.abspath(__file__))
-		data_dir = path_join(script_path, 'data')
+		if os.path.exists(config_file):
+			raise SiteAlreadyInstalledError("A wonderful library is already built here!")
+		
+		if not os.path.exists(templates_dir):
+			model_templates_dir = os.path.join(data_dir, templates_dir)
+			shutil.copytree(model_templates_dir, templates_dir)
 
-		MODEL_FEED_FILE = path_join(data_dir, 'feed.tpl')
-		MODEL_CONFIG_FILE = path_join(data_dir, CONFIG_FILE)
-		MODEL_DATA_FILE = path_join(data_dir, DATA_FILE)
-		MODEL_TEMPLATES_DIR = path_join(data_dir, TEMPLATES_DIR)
+		if not os.path.exists(config_file):
+			model_config_file = os.path.join(data_dir, config_file)
+			shutil.copyfile(model_config_file, config_file)
+	
+	def get_metadata(self, path):
+		if not os.path.exists(path):
+			raise FileNotFoundError("No library found in this place!")
+		return self.meta
+	
+	def set_metadata(self, config):
+		self.meta = utils.parse_input_file(utils.read_file(self.path))
 
 	def set_base_url(self, base_url):
 		if not base_url:
