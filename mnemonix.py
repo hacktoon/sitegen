@@ -22,9 +22,7 @@ from alarum import (ValuesNotDefinedError,
 					SiteAlreadyInstalledError,
 					FileNotFoundError,
 					TemplateError,
-					PageValueError
-					)
-
+					PageValueError)
 
 # default configuration values
 default_specs = {
@@ -35,6 +33,7 @@ default_specs = {
 	'data_dir': 'data',
 	'data_file': 'page.me',
 	'config_file': 'config.me',
+	'feed_file': 'feed.xml',
 	'templates_dir': 'templates',
 	'templates_ext': '.tpl',
 	'date_format': '%Y-%m-%d %H:%M:%S',
