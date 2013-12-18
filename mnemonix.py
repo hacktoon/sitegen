@@ -30,11 +30,12 @@ def update(args):
 	
 	lib = Library()
 	try:
-		specs = lib.load_specs()
-		lib.build(specs, args.path or os.curdir)
+		specs = lib.get_specs()
+		path = args.path or os.curdir
+		lib.build(specs, path)
 		
-		# preparing environment
-		
+		categories = CategoryList()
+		pages = PageList()
 		for page in site.pages:
 			page.render(env)
 			#print("Generated page {!r}.".format(page.path))

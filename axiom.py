@@ -255,14 +255,12 @@ class Page(Content):
 class Library:
 	def __init__(self):
 		self.config_path = path_join(os.getcwd(), CONFIG_FILE)
-		self.categories = CategoryList()
-		self.pages = PageList()
-		self.config = {}
 
-	def load_config(self):
+	def get_specs(self):
 		if not os.path.exists(self.config_path):
 			raise FileNotFoundError("Site is not installed!")
 		self.config = utils.parse_input_file(utils.read_file(self.config_path))
+		
 		# Setting values based on config
 		script_path = os.path.dirname(os.path.abspath(__file__))
 		data_dir = path_join(script_path, 'data')
