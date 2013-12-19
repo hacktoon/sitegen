@@ -18,6 +18,7 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 import os
 import sys
 import re
+import specs
 
 # aliases
 path_join = os.path.join

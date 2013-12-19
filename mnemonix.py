@@ -30,17 +30,11 @@ default_specs = {
 	'default_template': 'default',
 	'feed_dir': 'feed',
 	'feed_num': 8,
-	'data_dir': 'data',
-	'data_file': 'page.me',
-	'config_file': 'config.me',
-	'feed_file': 'feed.xml',
 	'templates_dir': 'templates',
 	'templates_ext': '.tpl',
-	'date_format': '%Y-%m-%d %H:%M:%S',
 	'json_filename': 'data.json',
 	'html_filename': 'index.html'
 }
-
 
 def publish(args):
 	'''Read recursively every directory under path and
@@ -69,11 +63,15 @@ def publish(args):
 def write(args):
 	'''Create a new page in specified path'''
 	path = args.path
-	lib = Library(default_specs)
+	lib = Library()
 	try:
-		lib.create_page(path)
-	except PageExistsError:
-		sys.exit('Page {!r} already exists.'.format(path))
+		lib.enter(path)
+	except FileNotFoundError:
+		sys.exit('No library were ever built in {!r}.'.format(path))
+	try:
+		lib.write_page(path)
+	except PageExistsError as e:
+		sys.exit(e)
 	
 	print('Page {!r} successfully created!'.format(path))
 	print('Edit the file {!r} and call "mnemonix build"!'.format(path))

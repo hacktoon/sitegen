@@ -19,6 +19,7 @@ import re
 import shutil
 from datetime import datetime
 
+import specs
 import mechaniscribe
 
 from templex import TemplateParser
@@ -255,16 +256,15 @@ class Library:
 		self.categories = CategoryList()
 		self.pages = PageList()
 		self.meta = {}
-	
+
 	def build(self, path, base_specs):
-		cwd = os.path.dirname(os.path.abspath(__file__))
-		data_dir = os.path.join(cwd, base_specs['data_dir'])
-		config_file = os.path.join(path, base_specs['config_file'])
+		data_dir = os.path.join(specs.MODEL_DIR, specs.DATA_DIR)
+		config_file = os.path.join(path, specs.CONFIG_FILE)
 		templates_dir = os.path.join(path, base_specs['templates_dir'])
-		
+
 		if os.path.exists(config_file):
 			raise SiteAlreadyInstalledError("A wonderful library is already built here!")
-		
+
 		if not os.path.exists(templates_dir):
 			model_templates_dir = os.path.join(data_dir, templates_dir)
 			shutil.copytree(model_templates_dir, templates_dir)
@@ -273,14 +273,36 @@ class Library:
 			model_config_file = os.path.join(data_dir, config_file)
 			shutil.copyfile(model_config_file, config_file)
 	
-	def get_metadata(self, path):
-		if not os.path.exists(path):
-			raise FileNotFoundError("No library found in this place!")
-		return self.meta
-	
-	def set_metadata(self, config):
-		self.meta = utils.parse_input_file(utils.read_file(self.path))
+	def lookup_config(self, path):
+		while True:
+			path, dirname = os.path.split(path)
+			config_path = os.path.join(path, specs.CONFIG_FILE)
+			if os.path.exists(config_path):
+				return config_path
+			if not path:
+				break
+		return ''
 
+	def enter(self, path):
+		config_path = self.lookup_config(path)
+		if not os.path.exists(config_path):
+			raise FileNotFoundError()
+		config_file = mechaniscribe.read_file(config_path)
+		self.meta = mechaniscribe.parse_input_file(config_file)
+
+	def write_page(self, path):
+		page_file = os.path.join(path, specs.DATA_FILE)
+		if os.path.exists(page_file):
+			raise PageExistsError('Page {!r} already exists.'.format(path))
+		if not os.path.exists(path):
+			os.makedirs(path)
+		data_dir = os.path.join(specs.MODEL_DIR, specs.DATA_DIR)
+		model_page_file = os.path.join(data_dir, specs.DATA_FILE)
+		content = mechaniscribe.read_file(model_page_file)
+		date = datetime.today().strftime(specs.DATE_FORMAT)
+		mechaniscribe.write_file(page_file, content.format(date))
+
+'''
 	def set_base_url(self, base_url):
 		if not base_url:
 			base_url = 'http://localhost'
@@ -297,3 +319,4 @@ class Library:
 
 	def set_default_template(self, template):
 		self.default_template = template
+'''
