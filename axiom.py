@@ -20,12 +20,17 @@ import shutil
 from datetime import datetime
 
 import specs
-import mechaniscribe
 
 from templex import TemplateParser
 from alarum import (ValuesNotDefinedError, FileNotFoundError,
 						SiteAlreadyInstalledError, PageExistsError,
 						PageValueError, TemplateError)
+
+# aliases
+path_join = os.path.join
+isdir = os.path.isdir
+basename = os.path.basename
+listdir = os.listdir
 
 
 class Category:
@@ -100,8 +105,8 @@ class ContentRenderer():
 
 	def read_template(self, tpl_filename):
 		'''Returns a template string from the template folder'''
-		tpl_filepath = os.path.join(TEMPLATES_DIR, tpl_filename)
-		tpl_filepath += TEMPLATES_EXT
+		tpl_filepath = os.path.join(specs.TEMPLATES_DIR, tpl_filename)
+		tpl_filepath += specs.TEMPLATES_EXT
 		if not os.path.exists(tpl_filepath):
 			raise FileNotFoundError('Template {!r} not found'.format(tpl_filepath))
 		return utils.read_file(tpl_filepath)
@@ -181,7 +186,7 @@ class Page():
 		if not key in self.data.keys():
 			return None
 		return self.data[key]
-	
+
 	def initialize(self, params):
 		''' Set properties dynamically '''
 		required_keys_cache = list(self.required_keys)
@@ -190,7 +195,7 @@ class Page():
 			if hasattr(self, method_name):
 				getattr(self, method_name)(params[key])
 			else:
-				self[key] = params[key]
+				self.data[key] = params[key]
 			if key in required_keys_cache:
 				required_keys_cache.remove(key)
 		if len(required_keys_cache):
@@ -201,19 +206,25 @@ class Page():
 	def add_child(self, page):
 		self.children.insert(page)
 
+	def set_category(self, cat):
+		self.category = cat
+
+	def set_template(self, tpl):
+		self.template = tpl
+
 	def set_props(self, props):
-		self.props = utils.extract_multivalues(props)
+		self.props = self.extract_multivalues(props)
 
 	def set_styles(self, styles):
-		self.styles = utils.extract_multivalues(styles)
+		self.styles = self.extract_multivalues(styles)
 
 	def set_scripts(self, scripts):
-		self.scripts = utils.extract_multivalues(scripts)
+		self.scripts = self.extract_multivalues(scripts)
 
 	def set_date(self, date):
 		'''converts date string to datetime object'''
 		try:
-			self.date = datetime.strptime(date, DATE_FORMAT)
+			self.date = datetime.strptime(date, specs.DATE_FORMAT)
 		except ValueError:
 			raise PageValueError('Wrong date format '
 			'detected at {!r}!'.format(self.path))
@@ -251,29 +262,147 @@ class Page():
 			raise FileNotFoundError('{} at page {!r}'.format(e, self.path))
 
 
+class MechaniScribe:
+	def __init__(self, meta=None):
+		self.page_list = PageList()
+		self.meta = meta
+
+	def urljoin(self, base, *slug):
+		'''Custom URL join function to concatenate and add slashes'''
+		fragments = [base]
+		fragments.extend(filter(None, slug))
+		return '/'.join(s.replace('\\', '/').strip('/') for s in fragments)
+
+	def read_file(self, path):
+		if not os.path.exists(path):
+			raise FileNotFoundError('File {!r} couldn\'t be found!'.format(path))
+		with open(path, 'r') as f:
+			return f.read()
+
+	def write_file(self, path, content=''):
+		with open(path, 'w') as f:
+			f.write(content)
+
+	def parse_input_file(self, file_string):
+		file_data = {}
+		lines = file_string.split('\n')
+		for num, line in enumerate(lines):
+			# avoids empty lines and comments
+			line = line.strip()
+			if not line or line.startswith('#'):
+				continue
+			if(line == 'content'):
+				# read the rest of the file
+				file_data['content'] = ''.join(lines[num + 1:])
+				break
+			key, value = [l.strip() for l in line.split('=', 1)]
+			file_data[key] = value
+		return file_data
+
+	def extract_multivalues(self, tag_string):
+		'''Converts a comma separated list of tags into a list'''
+		tag_list = []
+		if tag_string:
+			tags = tag_string.strip(',').split(',')
+			tag_list = [tag.strip() for tag in tags]
+		return tag_list
+
+	def normalize(self, name):
+		return name.replace(' ', '-').lower()
+
+	def read_page(self, path):
+		'''Return the page data specified by path'''
+		file_path = path_join(path, specs.DATA_FILE)
+		if os.path.exists(file_path):
+			return self.parse_input_file(self.read_file(file_path))
+		return
+
+	def build_page(self, path, page_data):
+		'''Page object factory'''
+		page = Page()
+		page.path = re.sub(r'^\.$|\./|\.\\', '', path)
+		page.slug = basename(page.path)
+		base_url = self.meta.get('base_url', specs.BASE_URL)
+		page.url = self.urljoin(base_url, page.path)
+		try:
+			page.initialize(page_data)
+		except ValuesNotDefinedError as e:
+			raise ValuesNotDefinedError('{} at page {!r}'.format(e, path))
+		if not page.template:
+			page.template = self.meta.get('default_template', specs.DEFAULT_TEMPLATE)
+		return page
+	
+	def read_page_tree(self, path, parent=None):
+		'''Read the folders recursively and create an ordered list
+		of page objects.'''
+		page_data = self.read_page(path)
+		page = None
+		if page_data:
+			page = self.build_page(path, page_data)
+			page.parent = parent
+			if parent:
+				parent.add_child(page)
+			# add page to ordered list of pages
+			self.page_list.insert(page)
+		for subpage_path in self.read_subpages_list(path):
+			self.read_page_tree(subpage_path, page)
+
+	def read_subpages_list(self, path):
+		'''Return a list containing the full path of the subpages'''
+		for folder in listdir(path):
+			fullpath = path_join(path, folder)
+			if isdir(fullpath):
+				yield fullpath
+
+	def write_feed():
+		pass
+		
+	'''def generate_feeds():
+		renderer = RSSRenderer(MODEL_FEED_FILE)
+		feed_dir = feed_dir
+		if not os.path.exists(feed_dir):
+			os.makedirs(feed_dir)
+		env = { 'site':  }
+		# generate feeds based on categories
+		for cat in categories:
+			fname = '{}.xml'.format(cat.name)
+			env['feed'] = {
+				'link': urljoin(base_url, feed_dir, fname),
+				'build_date': datetime.today()
+			}
+			page_list =  [p for p in cat.pages if p.is_feed_enabled()]
+			page_list.reverse()
+			env['pages'] = page_list[:feed_num]
+			output = renderer.render(env)
+			rss_file = path_join(feed_dir, fname)
+			print("Generated {!r}.".format(rss_file))
+			write_file(rss_file, output)
+	'''
+
 class Library:
 	def __init__(self):
 		self.categories = CategoryList()
 		self.pages = PageList()
 		self.meta = {}
 
-	def build(self, path, base_specs):
-		data_dir = os.path.join(specs.MODEL_DIR, specs.DATA_DIR)
+	def build(self, path):
+		'''Build the wonder library'''
 		config_file = os.path.join(path, specs.CONFIG_FILE)
-		templates_dir = os.path.join(path, base_specs['templates_dir'])
+		templates_dir = os.path.join(path, specs.TEMPLATES_DIR)
 
 		if os.path.exists(config_file):
 			raise SiteAlreadyInstalledError("A wonderful library is already built here!")
 
 		if not os.path.exists(templates_dir):
-			model_templates_dir = os.path.join(data_dir, templates_dir)
+			model_templates_dir = os.path.join(specs.DATA_DIR, templates_dir)
 			shutil.copytree(model_templates_dir, templates_dir)
 
 		if not os.path.exists(config_file):
-			model_config_file = os.path.join(data_dir, config_file)
+			model_config_file = os.path.join(specs.DATA_DIR, config_file)
 			shutil.copyfile(model_config_file, config_file)
 	
 	def lookup_config(self, path):
+		'''Search a config file upwards in path provided'''
 		while True:
 			path, dirname = os.path.split(path)
 			config_path = os.path.join(path, specs.CONFIG_FILE)
@@ -284,11 +413,13 @@ class Library:
 		return ''
 
 	def enter(self, path):
+		'''Load the config'''
 		config_path = self.lookup_config(path)
 		if not os.path.exists(config_path):
 			raise FileNotFoundError()
-		config_file = mechaniscribe.read_file(config_path)
-		self.meta = mechaniscribe.parse_input_file(config_file)
+		scriber = MechaniScribe()
+		config_file = scriber.read_file(config_path)
+		self.meta = scriber.parse_input_file(config_file)
 
 	def write_page(self, path):
 		page_file = os.path.join(path, specs.DATA_FILE)
@@ -296,11 +427,16 @@ class Library:
 			raise PageExistsError('Page {!r} already exists.'.format(path))
 		if not os.path.exists(path):
 			os.makedirs(path)
-		data_dir = os.path.join(specs.MODEL_DIR, specs.DATA_DIR)
-		model_page_file = os.path.join(data_dir, specs.DATA_FILE)
-		content = mechaniscribe.read_file(model_page_file)
+		scriber = MechaniScribe()
+		model_page_file = os.path.join(specs.DATA_DIR, specs.DATA_FILE)
+		content = scriber.read_file(model_page_file)
 		date = datetime.today().strftime(specs.DATE_FORMAT)
-		mechaniscribe.write_file(page_file, content.format(date))
+		scriber.write_file(page_file, content.format(date))
+	
+	def get_pages(self, path):
+		scriber = MechaniScribe(self.meta)
+		scriber.read_page_tree(path)
+		return scriber.page_list
 
 '''
 	def set_base_url(self, base_url):

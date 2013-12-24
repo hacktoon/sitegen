@@ -24,30 +24,20 @@ from alarum import (ValuesNotDefinedError,
 					TemplateError,
 					PageValueError)
 
-# default configuration values
-default_specs = {
-	'base_url': 'http://localhost/',
-	'default_template': 'default',
-	'feed_dir': 'feed',
-	'feed_num': 8,
-	'templates_dir': 'templates',
-	'templates_ext': '.tpl',
-	'json_filename': 'data.json',
-	'html_filename': 'index.html'
-}
-
 def publish(args):
 	'''Read recursively every directory under path and
 	outputs HTML/JSON for each page file'''
-	
-	lib = Library(default_specs)
-	meta = lib.get_metadata(path)
+	path = args.path or os.curdir
+	lib = Library()
 	try:
-		specs = lib.get_specs()
-		path = args.path or os.curdir
-		lib.build(specs, path)
-		
-		for page in site.pages:
+		lib.enter(path)
+	except FileNotFoundError:
+		sys.exit('No library were ever built in {!r}.'.format(path))
+
+	try:
+		pages = lib.get_pages(path)
+		sys.exit(pages)
+		for page in pages:
 			page.render(env)
 			#print("Generated page {!r}.".format(page.path))
 		#site.generate_feeds()
@@ -85,7 +75,7 @@ def build(args):
 	path = args.path or os.curdir
 	lib = Library()
 	try:
-		lib.build(path, default_specs)
+		lib.build(path)
 	except SiteAlreadyInstalledError as e:
 		sys.exit(e)
 
