@@ -17,6 +17,7 @@ import os
 import sys
 from datetime import datetime
 
+import book_dweller
 from alarum import TemplateError
 
 TOK_HTML = 'HTML'
@@ -127,9 +128,9 @@ class Node():
 			return context.get(keys[0])
 		reference = context[keys[0]]
 		for k in keys[1:]:
-			if not hasattr(reference, k):
+			if not k in reference.keys():
 				return None
-			reference = getattr(reference, k)
+			reference = reference.get(k)
 		return reference
 
 	def render(self, context):
@@ -262,7 +263,7 @@ class Include(Node):
 		if not filename.endswith('.tpl'):
 			filename = '{0}.tpl'.format(filename)
 		path = os.path.join(self.include_path, filename)
-		tpl = utils.read_file(path)
+		tpl = book_dweller.bring_file(path)
 		self.parser = TemplateParser(tpl)
 
 	def render(self, context):
@@ -281,7 +282,7 @@ class Parse(Node):
 		if not filename.endswith('.tpl'):
 			filename = '{0}.tpl'.format(filename)
 		path = os.path.join(self.include_path, filename)
-		self.text = utils.read_file(path)
+		self.text = book_dweller.read_file(path)
 
 	def render(self, context):
 		return self.text

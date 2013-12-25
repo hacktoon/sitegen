@@ -20,6 +20,7 @@ import shutil
 from datetime import datetime
 
 import specs
+import book_dweller
 
 from templex import TemplateParser
 from alarum import (ValuesNotDefinedError, FileNotFoundError,
@@ -31,6 +32,7 @@ path_join = os.path.join
 isdir = os.path.isdir
 basename = os.path.basename
 listdir = os.listdir
+
 
 
 class Category:
@@ -109,7 +111,7 @@ class ContentRenderer():
 		tpl_filepath += specs.TEMPLATES_EXT
 		if not os.path.exists(tpl_filepath):
 			raise FileNotFoundError('Template {!r} not found'.format(tpl_filepath))
-		return utils.read_file(tpl_filepath)
+		return book_dweller.bring_file(tpl_filepath)
 
 	def render(self):
 		pass
@@ -159,9 +161,8 @@ class HTMLRenderer(ContentRenderer):
 		page.scripts = self.build_script_tags(page.scripts)
 		env['page'] = page
 		renderer = TemplateParser(self.template)
-		renderer.set_include_path(TEMPLATES_DIR)
+		renderer.set_include_path(env.get('templates_dir', specs.TEMPLATES_DIR))
 		return renderer.render(env)
-
 
 
 class Page():
@@ -213,13 +214,13 @@ class Page():
 		self.template = tpl
 
 	def set_props(self, props):
-		self.props = self.extract_multivalues(props)
+		self.props = book_dweller.extract_multivalues(props)
 
 	def set_styles(self, styles):
-		self.styles = self.extract_multivalues(styles)
+		self.styles = book_dweller.extract_multivalues(styles)
 
 	def set_scripts(self, scripts):
-		self.scripts = self.extract_multivalues(scripts)
+		self.scripts = book_dweller.extract_multivalues(scripts)
 
 	def set_date(self, date):
 		'''converts date string to datetime object'''
@@ -239,19 +240,19 @@ class Page():
 		if 'nojson' in self.props:
 			return
 		output = JSONRenderer().render(self)
-		utils.write_file(os.path.join(self.path, JSON_FILENAME), output)
+		book_dweller.write_file(path_join(self.path, JSON_FILENAME), output)
 
 	def generate_html(self, env):
 		if 'nohtml' in self.props:
 			return
 		renderer = HTMLRenderer(self.template)
 		output = renderer.render(self, env)
-		utils.write_file(os.path.join(self.path, HTML_FILENAME), output)
+		book_dweller.write_file(path_join(self.path, HTML_FILENAME), output)
 
 	def render(self, env):
 		if 'draft' in self.props:
 			return
-		self.generate_json()
+		#self.generate_json()
 		env['page'] = self
 		try:
 			self.generate_html(env)
@@ -266,23 +267,7 @@ class MechaniScribe:
 	def __init__(self, meta=None):
 		self.page_list = PageList()
 		self.meta = meta
-
-	def urljoin(self, base, *slug):
-		'''Custom URL join function to concatenate and add slashes'''
-		fragments = [base]
-		fragments.extend(filter(None, slug))
-		return '/'.join(s.replace('\\', '/').strip('/') for s in fragments)
-
-	def read_file(self, path):
-		if not os.path.exists(path):
-			raise FileNotFoundError('File {!r} couldn\'t be found!'.format(path))
-		with open(path, 'r') as f:
-			return f.read()
-
-	def write_file(self, path, content=''):
-		with open(path, 'w') as f:
-			f.write(content)
-
+	
 	def parse_input_file(self, file_string):
 		file_data = {}
 		lines = file_string.split('\n')
@@ -299,22 +284,11 @@ class MechaniScribe:
 			file_data[key] = value
 		return file_data
 
-	def extract_multivalues(self, tag_string):
-		'''Converts a comma separated list of tags into a list'''
-		tag_list = []
-		if tag_string:
-			tags = tag_string.strip(',').split(',')
-			tag_list = [tag.strip() for tag in tags]
-		return tag_list
-
-	def normalize(self, name):
-		return name.replace(' ', '-').lower()
-
 	def read_page(self, path):
 		'''Return the page data specified by path'''
 		file_path = path_join(path, specs.DATA_FILE)
 		if os.path.exists(file_path):
-			return self.parse_input_file(self.read_file(file_path))
+			return self.parse_input_file(book_dweller.bring_file(file_path))
 		return
 
 	def build_page(self, path, page_data):
@@ -323,7 +297,7 @@ class MechaniScribe:
 		page.path = re.sub(r'^\.$|\./|\.\\', '', path)
 		page.slug = basename(page.path)
 		base_url = self.meta.get('base_url', specs.BASE_URL)
-		page.url = self.urljoin(base_url, page.path)
+		page.url = book_dweller.urljoin(base_url, page.path)
 		try:
 			page.initialize(page_data)
 		except ValuesNotDefinedError as e:
@@ -387,25 +361,25 @@ class Library:
 
 	def build(self, path):
 		'''Build the wonder library'''
-		config_file = os.path.join(path, specs.CONFIG_FILE)
-		templates_dir = os.path.join(path, specs.TEMPLATES_DIR)
+		config_file = path_join(path, specs.CONFIG_FILE)
+		templates_dir = path_join(path, specs.TEMPLATES_DIR)
 
 		if os.path.exists(config_file):
 			raise SiteAlreadyInstalledError("A wonderful library is already built here!")
 
 		if not os.path.exists(templates_dir):
-			model_templates_dir = os.path.join(specs.DATA_DIR, templates_dir)
+			model_templates_dir = path_join(specs.DATA_DIR, templates_dir)
 			shutil.copytree(model_templates_dir, templates_dir)
 
 		if not os.path.exists(config_file):
-			model_config_file = os.path.join(specs.DATA_DIR, config_file)
+			model_config_file = path_join(specs.DATA_DIR, config_file)
 			shutil.copyfile(model_config_file, config_file)
 	
 	def lookup_config(self, path):
 		'''Search a config file upwards in path provided'''
 		while True:
 			path, dirname = os.path.split(path)
-			config_path = os.path.join(path, specs.CONFIG_FILE)
+			config_path = path_join(path, specs.CONFIG_FILE)
 			if os.path.exists(config_path):
 				return config_path
 			if not path:
@@ -418,18 +392,18 @@ class Library:
 		if not os.path.exists(config_path):
 			raise FileNotFoundError()
 		scriber = MechaniScribe()
-		config_file = scriber.read_file(config_path)
+		config_file = book_dweller.bring_file(config_path)
 		self.meta = scriber.parse_input_file(config_file)
 
 	def write_page(self, path):
-		page_file = os.path.join(path, specs.DATA_FILE)
+		page_file = path_join(path, specs.DATA_FILE)
 		if os.path.exists(page_file):
 			raise PageExistsError('Page {!r} already exists.'.format(path))
 		if not os.path.exists(path):
 			os.makedirs(path)
 		scriber = MechaniScribe()
-		model_page_file = os.path.join(specs.DATA_DIR, specs.DATA_FILE)
-		content = scriber.read_file(model_page_file)
+		model_page_file = path_join(specs.DATA_DIR, specs.DATA_FILE)
+		content = book_dweller.bring_file(model_page_file)
 		date = datetime.today().strftime(specs.DATE_FORMAT)
 		scriber.write_file(page_file, content.format(date))
 	
