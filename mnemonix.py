@@ -35,10 +35,7 @@ def publish(args):
 		sys.exit('No library were ever built in {!r}.'.format(path))
 
 	try:
-		pages = lib.get_pages(path)
-		for page in pages:
-			page.render(lib.meta)
-			print("Generated page {!r}.".format(page.path))
+		pages = lib.publish_pages(path)
 		#site.generate_feeds()
 	except (FileNotFoundError, ValuesNotDefinedError, 
 			TemplateError, PageValueError) as e:

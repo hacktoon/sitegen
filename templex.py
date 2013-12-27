@@ -128,9 +128,9 @@ class Node():
 			return context.get(keys[0])
 		reference = context[keys[0]]
 		for k in keys[1:]:
-			if not k in reference.keys():
+			if not k in reference:
 				return None
-			reference = reference.get(k)
+			reference = reference[k]
 		return reference
 
 	def render(self, context):

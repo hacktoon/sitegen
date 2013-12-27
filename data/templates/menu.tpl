@@ -5,7 +5,7 @@
 		<ul>
 			{%pagelist num="5"%}
 				<li>
-					<a title="{{each.title}}" href="{{each.permalink}}">
+					<a title="{{each.title}}" href="{{each.url}}">
 						{{each.date}} - {{each.title}}
 					</a>
 				</li>

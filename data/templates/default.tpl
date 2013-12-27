@@ -5,7 +5,7 @@
 	<meta name="description" content="{{site.description}}" />
 	<meta name="keywords" content="{{site.tags}} {{page.tags}}" />
 	<meta charset="UTF-8" />
-	<link rel="stylesheet" href="{{site.base_url}}/templates/default.css" type="text/css" />
+	<link rel="stylesheet" href="{{site.base_url}}templates/default.css" type="text/css" />
 	{{page.styles}}
 	<title>{{page.title}} | {{site.title}}</title>
 </head>
