@@ -59,6 +59,9 @@ class PageList:
 
 	def __getitem__(self, key):
 		return self.pages[key]
+	
+	def reverse(self):
+		return self.pages.reverse()
 
 	def paginate(self):
 		if not self.pagination:
@@ -267,6 +270,8 @@ class MechaniScribe:
 			page.initialize(page_data)
 		except ValuesNotDefinedError as e:
 			raise ValuesNotDefinedError('{} at page {!r}'.format(e, path))
+		if not page.template:
+			page.template = self.meta.get('default_template', specs.DEFAULT_TEMPLATE)
 		return page
 	
 	def read_page_tree(self, path, parent=None):
@@ -312,10 +317,7 @@ class MechaniScribe:
 	def write_html(self, page, env):
 		if 'nohtml' in page.props:
 			return
-		template_name = page.template
-		if not template_name:
-			template_name = env.get('default_template', specs.DEFAULT_TEMPLATE)
-		template = self.read_template(template_name)
+		template = self.read_template(page.template)
 		renderer = HTMLRenderer(template)
 		html_path = path_join(page.path, self.meta.get('html_filename', 
 			specs.HTML_FILENAME))
@@ -323,7 +325,7 @@ class MechaniScribe:
 			output = renderer.render(page, env)
 		except TemplateError as e:
 			raise TemplateError('{} at template {!r}'.format(e, 
-			template_name))
+			page.template))
 		book_dweller.write_file(html_path, output)
 
 	def publish_page(self, page, env):
