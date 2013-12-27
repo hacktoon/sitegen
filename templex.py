@@ -151,7 +151,7 @@ class Root(Node):
 		return ''.join(map(render_child, self.children))
 
 
-class PageList(ScopeNode):
+class ListNode(ScopeNode):
 	def process_params(self):
 		params = self.params
 		self.order = params.get('ord')
@@ -162,7 +162,7 @@ class PageList(ScopeNode):
 			self.number = abs(int(params.get('num', 0)))
 		except ValueError:
 			raise TemplateError('The "num" parameter must be an integer.')
-	
+
 	def filter_category(self, pages):
 		if self.cat:
 			return [p for p in pages if p.get('category') == self.cat]
@@ -176,7 +176,29 @@ class PageList(ScopeNode):
 	def set_order(self, pages):
 		if self.order and self.order == 'desc':
 			pages.reverse()
-	
+
+
+class ChildList(ListNode):
+	def render(self, context):
+		page = self.lookup('page', context)
+		if not pages:
+			raise TemplateError('Trying to list a non-listable property')
+		children = page.children
+		children = self.filter_category(children)
+		self.set_order(children)
+		children = self.filter_number(children)
+		content = []
+		for page in children:
+			if not page.is_listable():
+				continue
+			iteration_content = []
+			context['each'] = page
+			for child in self.children:
+				iteration_content.append(child.render(context))
+			content.append(''.join(iteration_content))
+		return ''.join(content).strip()
+
+class PageList(ListNode):
 	def render(self, context):
 		pages = self.lookup('pages', context)
 		if not pages:
@@ -198,7 +220,7 @@ class PageList(ScopeNode):
 		return ''.join(content).strip()
 
 	def __str__(self):
-		return 'list'
+		return 'pagelist'
 
 
 class Branch(ScopeNode):
@@ -336,6 +358,8 @@ class TemplateParser():
 			command, _, args = token.value.partition(' ')
 			if command == 'pagelist':
 				node = PageList(args)
+			elif command == 'childlist':
+				node = ChildList(args)
 			elif command == 'include':
 				node = Include(self.include_path, args)
 			elif command == 'parse':
