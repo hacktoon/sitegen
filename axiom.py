@@ -102,11 +102,10 @@ class CategoryList:
 
 
 class JSONRenderer():
-	def __init__(self):
-		pass
-
 	def render(self, page):
-		return json.dumps(page.data, skipkeys=True)
+		page_data = page.data.copy()
+		page_data['date'] = page['date'].strftime(specs.DATE_FORMAT)
+		return json.dumps(page_data, skipkeys=True)
 
 
 class RSSRenderer():
@@ -143,9 +142,10 @@ class HTMLRenderer():
 		return self.build_external_tags(links, self.script_tpl)
 
 	def render(self, page, env):
-		page['styles'] = self.build_style_tags(page.styles)
-		page['scripts'] = self.build_script_tags(page.scripts)
-		env['page'] = page
+		page_data = page.data.copy()
+		page_data['styles'] = self.build_style_tags(page.styles)
+		page_data['scripts'] = self.build_script_tags(page.scripts)
+		env['page'] = page_data
 		renderer = TemplateParser(self.template)
 		renderer.set_include_path(env.get('templates_dir', specs.TEMPLATES_DIR))
 		return renderer.render(env)
@@ -160,7 +160,6 @@ class Page():
 		self.styles = []
 		self.scripts = []
 		self.template = ''
-		self.category = ''
 		self.data = {}
 
 	def __le__(self, other):
@@ -180,131 +179,132 @@ class Page():
 	def __contains__(self, key):
 		return key in self.data.keys()
 
-		def initialize(self, params):
-			''' Set properties dynamically '''
-			required_keys_cache = list(self.required_keys)
-			for key in params.keys():
-				method_name = 'set_{}'.format(key)
-				if hasattr(self, method_name):
-					getattr(self, method_name)(params[key])
-				else:
-					self.data[key] = params[key]
-				if key in required_keys_cache:
-					required_keys_cache.remove(key)
-			if len(required_keys_cache):
-				raise ValuesNotDefinedError('The following values were not defined: {!r}'
-				.format(', '.join(required_keys_cache)))
-			del self.required_keys
-		
-		def add_child(self, page):
-			self.children.insert(page)
+	def initialize(self, params):
+		''' Set properties dynamically '''
+		required_keys_cache = list(self.required_keys)
+		for key in params.keys():
+			method_name = 'set_{}'.format(key)
+			if hasattr(self, method_name):
+				getattr(self, method_name)(params[key])
+			else:
+				self.data[key] = params[key]
+			if key in required_keys_cache:
+				required_keys_cache.remove(key)
+		if len(required_keys_cache):
+			raise ValuesNotDefinedError('The following values were not defined: {!r}'
+			.format(', '.join(required_keys_cache)))
+		del self.required_keys
+	
+	def add_child(self, page):
+		self.children.insert(page)
 
-		def set_template(self, tpl):
-			self.template = tpl
+	def set_template(self, tpl):
+		self.template = tpl
 
-		def set_props(self, props):
-			self.props = book_dweller.extract_multivalues(props)
+	def set_props(self, props):
+		self.props = book_dweller.extract_multivalues(props)
 
-		def set_styles(self, styles):
-			self.styles = book_dweller.extract_multivalues(styles)
+	def set_styles(self, styles):
+		self.styles = book_dweller.extract_multivalues(styles)
 
-		def set_scripts(self, scripts):
-			self.scripts = book_dweller.extract_multivalues(scripts)
+	def set_scripts(self, scripts):
+		self.scripts = book_dweller.extract_multivalues(scripts)
 
-		def set_date(self, date):
-			'''converts date string to datetime object'''
-			try:
-				self['date'] = datetime.strptime(date, specs.DATE_FORMAT)
-			except ValueError:
-				raise PageValueError('Wrong date format '
-				'detected at {!r}!'.format(self.path))
+	def set_date(self, date):
+		'''converts date string to datetime object'''
+		try:
+			self['date'] = datetime.strptime(date, self.date_format)
+		except ValueError:
+			raise PageValueError('Wrong date format '
+			'detected at {!r}!'.format(self.path))
 
-		def is_listable(self):
-			return 'nolist' not in self.props
+	def is_listable(self):
+		return 'nolist' not in self.props
 
-		def is_feed_enabled(self):
-			return 'nofeed' not in self.props
+	def is_feed_enabled(self):
+		return 'nofeed' not in self.props
 
 
+class MechaniScribe:
+	def __init__(self, meta=None):
+		self.page_list = PageList()
+		self.meta = meta or {}
+	
+	def parse_input_file(self, file_string):
+		file_data = {}
+		lines = file_string.split('\n')
+		for num, line in enumerate(lines):
+			# avoids empty lines and comments
+			line = line.strip()
+			if not line or line.startswith('#'):
+				continue
+			if(line == 'content'):
+				# read the rest of the file
+				file_data['content'] = ''.join(lines[num + 1:])
+				break
+			key, value = [l.strip() for l in line.split('=', 1)]
+			file_data[key] = value
+		return file_data
 
-	class MechaniScribe:
-		def __init__(self, meta=None):
-			self.page_list = PageList()
-			self.meta = meta
-		
-		def parse_input_file(self, file_string):
-			file_data = {}
-			lines = file_string.split('\n')
-			for num, line in enumerate(lines):
-				# avoids empty lines and comments
-				line = line.strip()
-				if not line or line.startswith('#'):
-					continue
-				if(line == 'content'):
-					# read the rest of the file
-					file_data['content'] = ''.join(lines[num + 1:])
-					break
-				key, value = [l.strip() for l in line.split('=', 1)]
-				file_data[key] = value
-			return file_data
+	def read_page(self, path):
+		'''Return the page data specified by path'''
+		file_path = path_join(path, self.meta.get('data_file', specs.DATA_FILE))
+		if os.path.exists(file_path):
+			return self.parse_input_file(book_dweller.bring_file(file_path))
+		return
 
-		def read_page(self, path):
-			'''Return the page data specified by path'''
-			file_path = path_join(path, specs.DATA_FILE)
-			if os.path.exists(file_path):
-				return self.parse_input_file(book_dweller.bring_file(file_path))
-			return
+	def build_page(self, path, page_data):
+		'''Page object factory'''
+		page = Page()
+		page.path = re.sub(r'^\.$|\./|\.\\', '', path)
+		page.date_format = self.meta.get('date_format', specs.DATE_FORMAT)
+		base_url = self.meta.get('base_url', specs.BASE_URL)
+		page_data['url'] = book_dweller.urljoin(base_url, page.path)
+		try:
+			page.initialize(page_data)
+		except ValuesNotDefinedError as e:
+			raise ValuesNotDefinedError('{} at page {!r}'.format(e, path))
+		return page
+	
+	def read_page_tree(self, path, parent=None):
+		'''Read the folders recursively and create an ordered list
+		of page objects.'''
+		page_data = self.read_page(path)
+		page = None
+		if page_data:
+			page = self.build_page(path, page_data)
+			page.parent = parent
+			if parent:
+				parent.add_child(page)
+			# add page to ordered list of pages
+			self.page_list.insert(page)
+		for subpage_path in self.read_subpages_list(path):
+			self.read_page_tree(subpage_path, page)
 
-		def build_page(self, path, page_data):
-			'''Page object factory'''
-			page = Page()
-			page.path = re.sub(r'^\.$|\./|\.\\', '', path)
-			base_url = self.meta.get('base_url', specs.BASE_URL)
-			page_data['url'] = book_dweller.urljoin(base_url, page.path)
-			page_data['slug'] = basename(page.path)
-			try:
-				page.initialize(page_data)
-			except ValuesNotDefinedError as e:
-				raise ValuesNotDefinedError('{} at page {!r}'.format(e, path))
-			return page
-		
-		def read_page_tree(self, path, parent=None):
-			'''Read the folders recursively and create an ordered list
-			of page objects.'''
-			page_data = self.read_page(path)
-			page = None
-			if page_data:
-				page = self.build_page(path, page_data)
-				page.parent = parent
-				if parent:
-					parent.add_child(page)
-				# add page to ordered list of pages
-				self.page_list.insert(page)
-			for subpage_path in self.read_subpages_list(path):
-				self.read_page_tree(subpage_path, page)
+	def read_subpages_list(self, path):
+		'''Return a list containing the full path of the subpages'''
+		for folder in listdir(path):
+			fullpath = path_join(path, folder)
+			if isdir(fullpath):
+				yield fullpath
 
-		def read_subpages_list(self, path):
-			'''Return a list containing the full path of the subpages'''
-			for folder in listdir(path):
-				fullpath = path_join(path, folder)
-				if isdir(fullpath):
-					yield fullpath
-
-		def read_template(self, tpl_filename):
-			'''Returns a template string from the template folder'''
-			tpl_filepath = os.path.join(specs.TEMPLATES_DIR, tpl_filename)
-			tpl_filepath += specs.TEMPLATES_EXT
-			if not os.path.exists(tpl_filepath):
-				raise FileNotFoundError('Template {!r} not found'.format(tpl_filepath))
-			return book_dweller.bring_file(tpl_filepath)
-		
-		def write_feed():
-			pass
+	def read_template(self, tpl_filename):
+		'''Returns a template string from the template folder'''
+		templates_dir = self.meta.get('templates_dir', specs.TEMPLATES_DIR )
+		tpl_filepath = os.path.join(templates_dir, tpl_filename)
+		tpl_filepath += specs.TEMPLATES_EXT
+		if not os.path.exists(tpl_filepath):
+			raise FileNotFoundError('Template {!r} not found'.format(tpl_filepath))
+		return book_dweller.bring_file(tpl_filepath)
+	
+	def write_feed():
+		pass
 			
-		def write_json(self, page):
-			if 'nojson' in page.props:
-				return
-		json_path = path_join(page.path, specs.JSON_FILENAME)
+	def write_json(self, page):
+		if 'nojson' in page.props:
+			return
+		json_path = path_join(page.path, self.meta.get('json_filename',
+			specs.JSON_FILENAME))
 		output = JSONRenderer().render(page)
 		book_dweller.write_file(json_path, output)
 
@@ -316,7 +316,8 @@ class Page():
 			template_name = env.get('default_template', specs.DEFAULT_TEMPLATE)
 		template = self.read_template(template_name)
 		renderer = HTMLRenderer(template)
-		html_path = path_join(page.path, specs.HTML_FILENAME)
+		html_path = path_join(page.path, self.meta.get('html_filename', 
+			specs.HTML_FILENAME))
 		try:
 			output = renderer.render(page, env)
 		except TemplateError as e:
@@ -327,9 +328,9 @@ class Page():
 	def publish_page(self, page, env):
 		if 'draft' in page.props:
 			return
-		#self.write_json(page)
 		try:
 			self.write_html(page, env)
+			self.write_json(page)
 		except FileNotFoundError as e:
 			raise FileNotFoundError('{} at page {!r}'.format(e, page.path))
 	'''def generate_feeds():
@@ -397,16 +398,16 @@ class Library:
 		self.meta = scriber.parse_input_file(config_file)
 
 	def write_page(self, path):
-		page_file = path_join(path, specs.DATA_FILE)
+		page_file = path_join(path, self.meta.get('data_file', specs.DATA_FILE))
 		if os.path.exists(page_file):
 			raise PageExistsError('Page {!r} already exists.'.format(path))
 		if not os.path.exists(path):
 			os.makedirs(path)
-		scriber = MechaniScribe()
-		model_page_file = path_join(specs.DATA_DIR, specs.DATA_FILE)
+		model_page_file = path_join(specs.DATA_DIR, self.meta.get('data_file', specs.DATA_FILE))
 		content = book_dweller.bring_file(model_page_file)
-		date = datetime.today().strftime(specs.DATE_FORMAT)
-		scriber.write_file(page_file, content.format(date))
+		date_format = self.meta.get('date_format', specs.DATE_FORMAT)
+		date = datetime.today().strftime(date_format)
+		book_dweller.write_file(page_file, content.format(date))
 
 	def publish_pages(self, path):
 		scriber = MechaniScribe(self.meta)

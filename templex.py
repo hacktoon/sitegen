@@ -155,7 +155,7 @@ class PageList(ScopeNode):
 	def process_params(self):
 		params = self.params
 		self.order = params.get('ord')
-		self.group = params.get('group')
+		self.cat = params.get('cat')
 		if self.order and self.order not in ['asc', 'desc']:
 			raise TemplateError('Wrong ordering values for the "ord" parameter.')
 		try:
@@ -163,9 +163,9 @@ class PageList(ScopeNode):
 		except ValueError:
 			raise TemplateError('The "num" parameter must be an integer.')
 	
-	def filter_group(self, pages):
-		if self.group:
-			return [p for p in pages if p.group == self.group]
+	def filter_category(self, pages):
+		if self.cat:
+			return [p for p in pages if p.get('category') == self.cat]
 		return pages
 	
 	def filter_number(self, pages):
@@ -182,7 +182,7 @@ class PageList(ScopeNode):
 		if not pages:
 			raise TemplateError('Trying to list a non-listable property')
 
-		pages = self.filter_group(pages)
+		pages = self.filter_category(pages)
 		self.set_order(pages)
 		pages = self.filter_number(pages)
 
