@@ -12,7 +12,7 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 ===============================================================================
 '''
 
-from os import path
+import os
 
 BASE_URL = 'http://localhost/'
 TEMPLATES_DIR = 'templates'
@@ -28,5 +28,6 @@ TEMPLATES_EXT = '.tpl'
 JSON_FILENAME = 'data.json'
 HTML_FILENAME = 'index.html'
 
-MODEL_DIR = path.dirname(path.abspath(__file__))
-DATA_DIR = path.join(MODEL_DIR, DATA_DIR)
+MODEL_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(MODEL_DIR, DATA_DIR)
+BASE_PATH = os.curdir

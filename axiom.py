@@ -90,14 +90,16 @@ class CategoryList:
 		for category in self.items.values():
 			yield category
 
-	def add_category(self, name):
-		if name in self.items.keys() or not name:
+	def add_category(self, category_name):
+		if category_name in self.items.keys() or not category_name:
 			return
 		self.items[category_name] = Category(category_name)
 
 	def add_page(self, category_name, page):
-		if category_name not in self.items.keys() or not category_name:
+		if not category_name:
 			return
+		if category_name not in self.items.keys():
+			self.add_category(category_name)
 		self.items[category_name].add_page(page)
 
 
@@ -228,6 +230,7 @@ class Page():
 class MechaniScribe:
 	def __init__(self, meta=None):
 		self.page_list = PageList()
+		self.categories = CategoryList()
 		self.meta = meta or {}
 	
 	def parse_input_file(self, file_string):
@@ -274,6 +277,7 @@ class MechaniScribe:
 		if page_data:
 			page = self.build_page(path, page_data)
 			page.parent = parent
+			self.categories.add_page(page['category'], page)
 			if parent:
 				parent.add_child(page)
 			# add page to ordered list of pages
@@ -297,9 +301,6 @@ class MechaniScribe:
 			raise FileNotFoundError('Template {!r} not found'.format(tpl_filepath))
 		return book_dweller.bring_file(tpl_filepath)
 	
-	def write_feed():
-		pass
-			
 	def write_json(self, page):
 		if 'nojson' in page.props:
 			return
@@ -333,32 +334,39 @@ class MechaniScribe:
 			self.write_json(page)
 		except FileNotFoundError as e:
 			raise FileNotFoundError('{} at page {!r}'.format(e, page.path))
-	'''def generate_feeds():
-		renderer = RSSRenderer(MODEL_FEED_FILE)
-		feed_dir = feed_dir
-		if not os.path.exists(feed_dir):
-			os.makedirs(feed_dir)
-		env = { 'site':  }
+
+	def publish_feeds(self):
+		tpl_filepath = os.path.join(specs.DATA_DIR, specs.FEED_FILE)
+		template = book_dweller.bring_file(tpl_filepath)
+		renderer = RSSRenderer(template)
+		feed_dir = self.meta.get('feed_dir', specs.FEED_DIR)
+		try:
+			feed_num = int(self.meta.get('feed_num', specs.FEED_NUM))
+		except ValueError:
+			feed_num = specs.FEED_NUM
+		feed_path = path_join(specs.BASE_PATH, feed_dir)
+		if not os.path.exists(feed_path):
+			os.makedirs(feed_path)
+		env = { 'site': self.meta }
+		base_url = self.meta.get('base_url', specs.BASE_URL)
 		# generate feeds based on categories
-		for cat in categories:
+		for cat in self.categories:
 			fname = '{}.xml'.format(cat.name)
 			env['feed'] = {
-				'link': urljoin(base_url, feed_dir, fname),
+				'link': book_dweller.urljoin(base_url, feed_dir, fname),
 				'build_date': datetime.today()
 			}
 			page_list =  [p for p in cat.pages if p.is_feed_enabled()]
 			page_list.reverse()
 			env['pages'] = page_list[:feed_num]
 			output = renderer.render(env)
-			rss_file = path_join(feed_dir, fname)
+			rss_file = path_join(feed_path, fname)
+			book_dweller.write_file(rss_file, output)
 			print("Generated {!r}.".format(rss_file))
-			write_file(rss_file, output)
-	'''
+
 
 class Library:
 	def __init__(self):
-		self.categories = CategoryList()
-		self.pages = PageList()
 		self.meta = {}
 
 	def build(self, path):
@@ -421,17 +429,5 @@ class Library:
 			env['page'] = page
 			scriber.publish_page(page, env)
 			print("Generated page {!r}.".format(page.path))
+		scriber.publish_feeds()
 
-'''
-	def set_feed_dir(self, feed_dir):
-		self.feed_dir = feed_dir or 'feed'
-
-	def set_feed_num(self, feed_num):
-		try:
-			self.feed_num = int(feed_num)
-		except ValueError:
-			self.feed_num = 8
-
-	def set_default_template(self, template):
-		self.default_template = template
-'''
