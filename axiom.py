@@ -277,6 +277,8 @@ class MechaniScribe:
 	def read_page_tree(self, path, parent=None):
 		'''Read the folders recursively and create an ordered list
 		of page objects.'''
+		if basename(path) in self.meta.get('blocked_dirs'):
+			return
 		page_data = self.read_page(path)
 		page = None
 		if page_data:
@@ -375,14 +377,11 @@ class Library:
 		'''Build the wonder library'''
 		config_file = path_join(path, specs.CONFIG_FILE)
 		templates_dir = path_join(path, specs.TEMPLATES_DIR)
-
 		if os.path.exists(config_file):
 			raise SiteAlreadyInstalledError("A wonderful library is already built here!")
-
 		if not os.path.exists(templates_dir):
 			model_templates_dir = path_join(specs.DATA_DIR, templates_dir)
 			shutil.copytree(model_templates_dir, templates_dir)
-
 		if not os.path.exists(config_file):
 			model_config_file = path_join(specs.DATA_DIR, config_file)
 			shutil.copyfile(model_config_file, config_file)
@@ -406,6 +405,8 @@ class Library:
 		scriber = MechaniScribe()
 		config_file = book_dweller.bring_file(config_path)
 		self.meta = scriber.parse_input_file(config_file)
+		blocked_dirs = self.meta.get('blocked_dirs', [])
+		self.meta['blocked_dirs'] = book_dweller.extract_multivalues(blocked_dirs)
 
 	def write_page(self, path):
 		page_file = path_join(path, self.meta.get('data_file', specs.DATA_FILE))

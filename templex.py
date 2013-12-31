@@ -180,7 +180,7 @@ class ListNode(ScopeNode):
 
 class ChildList(ListNode):
 	def render(self, context):
-		page = self.lookup('page', context)
+		page = self.lookup('page', context)[::]
 		if not pages:
 			raise TemplateError('Trying to list a non-listable property')
 		children = page.children
@@ -200,14 +200,12 @@ class ChildList(ListNode):
 
 class PageList(ListNode):
 	def render(self, context):
-		pages = self.lookup('pages', context)
+		pages = self.lookup('pages', context)[::]
 		if not pages:
 			raise TemplateError('Trying to list a non-listable property')
-
 		pages = self.filter_category(pages)
 		self.set_order(pages)
 		pages = self.filter_number(pages)
-
 		content = []
 		for page in pages:
 			if not page.is_listable():
