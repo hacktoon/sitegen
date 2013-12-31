@@ -165,7 +165,7 @@ class ListNode(ScopeNode):
 
 	def filter_category(self, pages):
 		if self.cat:
-			return [p for p in pages if p.get('category') == self.cat]
+			return [p for p in pages if p['category'] == self.cat]
 		return pages
 	
 	def filter_number(self, pages):
