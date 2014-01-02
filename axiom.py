@@ -34,21 +34,21 @@ basename = os.path.basename
 listdir = os.listdir
 
 
-
 class Category:
 	def __init__(self, name):
 		self.name = name
 		self.pages = PageList()
-		self.pages.pagination = True
 
 	def add_page(self, page):
 		self.pages.insert(page)
+	
+	def paginate(self):
+		self.pages.paginate()
 
 
 class PageList:
 	def __init__(self):
 		self.pages = []
-		self.pagination = False
 
 	def __iter__(self):
 		for page in self.pages:
@@ -63,17 +63,22 @@ class PageList:
 	def reverse(self):
 		return self.pages.reverse()
 
+	def page_struct(self, index):
+		page = self.pages[index]
+		return {
+			'url': page['url'],
+			'title': page['title']
+		}
+
 	def paginate(self):
-		if not self.pagination:
-			return
 		length = len(self.pages)
 		for index, page in enumerate(self.pages):
-			page.first = self.pages[0]
+			page['first'] = self.page_struct(0)
 			next_index = index + 1 if index < length - 1 else -1
-			page.next = self.pages[next_index]
+			page['next'] = self.page_struct(next_index)
 			prev_index = index - 1 if index > 0 else 0
-			page.prev = self.pages[prev_index]
-			page.last = self.pages[-1]
+			page['prev'] = self.page_struct(prev_index)
+			page['last'] = self.page_struct(-1)
 
 	def insert(self, page):
 		'''Insert page in list ordered by date'''
@@ -423,6 +428,8 @@ class Library:
 	def publish_pages(self, path):
 		scriber = MechaniScribe(self.meta)
 		scriber.read_page_tree(path)
+		for cat in scriber.categories:
+			cat.paginate()
 		pages = scriber.page_list
 		env = {
 			'pages': pages,
