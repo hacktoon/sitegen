@@ -228,8 +228,11 @@ class Page():
 			raise PageValueError('Wrong date format '
 			'detected at {!r}!'.format(self.path))
 
+	def is_draft(self):
+		return 'draft' in self.props
+	
 	def is_listable(self):
-		return 'nolist' not in self.props
+		return 'nolist' not in self.props and not self.is_draft()
 
 	def is_feed_enabled(self):
 		return 'nofeed' not in self.props
@@ -293,7 +296,8 @@ class MechaniScribe:
 			if parent:
 				parent.add_child(page)
 			# add page to ordered list of pages
-			self.page_list.insert(page)
+			if not page.is_draft():
+				self.page_list.insert(page)
 		for subpage_path in self.read_subpages_list(path):
 			self.read_page_tree(subpage_path, page)
 
@@ -440,4 +444,3 @@ class Library:
 			scriber.publish_page(page, env)
 			print("Generated page {!r}.".format(page.path))
 		scriber.publish_feeds()
-
