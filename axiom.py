@@ -274,6 +274,10 @@ class MechaniScribe:
 		page.date_format = self.meta.get('date_format', specs.DATE_FORMAT)
 		base_url = self.meta.get('base_url', specs.BASE_URL)
 		page_data['url'] = book_dweller.urljoin(base_url, page.path)
+		content = page_data.get('content', '')
+		regexp = r'<!--\s*more\s*-->'
+		page_data['excerpt'] = re.split(regexp, content, 1)[0]
+		page_data['content'] = re.sub(regexp, '', content)
 		try:
 			page.initialize(page_data)
 		except ValuesNotDefinedError as e:
