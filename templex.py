@@ -289,7 +289,7 @@ class Include(Node):
 			filename = '{0}.tpl'.format(filename)
 		path = os.path.join(self.include_path, filename)
 		tpl = book_dweller.bring_file(path)
-		self.parser = TemplateParser(tpl)
+		self.parser = TemplateParser(tpl, path)
 
 	def render(self, context):
 		return self.parser.render(context)
@@ -339,9 +339,10 @@ class HTML(Node):
 
 
 class TemplateParser():
-	def __init__(self, template):
+	def __init__(self, template, name=''):
 		self.template = template
 		self.include_path = None
+		self.name = name
 	
 	def set_include_path(self, path):
 		self.include_path = path
@@ -399,5 +400,9 @@ class TemplateParser():
 		return tree
 	
 	def render(self, context):
-		tree = self.parse()
+		if self.name in context['render_cache'].keys():
+			tree = context['render_cache'][self.name]
+		else:
+			tree = self.parse()
+			context['render_cache'][self.name] = tree
 		return tree.render(context)

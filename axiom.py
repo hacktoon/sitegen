@@ -119,19 +119,21 @@ class JSONRenderer():
 
 
 class RSSRenderer():
-	def __init__(self, template):
+	def __init__(self, template, tpl_name):
 		self.template = template
+		self.tpl_name = tpl_name
 
 	def render(self, context):
-		renderer = TemplateParser(self.template)
+		renderer = TemplateParser(self.template, self.tpl_name)
 		return renderer.render(context)
 
 
 class HTMLRenderer():
-	def __init__(self, template):
+	def __init__(self, template, tpl_name):
 		self.link_tpl = '<link rel="stylesheet" type="text/css" href="{0}"/>'
 		self.script_tpl = '<script src="{0}"></script>'
 		self.template = template
+		self.tpl_name = tpl_name
 
 	def build_external_tags(self, links, tpl):
 		tag_list = []
@@ -156,7 +158,7 @@ class HTMLRenderer():
 		page_data['styles'] = self.build_style_tags(page.styles)
 		page_data['scripts'] = self.build_script_tags(page.scripts)
 		env['page'] = page_data
-		renderer = TemplateParser(self.template)
+		renderer = TemplateParser(self.template, self.tpl_name)
 		renderer.set_include_path(env.get('templates_dir', specs.TEMPLATES_DIR))
 		return renderer.render(env)
 
@@ -333,7 +335,7 @@ class MechaniScribe:
 		if 'nohtml' in page.props:
 			return
 		template = self.read_template(page.template)
-		renderer = HTMLRenderer(template)
+		renderer = HTMLRenderer(template, page.template)
 		html_path = path_join(page.path, self.meta.get('html_filename', 
 			specs.HTML_FILENAME))
 		try:
@@ -355,7 +357,7 @@ class MechaniScribe:
 	def publish_feeds(self):
 		tpl_filepath = os.path.join(specs.DATA_DIR, specs.FEED_FILE)
 		template = book_dweller.bring_file(tpl_filepath)
-		renderer = RSSRenderer(template)
+		renderer = RSSRenderer(template, 'rss')
 		feed_dir = self.meta.get('feed_dir', specs.FEED_DIR)
 		try:
 			feed_num = int(self.meta.get('feed_num', specs.FEED_NUM))
@@ -364,7 +366,7 @@ class MechaniScribe:
 		feed_path = path_join(specs.BASE_PATH, feed_dir)
 		if not os.path.exists(feed_path):
 			os.makedirs(feed_path)
-		env = { 'site': self.meta }
+		env = { 'site': self.meta, 'render_cache': {}}
 		base_url = self.meta.get('base_url', specs.BASE_URL)
 		# generate feeds based on categories
 		for cat in self.categories:
@@ -441,7 +443,8 @@ class Library:
 		pages = scriber.page_list
 		env = {
 			'pages': pages,
-			'site': self.meta
+			'site': self.meta,
+			'render_cache': {}
 		}
 		for page in pages:
 			env['page'] = page
