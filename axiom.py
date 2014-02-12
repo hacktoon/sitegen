@@ -344,7 +344,7 @@ class MechaniScribe:
 		book_dweller.write_file(html_path, output)
 
 	def publish_page(self, page, env):
-		if 'draft' in page.props:
+		if page.is_draft():
 			return
 		try:
 			self.write_html(page, env)

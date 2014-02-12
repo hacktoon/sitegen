@@ -156,6 +156,7 @@ class ListNode(ScopeNode):
 		params = self.params
 		self.order = params.get('ord')
 		self.cat = params.get('cat')
+		self.exclude = params.get('exclude')
 		if self.order and self.order not in ['asc', 'desc']:
 			raise TemplateError('Wrong ordering values for the "ord" parameter.')
 		try:
@@ -163,9 +164,16 @@ class ListNode(ScopeNode):
 		except ValueError:
 			raise TemplateError('The "num" parameter must be an integer.')
 
+	def filter_listable(self, pages):
+		pages = [p for p in pages if p.is_listable()]
+		return pages
+
 	def filter_category(self, pages):
+		key = 'category'
+		if self.exclude:
+			pages = [p for p in pages if p[key] != self.exclude]
 		if self.cat:
-			return [p for p in pages if p['category'] == self.cat]
+			return [p for p in pages if p[key] == self.cat]
 		return pages
 	
 	def filter_number(self, pages):
@@ -183,14 +191,12 @@ class ChildList(ListNode):
 		page = self.lookup('page', context)[::]
 		if not pages:
 			raise TemplateError('Trying to list a non-listable property')
-		children = page.children
+		children = self.filter_listable(page.children)
 		children = self.filter_category(children)
 		self.set_order(children)
 		children = self.filter_number(children)
 		content = []
 		for page in children:
-			if not page.is_listable():
-				continue
 			iteration_content = []
 			context['each'] = page
 			for child in self.children:
@@ -203,13 +209,12 @@ class PageList(ListNode):
 		pages = self.lookup('pages', context)[::]
 		if not pages:
 			raise TemplateError('Trying to list a non-listable property')
+		pages = self.filter_listable(pages)
 		pages = self.filter_category(pages)
 		self.set_order(pages)
 		pages = self.filter_number(pages)
 		content = []
 		for page in pages:
-			if not page.is_listable():
-				continue
 			iteration_content = []
 			context['each'] = page
 			for child in self.children:
