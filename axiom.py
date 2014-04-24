@@ -344,6 +344,35 @@ class MechaniScribe:
 			raise TemplateError('{} at template {!r}'.format(e, 
 			page.template))
 		book_dweller.write_file(html_path, output)
+	
+	def write_feed(self, env, page_list, name):
+		tpl_filepath = os.path.join(specs.DATA_DIR, specs.FEED_FILE)
+		template = book_dweller.bring_file(tpl_filepath)
+		feed_dir = self.meta.get('feed_dir', specs.FEED_DIR)
+		feed_path = path_join(specs.BASE_PATH, feed_dir)
+		base_url = self.meta.get('base_url', specs.BASE_URL)
+		renderer = RSSRenderer(template, 'rss')
+		
+		try:
+			feed_num = int(self.meta.get('feed_num', specs.FEED_NUM))
+		except ValueError:
+			feed_num = specs.FEED_NUM
+		if not os.path.exists(feed_path):
+			os.makedirs(feed_path)
+		
+		fname = '{}.xml'.format(name)
+		env['feed'] = {
+			'link': book_dweller.urljoin(base_url, feed_dir, fname),
+			'build_date': datetime.today()
+		}
+		page_list =  [p for p in page_list if p.is_feed_enabled()]
+		page_list.reverse()
+		page_list = page_list[:feed_num]
+		env['pages'] = page_list
+		output = renderer.render(env)
+		rss_file = path_join(feed_path, fname)
+		book_dweller.write_file(rss_file, output)
+		return rss_file
 
 	def publish_page(self, page, env):
 		if page.is_draft():
@@ -355,33 +384,14 @@ class MechaniScribe:
 			raise FileNotFoundError('{} at page {!r}'.format(e, page.path))
 
 	def publish_feeds(self):
-		tpl_filepath = os.path.join(specs.DATA_DIR, specs.FEED_FILE)
-		template = book_dweller.bring_file(tpl_filepath)
-		renderer = RSSRenderer(template, 'rss')
-		feed_dir = self.meta.get('feed_dir', specs.FEED_DIR)
-		try:
-			feed_num = int(self.meta.get('feed_num', specs.FEED_NUM))
-		except ValueError:
-			feed_num = specs.FEED_NUM
-		feed_path = path_join(specs.BASE_PATH, feed_dir)
-		if not os.path.exists(feed_path):
-			os.makedirs(feed_path)
 		env = { 'site': self.meta, 'render_cache': {}}
-		base_url = self.meta.get('base_url', specs.BASE_URL)
+		# unique feed
+		file_path = self.write_feed(env, self.page_list, 'all')
+		print("Generated {!r}.".format(file_path))
 		# generate feeds based on categories
 		for cat in self.categories:
-			fname = '{}.xml'.format(cat.name)
-			env['feed'] = {
-				'link': book_dweller.urljoin(base_url, feed_dir, fname),
-				'build_date': datetime.today()
-			}
-			page_list =  [p for p in cat.pages if p.is_feed_enabled()]
-			page_list.reverse()
-			env['pages'] = page_list[:feed_num]
-			output = renderer.render(env)
-			rss_file = path_join(feed_path, fname)
-			book_dweller.write_file(rss_file, output)
-			print("Generated {!r}.".format(rss_file))
+			file_path = self.write_feed(env, cat.pages, cat.name)
+			print("Generated {!r}.".format(file_path))
 
 
 class Library:

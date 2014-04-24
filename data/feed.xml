@@ -9,10 +9,10 @@
     {% pagelist %}
         <item>
 		    <title>{{each.title}}</title>
-		    <link>{{each.permalink}}</link>
+		    <link>{{each.url}}</link>
 		    <pubDate>{{each.date fmt="%a, %d %b %Y %H:%M:%S +0000"}}</pubDate>
 		    <description><![CDATA[{{each.content}}]]></description>
-		    <guid>{{each.permalink}}</guid>
+		    <guid>{{each.url}}</guid>
 		</item>
     {%end%}
 </channel>
