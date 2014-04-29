@@ -375,8 +375,6 @@ class MechaniScribe:
 		return rss_file
 
 	def publish_page(self, page, env):
-		if page.is_draft():
-			return
 		try:
 			self.write_html(page, env)
 			self.write_json(page)

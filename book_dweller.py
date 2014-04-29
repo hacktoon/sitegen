@@ -39,5 +39,12 @@ def bring_file(path):
 		return f.read()
 
 def write_file(path, content=''):
-	with open(path, 'w') as f:
-		f.write(content)
+	if os.path.exists(path):
+		f = open(path, 'r')
+		current_content = f.read()
+		if current_content == content:
+			return
+		f.close()
+	f = open(path, 'w')
+	f.write(content)
+	f.close()
