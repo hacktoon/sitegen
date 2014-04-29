@@ -459,3 +459,4 @@ class Library:
 			scriber.publish_page(page, env)
 			print("Generated page {!r}.".format(page.path))
 		scriber.publish_feeds()
+		return pages

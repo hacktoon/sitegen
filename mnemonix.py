@@ -27,7 +27,7 @@ from alarum import (ValuesNotDefinedError,
 def publish(args):
 	'''Read recursively every directory under path and
 	outputs HTML/JSON for each page file'''
-	path = args.path or os.curdir
+	path = os.curdir
 	lib = Library()
 	try:
 		lib.enter(path)
@@ -36,19 +36,16 @@ def publish(args):
 
 	try:
 		pages = lib.publish_pages(path)
-		#site.generate_feeds()
 	except (FileNotFoundError, ValuesNotDefinedError, 
 			TemplateError, PageValueError) as e:
 		sys.exit(e)
-	
 	if args.output_enabled:
 		print("{}\nTotal of pages read: {}.".format("-" * 30, len(pages)))
-		print("Total of pages generated: {}.\n".format(total_rendered))
 
 
 def write(args):
 	'''Create a new page in specified path'''
-	path = args.path
+	path = args.path or os.curdir
 	lib = Library()
 	try:
 		lib.enter(path)
@@ -68,10 +65,9 @@ def build(args):
 	print('Writing the plans for the wonder library Mnemonix...')
 	print('Building the foundations of the library...')
 	
-	path = args.path or os.curdir
 	lib = Library()
 	try:
-		lib.build(path)
+		lib.build(os.curdir)
 	except SiteAlreadyInstalledError as e:
 		sys.exit(e)
 
@@ -93,16 +89,14 @@ def main():
 
 	parser_build = subparsers.add_parser('build', 
 		help='build Mnemonix on current folder')
-	parser_build.add_argument("path")
 	parser_build.set_defaults(method=build)
 
 	parser_write = subparsers.add_parser('write',
 		help='create a empty page on the path specified')
-	parser_write.add_argument("path")
+	parser_write.add_argument('path')
 	parser_write.set_defaults(method=write)
 
 	parser_publish = subparsers.add_parser('publish', help='generate the pages')
-	parser_publish.add_argument("path")
 	parser_publish.set_defaults(method=publish)
 
 	args = parser.parse_args()	
