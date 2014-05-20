@@ -161,8 +161,10 @@ class ListNode(ScopeNode):
 			raise TemplateError('Wrong ordering values for the "ord" parameter.')
 		try:
 			self.number = abs(int(params.get('num', 0)))
+			self.start = int(params.get('start', 0))
 		except ValueError:
-			raise TemplateError('The "num" parameter must be an integer.')
+			raise TemplateError('The "num" and "start" parameters must be integers.')
+
 
 	def filter_listable(self, pages):
 		pages = [p for p in pages if p.is_listable()]
@@ -178,7 +180,10 @@ class ListNode(ScopeNode):
 	
 	def filter_number(self, pages):
 		if self.number:
-			pages = pages[:self.number]
+			number = self.number
+			if self.start:
+				number = self.number + self.start
+			pages = pages[self.start:number]
 		return pages
 			
 	def set_order(self, pages):
