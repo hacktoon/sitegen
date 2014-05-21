@@ -165,7 +165,6 @@ class ListNode(ScopeNode):
 		except ValueError:
 			raise TemplateError('The "num" and "start" parameters must be integers.')
 
-
 	def filter_listable(self, pages):
 		pages = [p for p in pages if p.is_listable()]
 		return pages
@@ -300,24 +299,6 @@ class Include(Node):
 		return self.parser.render(context)
 
 
-class Parse(Node):
-	def __init__(self, include_path, args):
-		if not include_path:
-			raise TemplateError('Include file not specified.')
-		self.include_path = include_path
-		super().__init__(args)
-
-	def process_params(self):
-		filename = self.params.get('file')
-		if not filename.endswith('.tpl'):
-			filename = '{0}.tpl'.format(filename)
-		path = os.path.join(self.include_path, filename)
-		self.text = book_dweller.read_file(path)
-
-	def render(self, context):
-		return self.text
-
-
 class Variable(Node):
 	def __init__(self, name, args):
 		super().__init__(args)
@@ -371,8 +352,6 @@ class TemplateParser():
 				node = ChildList(args)
 			elif command == 'include':
 				node = Include(self.include_path, args)
-			elif command == 'parse':
-				node = Parse(self.include_path, args)
 			elif command == 'if':
 				node = Branch(args)
 			elif command == 'else':
