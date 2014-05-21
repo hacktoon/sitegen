@@ -40,7 +40,7 @@ def is_identifier(c):
 class Char():
 	def __init__(self, line, col, value):
 		self.line = line
-		self.column = column
+		self.column = col
 		self.value = value
 	
 	def __str__(self):
