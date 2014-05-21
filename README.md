@@ -38,6 +38,12 @@ This will create a *page* model file. You're ready to start adding your own cont
     content
     My page content
 
+The HTML comment tag <!-- more --> can be used to define a limit to distinguish the excerpt from the content.
+
+	This is the excerpt
+	<!-- more -->
+	This is the rest of the content
+
 Now run the *publish* command to generate the pages.
     
     mnemonix publish
