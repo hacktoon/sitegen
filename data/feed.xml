@@ -1,14 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<rss version="2.0">
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
 <channel>
     <title>{{site.title}}</title>
-    <link>{{feed.link}}</link>
+    <link>{{site.base_url}}</link>
+    <atom:link href="{{feed.link}}" rel="self" type="application/rss+xml" />
     <description>{{site.description}}</description>
     <lastBuildDate>{{feed.build_date fmt="%a, %d %b %Y %H:%M:%S +0000"}}</lastBuildDate>
     {% pagelist %}
 	<item>
 		<title><![CDATA[ {{each.title}} ]]></title>
 		<link><![CDATA[ {{each.url}} ]]></link>
+		<guid>{{each.url}}</guid>
 		<pubDate>{{each.date fmt="%a, %d %b %Y %H:%M:%S +0000"}}</pubDate>
 		<description><![CDATA[ {{each.content}} ]]></description>
 	</item>

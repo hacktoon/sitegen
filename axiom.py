@@ -384,7 +384,7 @@ class MechaniScribe:
 	def publish_feeds(self):
 		env = { 'site': self.meta, 'render_cache': {}}
 		# unique feed
-		file_path = self.write_feed(env, self.page_list, 'all')
+		file_path = self.write_feed(env, self.page_list, 'rss')
 		print("Generated {!r}.".format(file_path))
 		# generate feeds based on categories
 		for cat in self.categories:
