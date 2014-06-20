@@ -258,7 +258,11 @@ class MechaniScribe:
 				# read the rest of the file
 				file_data['content'] = ''.join(lines[num + 1:])
 				break
-			key, value = [l.strip() for l in line.split('=', 1)]
+			try:
+				key, value = [l.strip() for l in line.split('=', 1)]
+			except ValueError:
+				raise PageValueError('Wrong line format '
+			'detected at {!r}!'.format(line))
 			file_data[key] = value
 		return file_data
 
