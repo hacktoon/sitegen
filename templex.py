@@ -171,7 +171,8 @@ class ListNode(ScopeNode):
 		return pages
 
 	def filter_type(self, pages):
-		pages = [p for p in pages if p['type'] == self.type]
+		if self.type:
+			pages = [p for p in pages if p['type'] == self.type]
 		return pages
 
 	def filter_category(self, pages):
