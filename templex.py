@@ -157,6 +157,7 @@ class ListNode(ScopeNode):
 		self.order = params.get('ord')
 		self.cat = params.get('cat')
 		self.type = params.get('type')
+		self.year = params.get('year')
 		self.exclude = params.get('exclude')
 		if self.order and self.order not in ['asc', 'desc']:
 			raise TemplateError('Wrong ordering values for the "ord" parameter.')
@@ -166,21 +167,40 @@ class ListNode(ScopeNode):
 		except ValueError:
 			raise TemplateError('The "num" and "start" parameters must be integers.')
 
+	def read_param_variable(self, name, context):
+		if name.startswith('$'):
+			return self.lookup(name[1:], context)
+		return name
+
 	def filter_listable(self, pages):
 		pages = [p for p in pages if p.is_listable()]
 		return pages
-
-	def filter_type(self, pages):
-		if self.type:
-			pages = [p for p in pages if p['type'] == self.type]
+	
+	def filter_year(self, pages, context):
+		year = self.year
+		if year:
+			year = self.read_param_variable(year, context)
+			try:
+				year = int(year)
+			except ValueError:
+				raise TemplateError('The "year" parameter expects an integer.')
+			pages = [p for p in pages if p['date'].year == year]
 		return pages
 
-	def filter_category(self, pages):
+	def filter_type(self, pages, context):
+		if self.type:
+			page_type = self.read_param_variable(self.type, context)
+			pages = [p for p in pages if p['type'] == page_type]
+		return pages
+
+	def filter_category(self, pages, context):
 		key = 'category'
 		if self.exclude:
-			pages = [p for p in pages if p[key] != self.exclude]
+			exclude = self.read_param_variable(self.exclude, context)
+			pages = [p for p in pages if p[key] != exclude]
 		if self.cat:
-			return [p for p in pages if p[key] == self.cat]
+			cat = self.read_param_variable(self.cat, context)
+			return [p for p in pages if p[key] == cat]
 		return pages
 	
 	def filter_number(self, pages):
@@ -194,6 +214,15 @@ class ListNode(ScopeNode):
 	def set_order(self, pages):
 		if self.order and self.order == 'desc':
 			pages.reverse()
+	
+	def execute_filters(self, pages, context):
+		pages = self.filter_category(pages, context)
+		pages = self.filter_type(pages, context)
+		pages = self.filter_listable(pages)
+		pages = self.filter_year(pages, context)
+		self.set_order(pages)
+		pages = self.filter_number(pages)
+		return pages
 
 
 class ChildList(ListNode):
@@ -201,11 +230,7 @@ class ChildList(ListNode):
 		page = self.lookup('page', context)[::]
 		if not pages:
 			raise TemplateError('Trying to list a non-listable property')
-		children = self.filter_type(page.children)
-		children = self.filter_listable(children)
-		children = self.filter_category(children)
-		self.set_order(children)
-		children = self.filter_number(children)
+		children = self.execute_filters(page.children, context)
 		content = []
 		for page in children:
 			iteration_content = []
@@ -220,11 +245,7 @@ class PageList(ListNode):
 		pages = self.lookup('pages', context)[::]
 		if not pages:
 			raise TemplateError('Trying to list a non-listable property')
-		pages = self.filter_type(pages)
-		pages = self.filter_listable(pages)
-		pages = self.filter_category(pages)
-		self.set_order(pages)
-		pages = self.filter_number(pages)
+		pages = self.execute_filters(pages, context)
 		content = []
 		for page in pages:
 			iteration_content = []
