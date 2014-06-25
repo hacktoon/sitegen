@@ -302,7 +302,8 @@ class MechaniScribe:
 		if page_data:
 			page = self.build_page(path, page_data)
 			page.parent = parent
-			self.categories.add_page(page['category'], page)
+			if page.is_listable():
+				self.categories.add_page(page['category'], page)
 			if parent:
 				parent.add_child(page)
 			# add page to ordered list of pages
@@ -350,13 +351,14 @@ class MechaniScribe:
 		book_dweller.write_file(html_path, output)
 	
 	def write_feed(self, env, page_list, name):
+		if not len(page_list):
+			return
 		tpl_filepath = os.path.join(specs.DATA_DIR, specs.FEED_FILE)
 		template = book_dweller.bring_file(tpl_filepath)
 		feed_dir = self.meta.get('feed_dir', specs.FEED_DIR)
 		feed_path = path_join(specs.BASE_PATH, feed_dir)
 		base_url = self.meta.get('base_url', specs.BASE_URL)
 		renderer = RSSRenderer(template, 'rss')
-		
 		try:
 			feed_num = int(self.meta.get('feed_num', specs.FEED_NUM))
 		except ValueError:
@@ -393,7 +395,10 @@ class MechaniScribe:
 		# generate feeds based on categories
 		for cat in self.categories:
 			file_path = self.write_feed(env, cat.pages, cat.name)
-			print("Generated {!r}.".format(file_path))
+			if file_path:
+				print("Generated {!r}.".format(file_path))
+			else:
+				print("Category {!r} has no content!".format(cat.name))
 
 
 class Library:
