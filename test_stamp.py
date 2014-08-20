@@ -1,19 +1,15 @@
 import stamper.parser as parser
 
 tpl = '''<html> 
-{% x = 5; %}
-<h1>teste</h1>
-	{% print x; %}
-</html>
-'''
-
-tpl2 = '''x=5;
-y=3; 
-if x == 5 {
-	if y == 3 {
-		print 4;
+{% 
+	x = 5; 
+	function soma(a,b) {
+		return a+b;
 	}
-}
+%}
+<h1>teste</h1>
+	{% print soma(1,2); %}
+</html>
 '''
 
 p = parser.Parser(tpl)

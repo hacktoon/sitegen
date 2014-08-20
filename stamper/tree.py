@@ -206,18 +206,6 @@ class PrintCommand():
         return '{}'.format(str(type(self)))
 
 
-class ReadCommand():
-    def __init__(self, variable):
-        self.variable = variable
-
-    def render(self, context):
-        value = input()
-        context[self.variable] = value
-
-    def __str__(self):
-        return '{}'.format(str(type(self)))
-
-
 class Assignment(Node):
     def __init__(self, value):
         super().__init__(value)
