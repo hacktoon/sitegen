@@ -7,12 +7,15 @@ NUMBER = 'Number'
 STRING = 'String'
 IDENTIFIER = 'Identifier'
 KEYWORD = 'Keyword'
+TEXT = 'Text'
 SYMBOL = 'Symbol'
-SYMBOLS_PERMITTED = list('+-*/=<>!%;,')
+SYMBOLS_PERMITTED = '+-*/=<>!%;,'
 OPEN_PARENS = '('
 CLOSE_PARENS = ')'
 OPEN_BRACKET = '{'
 CLOSE_BRACKET = '}'
+OPEN_TAG = '{{'
+CLOSE_TAG = '}}'
 EQUAL = '=='
 DIFF = '!='
 BOOLEAN_VALUES = ['true', 'false']
@@ -44,7 +47,7 @@ class Token():
         return self.value in ['*', '/', '%']
 
     def is_equop(self):
-        return self.value in ['==', '!=']
+        return self.value in [EQUAL, DIFF]
 
     def is_relop(self):
         return self.value in ['>', '>=', '<', '<=']
@@ -58,6 +61,8 @@ class Lexer():
         self.line = 1
         self.column = 1
         self.char = self.get_char()
+        self.char_buffer = ''
+        self.text_mode = True
     
     def get_char(self):
         if self.index >= self.len:
@@ -65,7 +70,7 @@ class Lexer():
         char = self.code[self.index]
         self.column += 1
         self.index += 1
-        if char == '\n':
+        if char == NEWLINE:
             self.line += 1
             self.column = 1
         return char
@@ -126,15 +131,23 @@ class Lexer():
         tok = Token(symbol, SYMBOL)
         return tok
 
+    def consume_text(self):
+
     def get_token(self):
         self.skip_whitespaces()
         tok = None
+        if self.text_mode:
+            return self.consume_text()
+
         if self.char.isdigit():
             tok = self.get_number()
         elif self.char.isalpha():
             tok = self.get_name()
         elif self.issymbol(self.char):
             tok = self.get_symbol()
+            if tok.value == CLOSE_TAG:
+                self.text_mode = True
+
         elif self.char in STRING_DELIMITERS:
             tok = self.get_string(self.char)
         elif self.char == OPEN_PARENS:

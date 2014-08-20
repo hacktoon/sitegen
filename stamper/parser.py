@@ -18,7 +18,7 @@ from . import lexer
 <multiplicative-expr> = <factor> | <factor> <mult-op> <factor>
 <factor> :=  [<unary-op>] <literal> | ( <expression> )
 
-<unary-op> = + | -
+<unary-op> = '+' | '-'
 <mult-op> = '*' | '/' | '%'
 <add-op> = '+' | '-'
 <rel op> = '<' | '<=' | '>=' | '>'
