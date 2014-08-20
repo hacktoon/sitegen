@@ -47,10 +47,11 @@ BOOL_NOT = 'not'
 FUNCTION = 'function'
 RETURN = 'return'
 PRINT = 'print'
-KEYWORDS = {'if', 'else', 'while', 'or', 
-    'and', 'not', 'function', 'return',
-    'print'
-}
+INCLUDE = 'include'
+KEYWORDS = (IF, ELSE, WHILE, BOOL_OR, 
+    BOOL_AND, BOOL_NOT, FUNCTION, RETURN,
+    PRINT, INCLUDE
+)
 
 
 class Token():
@@ -171,8 +172,7 @@ class Lexer():
 
         if self.text_mode:
             return self.get_text()
-        else:
-            self.skip_whitespaces()
+        self.skip_whitespaces()
 
         if self.char == EOF:
             tok = Token(EOF, EOF)

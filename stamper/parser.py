@@ -216,6 +216,13 @@ class Parser():
         node = tree.PrintCommand(exp_node)
         return node
 
+    def include_stmt(self):
+        self.next_token()
+        exp_node = self.expression()
+        self.consume(lexer.SEMICOLON)
+        node = tree.IncludeCommand(exp_node)
+        return node
+
     def params_list(self):
         params = []
         if self.tok.type == lexer.IDENTIFIER:
@@ -287,16 +294,15 @@ class Parser():
                 node = tree.Variable(name)
         elif tok_type == lexer.KEYWORD:
             tok_val = self.tok.value
-            if tok_val == lexer.IF:
-                node = self.if_stmt()
-            elif tok_val == lexer.WHILE:
-                node = self.while_stmt()
-            elif tok_val == lexer.PRINT:
-                node = self.print_stmt()
-            elif tok_val == lexer.FUNCTION:
-                node = self.function_definition()
-            elif tok_val == lexer.RETURN:
-                node = self.function_return()
+            stmt_map = {
+                lexer.IF: self.if_stmt,
+                lexer.WHILE: self.while_stmt,
+                lexer.PRINT: self.print_stmt,
+                lexer.INCLUDE: self.include_stmt,
+                lexer.FUNCTION: self.function_definition,
+                lexer.RETURN: self.function_return
+            }
+            node = stmt_map[tok_val]()
         else:
             self.error('Unrecognized token {!r}'.format(self.tok.value))
         return node

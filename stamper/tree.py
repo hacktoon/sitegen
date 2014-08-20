@@ -215,6 +215,24 @@ class PrintCommand():
         return '{}'.format(str(type(self)))
 
 
+class IncludeCommand():
+    def __init__(self, exp):
+        self.exp = exp
+
+    def render(self, context):
+        filename = self.exp.render(context)
+        if not isinstance(filename, str):
+            raise Exception('String expected')
+        try:
+            fp = open(filename, 'r')
+        except:
+            raise Exception('File not found')
+        return fp.read()
+
+    def __str__(self):
+        return '{}'.format(str(type(self)))
+
+
 class Assignment(Node):
     def __init__(self, value):
         super().__init__(value)

@@ -7,9 +7,11 @@ tpl = '''<html>
 		return a+b;
 	}
 %}
-<h1>{%print nome;   %}</h1>
+<h1>{% print nome;   %}</h1>
 	{% y= soma(1,56) ; 
 	print y;
+
+	include "menu.html";
 	%}
 </html>'''
 
