@@ -1,22 +1,19 @@
 import stamper.parser as parser
 
 tpl = '''<html> 
-{{ x = 5; }}
+{% x = 5; %}
 <h1>teste</h1>
-{{
-print x;
-print a;
-}}
+	{% print x; %}
 </html>
 '''
-tpl = '''x=5; 
+
+tpl2 = '''x=5;
+y=3; 
 if x == 5 {
-	print x;
-} else { 
-	print "eee";
+	if y == 3 {
+		print 4;
+	}
 }
-
-
 '''
 
 p = parser.Parser(tpl)

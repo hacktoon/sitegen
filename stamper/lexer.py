@@ -14,8 +14,8 @@ OPEN_PARENS = '('
 CLOSE_PARENS = ')'
 OPEN_BRACKET = '{'
 CLOSE_BRACKET = '}'
-OPEN_TAG = '{{'
-CLOSE_TAG = '}}'
+OPEN_TAG = '{%'
+CLOSE_TAG = '%}'
 ASSIGN = '='
 EQUAL = '=='
 DIFF = '!='
@@ -34,7 +34,8 @@ SEMICOLON = ';'
 VALID_SYMBOLS = (EQUAL, DIFF, LE, GE, LT,
     GT, PLUS, MINUS, MUL, DIV, MOD, COMMA,
     SEMICOLON, ASSIGN, OPEN_BRACKET,
-    CLOSE_BRACKET, OPEN_PARENS, CLOSE_PARENS)
+    CLOSE_BRACKET, OPEN_PARENS, 
+    CLOSE_PARENS, CLOSE_TAG)
 
 BOOLEAN_VALUES = ['true', 'false']
 IF = 'if'
@@ -81,7 +82,7 @@ class Lexer():
         self.line = 1
         self.column = 1
         self.char = self.get_char()
-        self.char_buffer = self.char
+        self.char_buffer = ''
         self.text_mode = True
     
     def get_char(self):
@@ -156,29 +157,36 @@ class Lexer():
             self.error('Invalid symbol')
         return Token(symbol, SYMBOL)
 
+    def get_text(self):
+        while (not self.char_buffer.endswith(OPEN_TAG)) and self.char != EOF:
+            self.char_buffer += self.char
+            self.next_char()
+        text = self.char_buffer.replace(OPEN_TAG, '')
+        self.text_mode = False
+        self.char_buffer = ''
+        self.next_char()
+        return Token(text, TEXT)
+
     def get_token(self):
         self.skip_whitespaces()
         tok = None
 
-        if 0:#self.text_mode:
-            while self.char_buffer[-2:] != OPEN_TAG:
-                self.next_char()
-                self.char_buffer += self.char
-            self.text_mode = False
-            self.char_buffer = ''
-            self.next_char()
-            return Token(self.char_buffer, TEXT)
+        if self.text_mode:
+            return self.get_text()
 
-        if self.char.isdigit():
+        if self.char == EOF:
+            tok = Token(EOF, EOF)
+        elif self.char.isdigit():
             tok = self.get_number()
         elif self.char.isalpha():
             tok = self.get_name()
         elif self.issymbol(self.char):
             tok = self.get_symbol()
+            if tok.value == CLOSE_TAG:
+                self.text_mode = True
+                tok = self.get_token()
         elif self.char in STRING_DELIMITERS:
             tok = self.get_string(self.char)
-        elif self.char == EOF:
-            return Token(EOF, EOF)
         else:
             self.error('Unrecognized character')
         return tok
