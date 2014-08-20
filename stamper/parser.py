@@ -54,7 +54,7 @@ class Parser():
     def factor(self):
         modifier = None
         if self.tok.is_addop():
-            if self.tok.value == '-':
+            if self.tok.value == lexer.MINUS:
                 modifier = tree.UnaryMinus()
             self.next_token()
 
@@ -67,7 +67,7 @@ class Parser():
         elif self.tok.type == lexer.IDENTIFIER:
             name = self.tok.value
             self.next_token()
-            if self.tok.type == lexer.OPEN_PARENS:
+            if self.tok.value == lexer.OPEN_PARENS:
                 node = self.function_call(name)
             elif name in lexer.BOOLEAN_VALUES:
                 node = tree.Boolean(name)
@@ -88,15 +88,15 @@ class Parser():
     def multiplicative_expr(self):
         node = self.factor()
         while self.tok.is_mulop():
-            if self.tok.value == '*':
+            if self.tok.value == lexer.MUL:
                 self.next_token()
                 rnode = self.factor()
                 node = tree.OpNode(node, rnode, operator.mul)
-            elif self.tok.value == '/':
+            elif self.tok.value == lexer.DIV:
                 self.next_token()
                 rnode = self.factor()
                 node = tree.OpNode(node, rnode, operator.floordiv)
-            elif self.tok.value == '%':
+            elif self.tok.value == lexer.MOD:
                 self.next_token()
                 rnode = self.factor()
                 node = tree.OpNode(node, rnode, operator.mod)
@@ -105,11 +105,11 @@ class Parser():
     def additive_expr(self):
         node = self.multiplicative_expr()
         while self.tok.is_addop():
-            if self.tok.value == '+':
+            if self.tok.value == lexer.PLUS:
                 self.next_token()
                 rnode = self.multiplicative_expr()
                 node = tree.OpNode(node, rnode, operator.add)
-            elif self.tok.value == '-':
+            elif self.tok.value == lexer.MINUS:
                 self.next_token()
                 rnode = self.multiplicative_expr()
                 node = tree.OpNode(node, rnode, operator.sub)
@@ -119,19 +119,19 @@ class Parser():
         node = self.additive_expr()
         while self.tok.is_relop():
             value = self.tok.value
-            if value == '>':
+            if value == lexer.GT:
                 self.next_token()
                 rnode = self.additive_expr()
                 node = tree.OpNode(node, rnode, operator.gt)
-            elif value == '>=':
+            elif value == lexer.GE:
                 self.next_token()
                 rnode = self.additive_expr()
                 node = tree.OpNode(node, rnode, operator.ge)
-            elif value == '<':
+            elif value == lexer.LT:
                 self.next_token()
                 rnode = self.additive_expr()
                 node = tree.OpNode(node, rnode, operator.lt)
-            elif value == '<=':
+            elif value == lexer.LE:
                 self.next_token()
                 rnode = self.additive_expr()
                 node = tree.OpNode(node, rnode, operator.le)
@@ -185,11 +185,11 @@ class Parser():
         return block
 
     def assignment(self, name):
-        self.consume('=')
+        self.consume(lexer.ASSIGN)
         node = tree.Assignment(name)
         exp = self.expression()
         node.rvalue = exp
-        self.consume(';')
+        self.consume(lexer.SEMICOLON)
         return node
 
     def if_stmt(self):
@@ -197,7 +197,7 @@ class Parser():
         exp_node = self.expression()
         node = tree.Condition(exp_node)
         node.true_block = self.block()
-        if self.tok.type == lexer.ELSE:
+        if self.tok.value == lexer.ELSE:
             self.next_token()
             node.false_block = self.block()
         return node
@@ -212,18 +212,8 @@ class Parser():
     def print_stmt(self):
         self.next_token()
         exp_node = self.expression()
-        self.consume(';')
+        self.consume(lexer.SEMICOLON)
         node = tree.PrintCommand(exp_node)
-        return node
-
-    def read_stmt(self):
-        self.next_token()
-        if self.tok.type != lexer.IDENTIFIER:
-            self.error('Identifier expected')
-        name = self.tok.value
-        self.next_token()
-        self.consume(';')
-        node = tree.ReadCommand(name)
         return node
 
     def params_list(self):
@@ -231,8 +221,8 @@ class Parser():
         if self.tok.type == lexer.IDENTIFIER:
             params.append(self.tok.value)
         self.next_token()
-        while self.tok.value == ',':
-            self.consume(',')
+        while self.tok.value == lexer.COMMA:
+            self.consume(lexer.COMMA)
             if self.tok.type == lexer.IDENTIFIER:
                 params.append(self.tok.value)
             else:
@@ -258,8 +248,8 @@ class Parser():
             return nodes
         node = self.expression()
         nodes.append(node)
-        while self.tok.value == ',':
-            self.consume(',')
+        while self.tok.value == lexer.COMMA:
+            self.consume(lexer.COMMA)
             node = self.expression()
             nodes.append(node)
         return nodes
@@ -273,22 +263,25 @@ class Parser():
     def function_return(self):
         self.next_token()
         exp = self.expression()
-        self.consume(';')
+        self.consume(lexer.SEMICOLON)
         return tree.BlockReturn(exp)
 
     def statement(self):
         tok_type = self.tok.type
         node = None
-        if tok_type == lexer.NUMBER:
-            if self.tok.value == ';':
+        if tok_type == lexer.TEXT:
+            node = tree.Text(self.tok.value)
+            self.next_token()
+        elif tok_type == lexer.NUMBER:
+            if self.tok.value == lexer.SEMICOLON:
                 self.next_token()
         elif tok_type == lexer.IDENTIFIER:
             name = self.tok.value
             self.next_token()
-            if self.tok.type == lexer.OPEN_PARENS:
+            if self.tok.value == lexer.OPEN_PARENS:
                 node = self.function_call(name)
-                self.consume(';')
-            elif self.tok.value == '=':
+                self.consume(lexer.SEMICOLON)
+            elif self.tok.value == lexer.ASSIGN:
                 node = self.assignment(name)
             else:
                 node = tree.Variable(name)
@@ -300,8 +293,6 @@ class Parser():
                 node = self.while_stmt()
             elif tok_val == lexer.PRINT:
                 node = self.print_stmt()
-            elif tok_val == lexer.READ:
-                node = self.read_stmt()
             elif tok_val == lexer.FUNCTION:
                 node = self.function_definition()
             elif tok_val == lexer.RETURN:

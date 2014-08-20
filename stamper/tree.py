@@ -50,6 +50,11 @@ class OpNode():
         return value
 
 
+class Text(Node):
+    def render(self, context):
+        return self.value
+
+
 class Variable(Node):
     def render(self, context):
         if not self.value in context.keys():

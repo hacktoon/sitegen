@@ -9,15 +9,33 @@ IDENTIFIER = 'Identifier'
 KEYWORD = 'Keyword'
 TEXT = 'Text'
 SYMBOL = 'Symbol'
-SYMBOLS_PERMITTED = '+-*/=<>!%;,'
+SYMBOLS = '+-*/=<>!%;,{}().'
 OPEN_PARENS = '('
 CLOSE_PARENS = ')'
 OPEN_BRACKET = '{'
 CLOSE_BRACKET = '}'
 OPEN_TAG = '{{'
 CLOSE_TAG = '}}'
+ASSIGN = '='
 EQUAL = '=='
 DIFF = '!='
+LE = '<='
+GE = '>='
+LT = '<'
+GT = '>'
+PLUS = '+'
+MINUS = '-'
+MUL = '*'
+DIV = '/'
+MOD = '%'
+COMMA = ','
+DOT = '.'
+SEMICOLON = ';'
+VALID_SYMBOLS = (EQUAL, DIFF, LE, GE, LT,
+    GT, PLUS, MINUS, MUL, DIV, MOD, COMMA,
+    SEMICOLON, ASSIGN, OPEN_BRACKET,
+    CLOSE_BRACKET, OPEN_PARENS, CLOSE_PARENS)
+
 BOOLEAN_VALUES = ['true', 'false']
 IF = 'if'
 ELSE = 'else'
@@ -28,10 +46,9 @@ BOOL_NOT = 'not'
 FUNCTION = 'function'
 RETURN = 'return'
 PRINT = 'print'
-READ = 'read'
 KEYWORDS = {'if', 'else', 'while', 'or', 
     'and', 'not', 'function', 'return',
-    'print', 'read'
+    'print'
 }
 
 
@@ -41,16 +58,19 @@ class Token():
         self.type = type
     
     def is_addop(self):
-        return self.value in ['+', '-']
+        return self.value in ('+', '-')
 
     def is_mulop(self):
-        return self.value in ['*', '/', '%']
+        return self.value in ('*', '/', '%')
 
     def is_equop(self):
-        return self.value in [EQUAL, DIFF]
+        return self.value in (EQUAL, DIFF)
 
     def is_relop(self):
-        return self.value in ['>', '>=', '<', '<=']
+        return self.value in (LT, LE, GE, GT)
+
+    def __str__(self):
+        return '{} [{}]'.format(self.type, self.value)
 
 
 class Lexer():
@@ -61,7 +81,7 @@ class Lexer():
         self.line = 1
         self.column = 1
         self.char = self.get_char()
-        self.char_buffer = ''
+        self.char_buffer = self.char
         self.text_mode = True
     
     def get_char(self):
@@ -76,7 +96,7 @@ class Lexer():
         return char
 
     def issymbol(self, c):
-        return c in SYMBOLS_PERMITTED
+        return c in SYMBOLS
 
     def next_char(self):
         self.char = self.get_char()
@@ -124,20 +144,30 @@ class Lexer():
         return Token(string_value, STRING)
 
     def get_symbol(self):
-        symbol = ''
-        while self.issymbol(self.char):
-            symbol += self.char
+        peek = self.code[self.index]
+        symbol = self.char + peek
+        if symbol in VALID_SYMBOLS:
             self.next_char()
-        tok = Token(symbol, SYMBOL)
-        return tok
-
-    def consume_text(self):
+            self.next_char()
+        elif self.char in VALID_SYMBOLS:
+            symbol = self.char
+            self.next_char()
+        else:
+            self.error('Invalid symbol')
+        return Token(symbol, SYMBOL)
 
     def get_token(self):
         self.skip_whitespaces()
         tok = None
-        if self.text_mode:
-            return self.consume_text()
+
+        if 0:#self.text_mode:
+            while self.char_buffer[-2:] != OPEN_TAG:
+                self.next_char()
+                self.char_buffer += self.char
+            self.text_mode = False
+            self.char_buffer = ''
+            self.next_char()
+            return Token(self.char_buffer, TEXT)
 
         if self.char.isdigit():
             tok = self.get_number()
@@ -145,30 +175,12 @@ class Lexer():
             tok = self.get_name()
         elif self.issymbol(self.char):
             tok = self.get_symbol()
-            if tok.value == CLOSE_TAG:
-                self.text_mode = True
-
         elif self.char in STRING_DELIMITERS:
             tok = self.get_string(self.char)
-        elif self.char == OPEN_PARENS:
-            tok = Token(self.char, OPEN_PARENS)
-            self.next_char()
-        elif self.char == CLOSE_PARENS:
-            tok = Token(self.char, CLOSE_PARENS)
-            self.next_char()
-        elif self.char == OPEN_BRACKET:
-            tok = Token(self.char, OPEN_BRACKET)
-            self.next_char()
-        elif self.char == CLOSE_BRACKET:
-            tok = Token(self.char, CLOSE_BRACKET)
-            self.next_char()
-        elif self.char == NEWLINE:
-            tok = Token(NEWLINE, NEWLINE)
-            self.next_char()
         elif self.char == EOF:
             return Token(EOF, EOF)
         else:
             self.error('Unrecognized character')
-        self.skip_whitespaces()
         return tok
+
 
