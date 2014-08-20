@@ -11,7 +11,7 @@ tpl = '''<html>
 	{% y= soma(1,56) ; 
 	print y;
 
-	include "menu.html";
+	parse "menu.html";
 	%}
 </html>'''
 

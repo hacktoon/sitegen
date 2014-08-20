@@ -48,9 +48,10 @@ FUNCTION = 'function'
 RETURN = 'return'
 PRINT = 'print'
 INCLUDE = 'include'
+PARSE = 'parse'
 KEYWORDS = (IF, ELSE, WHILE, BOOL_OR, 
     BOOL_AND, BOOL_NOT, FUNCTION, RETURN,
-    PRINT, INCLUDE
+    PRINT, INCLUDE, PARSE
 )
 
 
@@ -60,10 +61,10 @@ class Token():
         self.type = type
     
     def is_addop(self):
-        return self.value in ('+', '-')
+        return self.value in (PLUS, MINUS)
 
     def is_mulop(self):
-        return self.value in ('*', '/', '%')
+        return self.value in (MUL, DIV, MOD)
 
     def is_equop(self):
         return self.value in (EQUAL, DIFF)
