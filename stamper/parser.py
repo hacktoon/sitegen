@@ -301,16 +301,9 @@ class Parser():
             self.error('Unrecognized token {!r}'.format(self.tok.value))
         return node
 
-    def parse(self, tree_root=None):
-        if not tree_root:
-            tree_root = tree.BlockNode()
+    def parse(self):
+        tree_root = tree.BlockNode()
         while self.tok.type != lexer.EOF:
             node = self.statement()
             tree_root.add_child(node)
         return tree_root
-
-
-#p = Parser(open(sys.argv[1]).read())
-#tree = p.parse()
-
-#tree.render({})

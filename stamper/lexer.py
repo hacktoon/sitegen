@@ -164,15 +164,15 @@ class Lexer():
         text = self.char_buffer.replace(OPEN_TAG, '')
         self.text_mode = False
         self.char_buffer = ''
-        self.next_char()
         return Token(text, TEXT)
 
     def get_token(self):
-        self.skip_whitespaces()
         tok = None
 
         if self.text_mode:
             return self.get_text()
+        else:
+            self.skip_whitespaces()
 
         if self.char == EOF:
             tok = Token(EOF, EOF)
@@ -190,5 +190,3 @@ class Lexer():
         else:
             self.error('Unrecognized character')
         return tok
-
-

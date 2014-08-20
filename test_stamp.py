@@ -1,17 +1,18 @@
-import stamper.parser as parser
+import stamper.parser as stamp
 
 tpl = '''<html> 
 {% 
-	x = 5; 
+	x = 5;
 	function soma(a,b) {
 		return a+b;
 	}
 %}
-<h1>teste</h1>
-	{% print soma(1,2); %}
-</html>
-'''
+<h1>{%print nome;   %}</h1>
+	{% y= soma(1,56) ; 
+	print y;
+	%}
+</html>'''
 
-p = parser.Parser(tpl)
+p = stamp.Parser(tpl)
 t = p.parse()
-t.render({'a': 32})
+print(t.render({'nome': 'joao'}))

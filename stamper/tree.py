@@ -19,11 +19,16 @@ class BlockNode():
         else:
             self.children.append(child)
 
+    def build_output(self, output_list):
+        return ''.join(output_list)
+
     def render(self, context):
+        output = []
         for child in self.children:
+            output.append(str(child.render(context)))
             if isinstance(child, BlockReturn):
-                return child.render(context)
-            child.render(context)
+                return self.build_output(output)
+        return self.build_output(output)
 
     def __str__(self):
         value = '{}\n'.format(type(self))
@@ -51,7 +56,7 @@ class OpNode():
 
 
 class Text(Node):
-    def render(self, context):
+    def render(self, _):
         return self.value
 
 
@@ -122,9 +127,9 @@ class Condition():
 
     def render(self, context):
         if self.exp.render(context):
-           self.true_block.render(context) 
+           return self.true_block.render(context) 
         elif self.false_block:
-           self.false_block.render(context) 
+           return self.false_block.render(context) 
 
     def __str__(self):
         true_block = str(self.true_block)
@@ -133,14 +138,17 @@ class Condition():
             str(self.exp), true_block, false_block)
 
 
-class WhileLoop():
+class WhileLoop(BlockNode):
     def __init__(self, exp):
         self.exp = exp
         self.repeat_block = None
 
     def render(self, context):
+        output = []
         while self.exp.render(context):
-           self.repeat_block.render(context)
+           text = self.repeat_block.render(context)
+           output.append(text)
+        return self.build_output(output)
 
     def __str__(self):
         return '{} cond: {}\n\t\tblock: {}'.format(str(type(self)),
@@ -164,6 +172,7 @@ class Function():
     def render(self, context):
         context[self.name] = self
         self.context = context.copy()
+        return ''
 
     def __str__(self):
         return '{}'.format(str(type(self)))
@@ -200,7 +209,7 @@ class PrintCommand():
         self.exp = exp
 
     def render(self, context):
-        print(self.exp.render(context))
+        return str(self.exp.render(context))
 
     def __str__(self):
         return '{}'.format(str(type(self)))
@@ -214,6 +223,7 @@ class Assignment(Node):
     def render(self, context):
         value = self.rvalue.render(context)
         context[self.value] = value
+        return ''
 
     def __str__(self):
         return '{} - {} = {}\n'.format(type(self), str(self.value), str(self.rvalue))
