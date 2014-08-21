@@ -176,12 +176,15 @@ class Parser():
             node = OrExpression(node, rnode)
         return node
 
-    def block(self):
+    def block(self, branch=False):
         block = BlockNode()
-        self.consume(lexer.OPEN_BRACKET)
-        while self.tok.value != lexer.CLOSE_BRACKET:
+        self.consume(lexer.COLON)
+        while self.tok.value not in (lexer.END, lexer.ELSE, lexer.EOF):
             block.add_child(self.statement())
-        self.consume(lexer.CLOSE_BRACKET)
+        if self.tok.value == lexer.EOF:
+            raise Exception('{!r} is missing, block not matched'.format(lexer.END))
+        if not branch:
+            self.consume(lexer.END)
         return block
 
     def assignment(self, name):
@@ -196,10 +199,12 @@ class Parser():
         self.next_token()
         exp_node = self.expression()
         node = Condition(exp_node)
-        node.true_block = self.block()
+        node.true_block = self.block(branch=True)
         if self.tok.value == lexer.ELSE:
             self.next_token()
             node.false_block = self.block()
+        else:
+            self.consume(lexer.END)
         return node
 
     def while_stmt(self):
@@ -286,19 +291,17 @@ class Parser():
         if tok_type == lexer.TEXT:
             node = Text(self.tok.value)
             self.next_token()
-        elif tok_type == lexer.NUMBER:
-            if self.tok.value == lexer.SEMICOLON:
-                self.next_token()
         elif tok_type == lexer.IDENTIFIER:
             name = self.tok.value
             self.next_token()
-            if self.tok.value == lexer.OPEN_PARENS:
+            next_token = self.tok.value
+            if next_token == lexer.OPEN_PARENS:
                 node = self.function_call(name)
                 self.consume(lexer.SEMICOLON)
-            elif self.tok.value == lexer.ASSIGN:
+            elif next_token == lexer.ASSIGN:
                 node = self.assignment(name)
             else:
-                node = Variable(name)
+                self.error('Invalid syntax')
         elif tok_type == lexer.KEYWORD:
             tok_val = self.tok.value
             stmt_map = {
@@ -312,7 +315,7 @@ class Parser():
             }
             node = stmt_map[tok_val]()
         else:
-            self.error('Unrecognized token {!r}'.format(self.tok.value))
+            self.error('Unexpected token [{!r}]'.format(self.tok.value))
         return node
 
     def parse(self):
@@ -449,9 +452,11 @@ class Condition():
 
     def render(self, context):
         if self.exp.render(context):
-           return self.true_block.render(context) 
+            return self.true_block.render(context)
         elif self.false_block:
-           return self.false_block.render(context) 
+            return self.false_block.render(context) 
+        else:
+            return ''
 
     def __str__(self):
         true_block = str(self.true_block)
@@ -468,8 +473,8 @@ class WhileLoop(BlockNode):
     def render(self, context):
         output = []
         while self.exp.render(context):
-           text = self.repeat_block.render(context)
-           output.append(text)
+            text = self.repeat_block.render(context)
+            output.append(text)
         return self.build_output(output)
 
     def __str__(self):
@@ -485,8 +490,11 @@ class Function():
         self.context = {}
 
     def call(self, args):
-        if len(self.params) > len(args):
-            raise Exception('Expected more params')
+        received = len(args)
+        expected = len(self.params)
+        if expected > received:
+            raise Exception('Expected {} params, '
+                'received {}'.format(expected, received))
         scope_context = dict(zip(self.params, args))
         self.context.update(scope_context)
         return self.body.render(self.context)

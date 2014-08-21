@@ -1,18 +1,29 @@
 import stamper.parser as stamp
 
 tpl = '''<html> 
-{% 
-	x = 5;
-	function soma(a,b) {
-		return a+b;
-	}
+{%  
+	a = 3;
+	x =1;
+	if a > 20: print 'oooi'; end
 %}
-<h1>{% print nome;   %}</h1>
-	{% y= soma(1,56) ; 
-	print y;
+<h1>{% print nome;  %}</h1>
+	{% if x == 5: %}
+		<a>x eh 5</a>
+	{% else: %}
+		<a>x nao eh 5</a>
+	{% end 
 
-	parse "menu.html";
-	%}
+function soma(a,b):
+	if a > b:
+		return a+b;
+	else:
+		return 'respeite a ordem';
+	end
+end
+
+soma(4, 1);
+
+%}
 </html>'''
 
 p = stamp.Parser(tpl)

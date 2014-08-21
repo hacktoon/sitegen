@@ -9,11 +9,10 @@ IDENTIFIER = 'Identifier'
 KEYWORD = 'Keyword'
 TEXT = 'Text'
 SYMBOL = 'Symbol'
-SYMBOLS = '+-*/=<>!%;,{}().'
+SYMBOLS = '+-*/=<>!%:;,{}().'
 OPEN_PARENS = '('
 CLOSE_PARENS = ')'
-OPEN_BRACKET = '{'
-CLOSE_BRACKET = '}'
+COLON = ':'
 OPEN_TAG = '{%'
 CLOSE_TAG = '%}'
 ASSIGN = '='
@@ -33,8 +32,7 @@ DOT = '.'
 SEMICOLON = ';'
 VALID_SYMBOLS = (EQUAL, DIFF, LE, GE, LT,
     GT, PLUS, MINUS, MUL, DIV, MOD, COMMA,
-    SEMICOLON, ASSIGN, OPEN_BRACKET,
-    CLOSE_BRACKET, OPEN_PARENS, 
+    SEMICOLON, ASSIGN, COLON, OPEN_PARENS,
     CLOSE_PARENS, CLOSE_TAG)
 
 BOOLEAN_VALUES = ['true', 'false']
@@ -49,9 +47,10 @@ RETURN = 'return'
 PRINT = 'print'
 INCLUDE = 'include'
 PARSE = 'parse'
+END = 'end'
 KEYWORDS = (IF, ELSE, WHILE, BOOL_OR, 
     BOOL_AND, BOOL_NOT, FUNCTION, RETURN,
-    PRINT, INCLUDE, PARSE
+    PRINT, INCLUDE, PARSE, END
 )
 
 
@@ -146,9 +145,11 @@ class Lexer():
         self.next_char()
         return Token(string_value, STRING)
 
+    def peek(self):
+        return self.code[self.index]
+
     def get_symbol(self):
-        peek = self.code[self.index]
-        symbol = self.char + peek
+        symbol = self.char + self.peek()
         if symbol in VALID_SYMBOLS:
             self.next_char()
             self.next_char()
