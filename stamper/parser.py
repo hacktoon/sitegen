@@ -273,11 +273,11 @@ class Parser():
             nodes.append(node)
         return nodes
 
-    def function_call(self, name):
+    def function_call(self, name, procedure=False):
         self.consume(lexer.OPEN_PARENS)
         params = self.expression_list()
         self.consume(lexer.CLOSE_PARENS)
-        return FunctionCall(name, params)
+        return FunctionCall(name, params, procedure=procedure)
 
     def function_return(self):
         self.next_token()
@@ -296,7 +296,7 @@ class Parser():
             self.next_token()
             next_token = self.tok.value
             if next_token == lexer.OPEN_PARENS:
-                node = self.function_call(name)
+                node = self.function_call(name, procedure=True)
                 self.consume(lexer.SEMICOLON)
             elif next_token == lexer.ASSIGN:
                 node = self.assignment(name)
@@ -509,14 +509,17 @@ class Function():
 
 
 class FunctionCall(Node):
-    def __init__(self, name, args):
+    def __init__(self, name, args, procedure=False):
         self.name = name
         self.args = args
+        self.procedure = procedure
 
     def render(self, context):
         if not self.name in context.keys():
             raise Exception('Function not defined')
         args = [arg.render(context) for arg in self.args]
+        if self.procedure:
+            return ''
         return context[self.name].call(args)
 
     def __str__(self):

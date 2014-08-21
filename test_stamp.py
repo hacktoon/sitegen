@@ -5,6 +5,9 @@ tpl = '''<html>
 	a = 3;
 	x =1;
 	if a > 20: print 'oooi'; end
+	if a < 20: print 'oooi 2'; end
+
+	parse "menu.html";
 %}
 <h1>{% print nome;  %}</h1>
 	{% if x == 5: %}
@@ -21,7 +24,15 @@ function soma(a,b):
 	end
 end
 
-soma(4, 1);
+i = 10;
+while(i>0):
+	print i;
+	print '\n';
+	i = i - 1;
+end
+
+print 'teste';
+print soma(4, 1);
 
 %}
 </html>'''
