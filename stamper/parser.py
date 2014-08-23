@@ -3,28 +3,6 @@ import os
 import operator
 from . import lexer
 
-'''
-<statement>  =  <conditional> | <while> | <assignment>
-<assignment>  =  <identifier> '=' <expression>
-<conditional>   = 'if' <expression> <block> ['else' <block>]
-<while>   = 'while' <expression> <block>
------
-<expression> = <logical-and> | <logical-and> 'or' <logical-and> 
-<logical-and> = <not-unary> | <not-unary> 'and' <not-unary>
-<not-unary> = 'not' <not-unary> | <equality-expr>
-<equality-expr> = <relational-expr> | <relational-expr> <eq-op> <relational-expr>
-<relational-expr> = <additive-expr> | <additive-expr> <rel-op> <additive-expr>
-<additive-expr> = <multiplicative-expr> | <multiplicative-expr> <add-op> <multiplicative-expr>
-<multiplicative-expr> = <factor> | <factor> <mult-op> <factor>
-<factor> :=  [<unary-op>] <literal> | ( <expression> )
-
-<unary-op> = '+' | '-'
-<mult-op> = '*' | '/' | '%'
-<add-op> = '+' | '-'
-<rel op> = '<' | '<=' | '>=' | '>'
-<eq-op> = '==' | '!='
-
-'''
 
 class Parser():
     def __init__(self, code):
@@ -380,6 +358,20 @@ class OpNode():
         return value
 
 
+class FileLoaderNode:
+    def load_file(self, filename):
+        if not isinstance(filename, str):
+            raise Exception('String expected')
+        try:
+            fp = open(filename, 'r')
+        except:
+            raise Exception('File not found')
+        file_path = os.path.realpath(filename)
+        file_content = fp.read()
+        fp.close()
+        return file_content
+
+
 class Text(Node):
     def render(self, _):
         return self.value
@@ -548,21 +540,7 @@ class PrintCommand():
         return '{}'.format(str(type(self)))
 
 
-class LoaderNode:
-    def load_file(self, filename):
-        if not isinstance(filename, str):
-            raise Exception('String expected')
-        try:
-            fp = open(filename, 'r')
-        except:
-            raise Exception('File not found')
-        file_path = os.path.realpath(filename)
-        file_content = fp.read()
-        fp.close()
-        return file_content
-
-
-class IncludeCommand(LoaderNode):
+class IncludeCommand(FileLoaderNode):
     def __init__(self, exp):
         self.exp = exp
 
@@ -574,14 +552,17 @@ class IncludeCommand(LoaderNode):
         return '{}'.format(str(type(self)))
 
 
-class ParseCommand(LoaderNode):
+class ParseCommand(FileLoaderNode):
     def __init__(self, exp):
         self.exp = exp
 
     def render(self, context):
         filename = self.exp.render(context)
         file_content = self.load_file(filename)
-        subtree = Parser(file_content).parse()
+        try:
+            subtree = Parser(file_content).parse()
+        except RuntimeError:
+            sys.exit('{} is including itself.'.format(filename))
         return subtree.render(context)
 
     def __str__(self):
