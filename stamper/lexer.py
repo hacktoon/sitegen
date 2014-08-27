@@ -9,7 +9,6 @@ IDENTIFIER = 'Identifier'
 KEYWORD = 'Keyword'
 TEXT = 'Text'
 SYMBOL = 'Symbol'
-SYMBOLS = '+-*/=<>!%:;,{}().'
 OPEN_PARENS = '('
 CLOSE_PARENS = ')'
 COLON = ':'
@@ -34,6 +33,7 @@ VALID_SYMBOLS = (EQUAL, DIFF, LE, GE, LT,
     GT, PLUS, MINUS, MUL, DIV, MOD, COMMA,
     SEMICOLON, ASSIGN, COLON, OPEN_PARENS,
     CLOSE_PARENS, CLOSE_TAG, DOT)
+SYMBOLS = set(''.join(VALID_SYMBOLS))
 
 BOOLEAN_VALUES = ['true', 'false']
 IF = 'if'
@@ -50,8 +50,7 @@ PARSE = 'parse'
 END = 'end'
 KEYWORDS = (IF, ELSE, WHILE, BOOL_OR, 
     BOOL_AND, BOOL_NOT, FUNCTION, RETURN,
-    PRINT, INCLUDE, PARSE, END
-)
+    PRINT, INCLUDE, PARSE, END)
 
 
 class Token():
@@ -157,11 +156,11 @@ class Lexer():
             symbol = self.char
             self.next_char()
         else:
-            self.error('Invalid symbol')
+            self.error('Invalid symbol {!r}'.format(symbol))
         return Token(symbol, SYMBOL)
 
     def get_text(self):
-        while (not self.char_buffer.endswith(OPEN_TAG)) and self.char != EOF:
+        while not self.char_buffer.endswith(OPEN_TAG) and self.char != EOF:
             self.char_buffer += self.char
             self.next_char()
         text = self.char_buffer.replace(OPEN_TAG, '')

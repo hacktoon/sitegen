@@ -4,6 +4,13 @@ import operator
 from . import lexer
 
 
+def context_lookup(context, name):
+    ref = context.get(name[0])
+    for part in name[1:]:
+        ref = ref.get(part)
+    return ref
+
+
 class Parser():
     def __init__(self, code):
         self.lex = lexer.Lexer(code)
@@ -29,6 +36,20 @@ class Parser():
             return ident
         self.error('Identifier expected')
 
+    def parse_name(self):
+        name = [self.tok.value]
+        self.next_token()
+        while self.tok.value == lexer.DOT:
+            self.next_token()
+            name.append(self.identifier())
+        if self.tok.value == lexer.OPEN_PARENS:
+            node = self.function_call(name)
+        elif name in lexer.BOOLEAN_VALUES:
+            node = Boolean(name)
+        else: 
+            node = Variable(name)
+        return node
+
     def factor(self):
         modifier = None
         if self.tok.is_addop():
@@ -43,14 +64,7 @@ class Parser():
             node = String(self.tok.value)
             self.next_token()
         elif self.tok.type == lexer.IDENTIFIER:
-            name = self.tok.value
-            self.next_token()
-            if self.tok.value == lexer.OPEN_PARENS:
-                node = self.function_call(name)
-            elif name in lexer.BOOLEAN_VALUES:
-                node = Boolean(name)
-            else: 
-                node = Variable(name)
+            node = self.parse_name()
         elif self.tok.value == lexer.OPEN_PARENS:
             self.consume(lexer.OPEN_PARENS)
             node = self.expression()
@@ -379,9 +393,10 @@ class Text(Node):
 
 class Variable(Node):
     def render(self, context):
-        if not self.value in context.keys():
+        value = context_lookup(context, self.value)
+        if not value:
             raise Exception('Variable {!r} not defined'.format(self.value))
-        return context.get(self.value)
+        return value
 
 
 class Number(Node):
@@ -507,12 +522,13 @@ class FunctionCall(Node):
         self.procedure = procedure
 
     def render(self, context):
-        if not self.name in context.keys():
+        func = context_lookup(context, self.name)
+        if not func:
             raise Exception('Function not defined')
         args = [arg.render(context) for arg in self.args]
         if self.procedure:
             return ''
-        return context[self.name].call(args)
+        return func.call(args)
 
     def __str__(self):
         return '{}'.format(str(type(self)))
