@@ -1,4 +1,5 @@
 import sys
+import operator
 
 EOF = '\0'
 NEWLINE = '\n'
@@ -51,6 +52,20 @@ END = 'end'
 KEYWORDS = (IF, ELSE, WHILE, BOOL_OR, 
     BOOL_AND, BOOL_NOT, FUNCTION, RETURN,
     PRINT, INCLUDE, PARSE, END)
+
+OPMAP = {
+    MUL: operator.mul,
+    DIV: operator.floordiv,
+    MOD: operator.mod,
+    PLUS: operator.add,
+    MINUS: operator.sub,
+    GT: operator.gt,
+    GE: operator.ge,
+    LT: operator.lt,
+    LE: operator.le,
+    EQUAL: operator.eq,
+    DIFF: operator.ne
+}
 
 
 class Token():

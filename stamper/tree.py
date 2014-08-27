@@ -1,5 +1,13 @@
-import operator
-import sys
+import os
+
+def context_lookup(context, name):
+    ref = context.get(name[0])
+    for part in name[1:]:
+        if not ref:
+            return
+        ref = ref.get(part)
+    return ref
+
 
 class Node():
     def __init__(self, value=''):
@@ -55,6 +63,20 @@ class OpNode():
         return value
 
 
+class FileLoaderNode:
+    def load_file(self, filename):
+        if not isinstance(filename, str):
+            raise Exception('String expected')
+        try:
+            fp = open(filename, 'r')
+        except:
+            raise Exception('File not found')
+        file_path = os.path.realpath(filename)
+        file_content = fp.read()
+        fp.close()
+        return file_content
+
+
 class Text(Node):
     def render(self, _):
         return self.value
@@ -62,9 +84,11 @@ class Text(Node):
 
 class Variable(Node):
     def render(self, context):
-        if not self.value in context.keys():
-            raise Exception('Variable {!r} not defined'.format(self.value))
-        return context.get(self.value)
+        value = context_lookup(context, self.value)
+        if not value:
+            raise Exception('Variable {!r} not defined'
+                .format('.'.join(self.value)))
+        return value
 
 
 class Number(Node):
@@ -127,9 +151,11 @@ class Condition():
 
     def render(self, context):
         if self.exp.render(context):
-           return self.true_block.render(context) 
+            return self.true_block.render(context)
         elif self.false_block:
-           return self.false_block.render(context) 
+            return self.false_block.render(context) 
+        else:
+            return ''
 
     def __str__(self):
         true_block = str(self.true_block)
@@ -146,8 +172,8 @@ class WhileLoop(BlockNode):
     def render(self, context):
         output = []
         while self.exp.render(context):
-           text = self.repeat_block.render(context)
-           output.append(text)
+            text = self.repeat_block.render(context)
+            output.append(text)
         return self.build_output(output)
 
     def __str__(self):
@@ -163,8 +189,11 @@ class Function():
         self.context = {}
 
     def call(self, args):
-        if len(self.params) > len(args):
-            raise Exception('Expected more params')
+        received = len(args)
+        expected = len(self.params)
+        if expected > received:
+            raise Exception('Expected {} params, '
+                'received {}'.format(expected, received))
         scope_context = dict(zip(self.params, args))
         self.context.update(scope_context)
         return self.body.render(self.context)
@@ -179,15 +208,20 @@ class Function():
 
 
 class FunctionCall(Node):
-    def __init__(self, name, args):
+    def __init__(self, name, args, procedure=False):
         self.name = name
         self.args = args
+        self.procedure = procedure
 
     def render(self, context):
-        if not self.name in context.keys():
-            raise Exception('Function not defined')
+        func = context_lookup(context, self.name)
+        if not func:
+            raise Exception('Function {!r} not defined'
+                .format('.'.join(self.name)))
         args = [arg.render(context) for arg in self.args]
-        return context[self.name].call(args)
+        if self.procedure:
+            return ''
+        return func.call(args)
 
     def __str__(self):
         return '{}'.format(str(type(self)))
@@ -215,19 +249,31 @@ class PrintCommand():
         return '{}'.format(str(type(self)))
 
 
-class IncludeCommand():
+class IncludeCommand(FileLoaderNode):
     def __init__(self, exp):
         self.exp = exp
 
     def render(self, context):
         filename = self.exp.render(context)
-        if not isinstance(filename, str):
-            raise Exception('String expected')
+        return self.load_file(filename)
+
+    def __str__(self):
+        return '{}'.format(str(type(self)))
+
+
+class ParseCommand(FileLoaderNode):
+    def __init__(self, exp, parser):
+        self.exp = exp
+        self.parser = parser
+
+    def render(self, context):
+        filename = self.exp.render(context)
+        file_content = self.load_file(filename)
         try:
-            fp = open(filename, 'r')
-        except:
-            raise Exception('File not found')
-        return fp.read()
+            subtree = self.parser(file_content).parse()
+        except RuntimeError:
+            sys.exit('{} is including itself.'.format(filename))
+        return subtree.render(context)
 
     def __str__(self):
         return '{}'.format(str(type(self)))
