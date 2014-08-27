@@ -50,7 +50,7 @@ INCLUDE = 'include'
 PARSE = 'parse'
 END = 'end'
 LIST = 'list'
-REVLIST = 'reverselist'
+REVLIST = 'rlist'
 AS = 'as'
 KEYWORDS = (IF, ELSE, WHILE, BOOL_OR, AS,
     BOOL_AND, BOOL_NOT, FUNCTION, RETURN,
