@@ -170,6 +170,15 @@ class Parser():
         node = tree.WhileLoop(exp_node)
         node.repeat_block = self.block()
         return node
+
+    def for_stmt(self):
+        self.next_token()
+        iter_name = self.identifier()
+        self.consume(lexer.IN)
+        collection = self.parse_name()
+        node = tree.ForLoop(iter_name, collection)
+        node.repeat_block = self.block()
+        return node
     
     def print_stmt(self):
         self.next_token()
@@ -264,6 +273,7 @@ class Parser():
             stmt_map = {
                 lexer.IF: self.if_stmt,
                 lexer.WHILE: self.while_stmt,
+                lexer.FOR: self.for_stmt,
                 lexer.PRINT: self.print_stmt,
                 lexer.INCLUDE: self.include_stmt,
                 lexer.PARSE: self.parse_stmt,

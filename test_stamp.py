@@ -3,20 +3,10 @@ import stamper.parser as stamp
 tpl = '''<html> 
 
 {% 
-	x = 1;
-	if x > 1:
-		print 'oi';
-	else:
-		print 'nao';
+	for page in pages:
+		print page.title + '\n';
+		print page.content;
 	end
-
-	parse "menu.html";
-
-	function soma(a,b):
-		print a+b;
-	end
-
-	print soma(1,2);
  %}
 
 </html>'''

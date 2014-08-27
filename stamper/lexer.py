@@ -49,9 +49,11 @@ PRINT = 'print'
 INCLUDE = 'include'
 PARSE = 'parse'
 END = 'end'
+FOR = 'for'
+IN = 'in'
 KEYWORDS = (IF, ELSE, WHILE, BOOL_OR, 
     BOOL_AND, BOOL_NOT, FUNCTION, RETURN,
-    PRINT, INCLUDE, PARSE, END)
+    PRINT, INCLUDE, PARSE, END, FOR, IN)
 
 OPMAP = {
     MUL: operator.mul,

@@ -181,6 +181,27 @@ class WhileLoop(BlockNode):
             str(self.exp), str(self.repeat_block))
 
 
+class ForLoop(BlockNode):
+    def __init__(self, iter_name, collection):
+        self.iter_name = iter_name
+        self.collection = collection
+        self.repeat_block = None
+
+    def render(self, context):
+        output = []
+        collection = self.collection.render(context)
+        for item in collection:
+            for_context = context.copy()
+            for_context[self.iter_name] = item
+            text = self.repeat_block.render(for_context)
+            output.append(text)
+        return self.build_output(output)
+
+    def __str__(self):
+        return '{} \n\t\tblock: {}'.format(str(type(self)),
+            str(self.repeat_block))
+
+
 class Function():
     def __init__(self, name, params, body):
         self.name = name
