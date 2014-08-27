@@ -5,7 +5,8 @@ tpl = '''<html>
 {% 
 	for page in pages:
 		print page.title + '\n';
-		print page.content;
+		print page.content + '\n';
+		print '-' * 10  + '\n';
 	end
  %}
 
@@ -14,7 +15,7 @@ tpl = '''<html>
 p = stamp.Parser(tpl)
 t = p.parse()
 context = {'nome': 'joao', 'pages': [
-	{'title': 'post original', 'content': 'lalalala conteudo velho'},
-	{'title': 'post velho', 'content': 'super novidades'}
+	{'title': 'primeiro post', 'content': 'lalalala conteudo velho'},
+	{'title': 'segundo post', 'content': 'super novidades'}
 ]}
 print(t.render(context))

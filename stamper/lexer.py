@@ -74,18 +74,21 @@ class Token():
     def __init__(self, val, type):
         self.value = val
         self.type = type
+
+    def check_symbol(self, *values):
+        return self.type == SYMBOL and self.value in values
     
     def is_addop(self):
-        return self.value in (PLUS, MINUS)
+        return self.check_symbol(PLUS, MINUS)
 
     def is_mulop(self):
-        return self.value in (MUL, DIV, MOD)
+        return self.check_symbol(MUL, DIV, MOD)
 
     def is_equop(self):
-        return self.value in (EQUAL, DIFF)
+        return self.check_symbol(EQUAL, DIFF)
 
     def is_relop(self):
-        return self.value in (LT, LE, GE, GT)
+        return self.check_symbol(LT, LE, GE, GT)
 
     def __str__(self):
         return '{} [{}]'.format(self.type, self.value)

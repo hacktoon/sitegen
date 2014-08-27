@@ -49,7 +49,7 @@ class Parser():
         modifier = None
         if self.tok.is_addop():
             if self.tok.value == lexer.MINUS:
-                modifier = UnaryMinus()
+                modifier = tree.UnaryMinus()
             self.next_token()
 
         if self.tok.type == lexer.NUMBER:
