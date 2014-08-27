@@ -125,7 +125,7 @@ class Lexer():
     def get_name(self):
         name = self.char
         self.next_char()
-        while self.char.isalnum():
+        while self.char.isalnum() or self.char == '_':
             name += self.char
             self.next_char()
         if name in KEYWORDS:
@@ -190,5 +190,5 @@ class Lexer():
         elif self.char in STRING_DELIMITERS:
             tok = self.get_string(self.char)
         else:
-            self.error('Unrecognized character')
+            self.error('Unrecognized character {!r}'.format(self.char))
         return tok
