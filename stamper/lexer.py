@@ -49,11 +49,12 @@ PRINT = 'print'
 INCLUDE = 'include'
 PARSE = 'parse'
 END = 'end'
-FOR = 'for'
-IN = 'in'
-KEYWORDS = (IF, ELSE, WHILE, BOOL_OR, 
+LIST = 'list'
+REVLIST = 'reverselist'
+AS = 'as'
+KEYWORDS = (IF, ELSE, WHILE, BOOL_OR, AS,
     BOOL_AND, BOOL_NOT, FUNCTION, RETURN,
-    PRINT, INCLUDE, PARSE, END, FOR, IN)
+    PRINT, INCLUDE, PARSE, END, LIST, REVLIST)
 
 OPMAP = {
     MUL: operator.mul,

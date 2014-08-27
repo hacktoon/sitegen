@@ -3,9 +3,10 @@ import os
 def context_lookup(context, name):
     ref = context.get(name[0])
     for part in name[1:]:
-        if not ref:
+        try:
+            ref = ref.get(part)
+        except AttributeError as error:
             return
-        ref = ref.get(part)
     return ref
 
 
@@ -181,15 +182,19 @@ class WhileLoop(BlockNode):
             str(self.exp), str(self.repeat_block))
 
 
-class ForLoop(BlockNode):
-    def __init__(self, iter_name, collection):
+class List(BlockNode):
+    def __init__(self, iter_name, collection, reverse=False):
         self.iter_name = iter_name
         self.collection = collection
+        self.reverse = reverse
         self.repeat_block = None
 
     def render(self, context):
         output = []
-        collection = self.collection.render(context)
+        collection = context.get(self.collection)
+        if self.reverse:
+            collection = list(collection)
+            collection.reverse()
         for item in collection:
             for_context = context.copy()
             for_context[self.iter_name] = item

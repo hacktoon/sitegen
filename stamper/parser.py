@@ -171,14 +171,20 @@ class Parser():
         node.repeat_block = self.block()
         return node
 
-    def for_stmt(self):
+    def _list_stmt(self, reverse=False):
         self.next_token()
+        collection = self.identifier()
+        self.consume(lexer.AS)
         iter_name = self.identifier()
-        self.consume(lexer.IN)
-        collection = self.parse_name()
-        node = tree.ForLoop(iter_name, collection)
+        node = tree.List(iter_name, collection, reverse)
         node.repeat_block = self.block()
         return node
+
+    def revlist_stmt(self):
+        return self._list_stmt(reverse=True)
+
+    def list_stmt(self):
+        return self._list_stmt(reverse=False)
     
     def print_stmt(self):
         self.next_token()
@@ -273,7 +279,8 @@ class Parser():
             stmt_map = {
                 lexer.IF: self.if_stmt,
                 lexer.WHILE: self.while_stmt,
-                lexer.FOR: self.for_stmt,
+                lexer.LIST: self.list_stmt,
+                lexer.REVLIST: self.revlist_stmt,
                 lexer.PRINT: self.print_stmt,
                 lexer.INCLUDE: self.include_stmt,
                 lexer.PARSE: self.parse_stmt,

@@ -2,13 +2,10 @@ import stamper.parser as stamp
 
 tpl = '''<html> 
 
-{% 
-	for page in pages:
-		print page.title + '\n';
-		print page.content + '\n';
-		print '-' * 10  + '\n';
-	end
- %}
+{% list pages as page: %}
+	<p> {% print page.title; %} </p>
+	<p> {% print page.content; %} </p>		
+{% end %}
 
 </html>'''
 
