@@ -1,29 +1,33 @@
 import os
 
-def context_lookup(context, name):
-    ref = context.get(name[0])
-    for part in name[1:]:
-        try:
-            ref = ref.get(part)
-        except AttributeError as error:
-            return
-    return ref
+def load_file(self, filename):
+    if not isinstance(filename, str):
+        raise Exception('String expected')
+    try:
+        fp = open(filename, 'r')
+    except:
+        raise Exception('File not found')
+    file_path = os.path.realpath(filename)
+    file_content = fp.read()
+    fp.close()
+    return file_content
 
-
-class Node():
+class Node:
     def __init__(self, value=''):
         self.value = value
-
-    def __str__(self):
-        return '{} - [{}]\n'.format(type(self), str(self.value))
-
-
-class BlockNode():
-    def __init__(self):
         self.children = []
-    
+
+    def lookup_context(self, context, name):
+        ref = context.get(name[0])
+        for part in name[1:]:
+            try:
+                ref = ref.get(part)
+            except AttributeError as error:
+                return
+        return ref
+
     def add_child(self, child):
-        if type(child) == 'list':
+        if isinstance(child, list):
             self.children.extend(child)
         else:
             self.children.append(child)
@@ -35,47 +39,12 @@ class BlockNode():
         output = []
         for child in self.children:
             output.append(str(child.render(context)))
-            if isinstance(child, BlockReturn):
+            if isinstance(child, ReturnCommand):
                 return self.build_output(output)
         return self.build_output(output)
 
     def __str__(self):
-        value = '{}\n'.format(type(self))
-        for child in self.children:
-            value += '\t{}'.format(str(child))
-        return value
-
-
-class OpNode():
-    def __init__(self, left, right, op=None):
-        self.left = left
-        self.right = right
-        self.op = op
-
-    def render(self, context):
-        left = self.left.render(context)
-        right = self.right.render(context)
-        return self.op(left, right)
-    
-    def __str__(self):
-        value = '{}\n'.format(type(self))
-        value += '\t{}\n'.format(str(self.left))
-        value += '\t{}\n'.format(str(self.right))
-        return value
-
-
-class FileLoaderNode:
-    def load_file(self, filename):
-        if not isinstance(filename, str):
-            raise Exception('String expected')
-        try:
-            fp = open(filename, 'r')
-        except:
-            raise Exception('File not found')
-        file_path = os.path.realpath(filename)
-        file_content = fp.read()
-        fp.close()
-        return file_content
+        return '{} - [{}]\n'.format(type(self), str(self.value))
 
 
 class Text(Node):
@@ -85,7 +54,7 @@ class Text(Node):
 
 class Variable(Node):
     def render(self, context):
-        value = context_lookup(context, self.value)
+        value = self.lookup_context(context, self.value)
         if not value:
             raise Exception('Variable {!r} not defined'
                 .format('.'.join(self.value)))
@@ -108,43 +77,22 @@ class Boolean(Node):
         return vmap[self.value]
 
 
-class UnaryMinus():
-    def __init__(self):
-        self.child = None
-
-    def add_child(self, child):
-        self.child = child
-
+class UnaryMinus(Node):
     def render(self, context):
-        return operator.neg(self.child.render(context))
+        output = super().render(context)
+        return operator.neg(output)
 
 
-class NotExpression():
-    def __init__(self):
-        self.child = None
-
-    def add_child(self, child):
-        self.child = child
-
+class Operation(Node):
     def render(self, context):
-        return operator.not_(self.child.render(context))
+        output = self.children[0].render(context)
+        # need to calculate with first child because of the NOT
+        for child in self.children[1:]:
+            output = self.value(output, child.render(context))
+        return output
 
 
-class AndExpression(OpNode):
-    def render(self, context):
-        left = self.left.render(context)
-        right = self.right.render(context)
-        return left and right
-
-
-class OrExpression(OpNode):
-    def render(self, context):
-        left = self.left.render(context)
-        right = self.right.render(context)
-        return left or right
-
-
-class Condition():
+class Condition(Node):
     def __init__(self, exp):
         self.exp = exp
         self.true_block = None
@@ -165,29 +113,25 @@ class Condition():
             str(self.exp), true_block, false_block)
 
 
-class WhileLoop(BlockNode):
-    def __init__(self, exp):
-        self.exp = exp
-        self.repeat_block = None
-
+class WhileLoop(Node):
     def render(self, context):
         output = []
-        while self.exp.render(context):
-            text = self.repeat_block.render(context)
+        while self.value.render(context):
+            text = super().render(context)
             output.append(text)
         return self.build_output(output)
 
     def __str__(self):
         return '{} cond: {}\n\t\tblock: {}'.format(str(type(self)),
-            str(self.exp), str(self.repeat_block))
+            str(self.value), str(self.children))
 
 
-class List(BlockNode):
+class List(Node):
     def __init__(self, iter_name, collection, reverse=False):
+        super().__init__('List')
         self.iter_name = iter_name
         self.collection = collection
         self.reverse = reverse
-        self.repeat_block = None
 
     def render(self, context):
         output = []
@@ -195,23 +139,19 @@ class List(BlockNode):
         if self.reverse:
             collection = list(collection)
             collection.reverse()
-        for item in collection:
+        # TODO - iterable variables
+        for i, item in enumerate(collection):
             for_context = context.copy()
             for_context[self.iter_name] = item
-            text = self.repeat_block.render(for_context)
+            text = super().render(for_context)
             output.append(text)
         return self.build_output(output)
 
-    def __str__(self):
-        return '{} \n\t\tblock: {}'.format(str(type(self)),
-            str(self.repeat_block))
 
-
-class Function():
-    def __init__(self, name, params, body):
+class Function(Node):
+    def __init__(self, name, params):
         self.name = name
         self.params = params
-        self.body = body
         self.context = {}
 
     def call(self, args):
@@ -222,7 +162,7 @@ class Function():
                 'received {}'.format(expected, received))
         scope_context = dict(zip(self.params, args))
         self.context.update(scope_context)
-        return self.body.render(self.context)
+        return super().render(self.context)
 
     def render(self, context):
         context[self.name] = self
@@ -240,7 +180,7 @@ class FunctionCall(Node):
         self.procedure = procedure
 
     def render(self, context):
-        func = context_lookup(context, self.name)
+        func = self.lookup_context(context, self.name)
         if not func:
             raise Exception('Function {!r} not defined'
                 .format('.'.join(self.name)))
@@ -249,65 +189,41 @@ class FunctionCall(Node):
             return ''
         return func.call(args)
 
-    def __str__(self):
-        return '{}'.format(str(type(self)))
 
-
-class BlockReturn(Node):
-    def __init__(self, exp):
-        self.exp = exp
-
+class ReturnCommand(Node):
     def render(self, context):
-        return self.exp.render(context)
-
-    def __str__(self):
-        return '{}'.format(str(type(self)))
+        return self.value.render(context)
 
 
-class PrintCommand():
-    def __init__(self, exp):
-        self.exp = exp
-
+class PrintCommand(Node):
     def render(self, context):
-        return str(self.exp.render(context))
-
-    def __str__(self):
-        return '{}'.format(str(type(self)))
+        return str(self.value.render(context))
 
 
-class IncludeCommand(FileLoaderNode):
-    def __init__(self, exp):
-        self.exp = exp
-
+class IncludeCommand(Node):
     def render(self, context):
-        filename = self.exp.render(context)
-        return self.load_file(filename)
-
-    def __str__(self):
-        return '{}'.format(str(type(self)))
+        filename = self.value.render(context)
+        return load_file(filename)
 
 
-class ParseCommand(FileLoaderNode):
-    def __init__(self, exp, parser):
-        self.exp = exp
+class ParseCommand(Node):
+    def __init__(self, value, parser):
+        self.value = value
         self.parser = parser
 
     def render(self, context):
-        filename = self.exp.render(context)
-        file_content = self.load_file(filename)
+        filename = self.value.render(context)
+        file_content = load_file(filename)
         try:
             subtree = self.parser(file_content).parse()
         except RuntimeError:
             sys.exit('{} is including itself.'.format(filename))
         return subtree.render(context)
 
-    def __str__(self):
-        return '{}'.format(str(type(self)))
-
 
 class Assignment(Node):
     def __init__(self, value):
-        super().__init__(value)
+        self.value = value
         self.rvalue = None
 
     def render(self, context):

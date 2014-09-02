@@ -3,9 +3,11 @@ import stamper.parser as stamp
 tpl = '''<html> 
 
 {% rlist pages as page: 
-	if page.age > 2:  %}
-	<p> {% print page.title; %} </p>
-	<p> {% print page.content; %} </p>
+	if page.age >= 16:  %}
+		<p> {% print page.title; %} </p>
+		<p> {% print page.content; %} </p>
+	{% else: %}
+		<p> {% print 'cant list'; %} </p>
 	{% end %}
 {% end %}
 

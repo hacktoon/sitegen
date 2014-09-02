@@ -67,7 +67,10 @@ OPMAP = {
     LT: operator.lt,
     LE: operator.le,
     EQUAL: operator.eq,
-    DIFF: operator.ne
+    DIFF: operator.ne,
+    BOOL_AND: lambda x,y: x and y,
+    BOOL_OR: lambda x,y: x or y,
+    BOOL_NOT: lambda x: not x
 }
 
 

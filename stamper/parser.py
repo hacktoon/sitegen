@@ -46,10 +46,10 @@ class Parser():
         return node
 
     def factor(self):
-        modifier = None
+        unary = None
         if self.tok.is_addop():
             if self.tok.value == lexer.MINUS:
-                modifier = tree.UnaryMinus()
+                unary = tree.UnaryMinus()
             self.next_token()
 
         if self.tok.type == lexer.NUMBER:
@@ -67,9 +67,9 @@ class Parser():
         else:
             self.error('Unexpected token {!r}'.format(self.tok.value))
         # prepend unary node if existent
-        if modifier:
-            modifier.child = node
-            return modifier
+        if unary:
+            unary.add_child(node)
+            return unary
         return node
 
     def multiplicative_expr(self):
@@ -77,8 +77,9 @@ class Parser():
         while self.tok.is_mulop():
             value = self.tok.value    
             self.next_token()
-            rnode = self.factor()
-            node = tree.OpNode(node, rnode, OPMAP[value])
+            operands = [node, self.factor()]
+            node = tree.Operation(OPMAP[value])
+            node.add_child(operands)
         return node
 
     def additive_expr(self):
@@ -86,8 +87,9 @@ class Parser():
         while self.tok.is_addop():    
             value = self.tok.value
             self.next_token()
-            rnode = self.multiplicative_expr()
-            node = tree.OpNode(node, rnode, OPMAP[value])
+            operands = [node, self.multiplicative_expr()]
+            node = tree.Operation(OPMAP[value])
+            node.add_child(operands)
         return node
 
     def relational_expr(self):
@@ -95,8 +97,9 @@ class Parser():
         while self.tok.is_relop():
             value = self.tok.value
             self.next_token()
-            rnode = self.additive_expr()
-            node = tree.OpNode(node, rnode, OPMAP[value])
+            operands = [node, self.additive_expr()]
+            node = tree.Operation(OPMAP[value])
+            node.add_child(operands)
         return node
 
     def equality_expr(self):
@@ -104,15 +107,17 @@ class Parser():
         while self.tok.is_equop():
             value = self.tok.value
             self.next_token()
-            rnode = self.relational_expr()
-            node = tree.OpNode(node, rnode, OPMAP[value])
+            operands = [node, self.relational_expr()]
+            node = tree.Operation(OPMAP[value])
+            node.add_child(operands)
         return node
 
     def not_expr(self):
         if self.tok.value == lexer.BOOL_NOT:
+            value = self.tok.value
             self.next_token()
-            node = tree.NotExpression()
-            node.child = self.not_expr()
+            node = tree.Operation(OPMAP[value])
+            node.add_child(self.not_expr())
         else:
             node = self.equality_expr()
         return node
@@ -120,21 +125,25 @@ class Parser():
     def and_expr(self):
         node = self.not_expr()
         while self.tok.value == lexer.BOOL_AND:
+            value = self.tok.value
             self.next_token()
-            rnode = self.not_expr()
-            node = tree.AndExpression(node, rnode)
+            operands = [node, self.not_expr()]
+            node = tree.Operation(OPMAP[value])
+            node.add_child(operands)
         return node
 
     def expression(self):
         node = self.and_expr()
         while self.tok.value == lexer.BOOL_OR:
+            value = self.tok.value
             self.next_token()
-            rnode = self.and_expr()
-            node = tree.OrExpression(node, rnode)
+            operands = [node, self.and_expr()]
+            node = tree.Operation(OPMAP[value])
+            node.add_child(operands)
         return node
 
     def block(self, branch=False):
-        block = tree.BlockNode()
+        block = tree.Node()
         self.consume(lexer.COLON)
         while self.tok.value not in (lexer.END, lexer.ELSE, lexer.EOF):
             block.add_child(self.statement())
@@ -168,7 +177,7 @@ class Parser():
         self.next_token()
         exp_node = self.expression()
         node = tree.WhileLoop(exp_node)
-        node.repeat_block = self.block()
+        node.add_child(self.block())
         return node
 
     def _list_stmt(self, reverse=False):
@@ -177,7 +186,7 @@ class Parser():
         self.consume(lexer.AS)
         iter_name = self.identifier()
         node = tree.List(iter_name, collection, reverse)
-        node.repeat_block = self.block()
+        node.add_child(self.block())
         return node
 
     def revlist_stmt(self):
@@ -229,8 +238,8 @@ class Parser():
         if self.tok.value != lexer.CLOSE_PARENS:
             params = self.params_list()
         self.consume(lexer.CLOSE_PARENS)
-        body = self.block()
-        node = tree.Function(name, params, body)
+        node = tree.Function(name, params)
+        node.add_child(self.block())
         return node
 
     def expression_list(self):
@@ -293,7 +302,7 @@ class Parser():
         return node
 
     def parse(self):
-        tree_root = tree.BlockNode()
+        tree_root = tree.Node()
         while self.tok.type != lexer.EOF:
             node = self.statement()
             tree_root.add_child(node)
