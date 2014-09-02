@@ -151,7 +151,7 @@ class Parser():
             raise Exception('{!r} is missing, block not matched'.format(lexer.END))
         if not branch:
             self.consume(lexer.END)
-        return block
+        return block.children
 
     def assignment(self, name):
         self.consume(lexer.ASSIGN)

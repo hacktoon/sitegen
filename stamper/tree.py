@@ -93,24 +93,17 @@ class Operation(Node):
 
 
 class Condition(Node):
-    def __init__(self, exp):
-        self.exp = exp
+    def __init__(self, value):
+        super().__init__(value)
         self.true_block = None
         self.false_block = None
 
     def render(self, context):
-        if self.exp.render(context):
-            return self.true_block.render(context)
-        elif self.false_block:
-            return self.false_block.render(context) 
-        else:
-            return ''
-
-    def __str__(self):
-        true_block = str(self.true_block)
-        false_block = str(self.false_block)
-        return '{} cond: {}\n\t\ttrue: {}\n\t\tfalse: {}'.format(str(type(self)),
-            str(self.exp), true_block, false_block)
+        if self.value.render(context):
+            self.children = self.true_block
+        elif self.false_block: # just check if there's an ELSE clause
+            self.children = self.false_block
+        return super().render(context)
 
 
 class WhileLoop(Node):
@@ -120,10 +113,6 @@ class WhileLoop(Node):
             text = super().render(context)
             output.append(text)
         return self.build_output(output)
-
-    def __str__(self):
-        return '{} cond: {}\n\t\tblock: {}'.format(str(type(self)),
-            str(self.value), str(self.children))
 
 
 class List(Node):
@@ -168,9 +157,6 @@ class Function(Node):
         context[self.name] = self
         self.context = context.copy()
         return ''
-
-    def __str__(self):
-        return '{}'.format(str(type(self)))
 
 
 class FunctionCall(Node):
