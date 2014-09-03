@@ -10,6 +10,17 @@ class Parser():
     def __init__(self, code):
         self.lex = lexer.Lexer(code)
         self.tok = self.lex.get_token()
+        self.stmt_map = {
+            lexer.IF: self.if_stmt,
+            lexer.WHILE: self.while_stmt,
+            lexer.LIST: self.list_stmt,
+            lexer.REVLIST: self.revlist_stmt,
+            lexer.PRINT: self.print_stmt,
+            lexer.INCLUDE: self.include_stmt,
+            lexer.PARSE: self.parse_stmt,
+            lexer.FUNCTION: self.function_definition,
+            lexer.RETURN: self.function_return
+        }
 
     def error(self, msg):
         self.lex.error(msg)
@@ -142,16 +153,16 @@ class Parser():
             node.add_child(operands)
         return node
 
-    def block(self, branch=False):
-        block = tree.Node()
+    def stmt_block(self, branch=False):
+        block = []
         self.consume(lexer.COLON)
         while self.tok.value not in (lexer.END, lexer.ELSE, lexer.EOF):
-            block.add_child(self.statement())
+            block.append(self.statement())
         if self.tok.value == lexer.EOF:
             raise Exception('{!r} is missing, block not matched'.format(lexer.END))
         if not branch:
             self.consume(lexer.END)
-        return block.children
+        return block
 
     def assignment(self, name):
         self.consume(lexer.ASSIGN)
@@ -165,10 +176,10 @@ class Parser():
         self.next_token()
         exp_node = self.expression()
         node = tree.Condition(exp_node)
-        node.true_block = self.block(branch=True)
+        node.true_block = self.stmt_block(branch=True)
         if self.tok.value == lexer.ELSE:
             self.next_token()
-            node.false_block = self.block()
+            node.false_block = self.stmt_block()
         else:
             self.consume(lexer.END)
         return node
@@ -177,7 +188,7 @@ class Parser():
         self.next_token()
         exp_node = self.expression()
         node = tree.WhileLoop(exp_node)
-        node.add_child(self.block())
+        node.add_child(self.stmt_block())
         return node
 
     def _list_stmt(self, reverse=False):
@@ -186,7 +197,7 @@ class Parser():
         self.consume(lexer.AS)
         iter_name = self.identifier()
         node = tree.List(iter_name, collection, reverse)
-        node.add_child(self.block())
+        node.add_child(self.stmt_block())
         return node
 
     def revlist_stmt(self):
@@ -239,7 +250,7 @@ class Parser():
             params = self.params_list()
         self.consume(lexer.CLOSE_PARENS)
         node = tree.Function(name, params)
-        node.add_child(self.block())
+        node.add_child(self.stmt_block())
         return node
 
     def expression_list(self):
@@ -285,18 +296,7 @@ class Parser():
                 self.error('Invalid syntax')
         elif tok_type == lexer.KEYWORD:
             tok_val = self.tok.value
-            stmt_map = {
-                lexer.IF: self.if_stmt,
-                lexer.WHILE: self.while_stmt,
-                lexer.LIST: self.list_stmt,
-                lexer.REVLIST: self.revlist_stmt,
-                lexer.PRINT: self.print_stmt,
-                lexer.INCLUDE: self.include_stmt,
-                lexer.PARSE: self.parse_stmt,
-                lexer.FUNCTION: self.function_definition,
-                lexer.RETURN: self.function_return
-            }
-            node = stmt_map[tok_val]()
+            node = self.stmt_map[tok_val]()
         else:
             self.error('Unexpected token [{!r}]'.format(self.tok.value))
         return node
