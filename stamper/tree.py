@@ -55,7 +55,7 @@ class Text(Node):
 class Variable(Node):
     def render(self, context):
         value = self.lookup_context(context, self.value)
-        if not value:
+        if value is None:
             raise Exception('Variable {!r} not defined'
                 .format('.'.join(self.value)))
         return value
@@ -116,23 +116,30 @@ class WhileLoop(Node):
 
 
 class List(Node):
-    def __init__(self, iter_name, collection, reverse=False):
+    def __init__(self, iter_name, collection_name, reverse=False):
         super().__init__('List')
         self.iter_name = iter_name
-        self.collection = collection
+        self.collection_name = collection_name
         self.reverse = reverse
+
+    def update_iteration_counters(self, context, collection, index):
+        context[self.iter_name].update({
+            'first': True if index == 0 else False,
+            'last': True if index == len(collection) - 1 else False,
+            'index': index
+        })
 
     def render(self, context):
         output = []
-        collection = context.get(self.collection)
+        collection = context.get(self.collection_name)
         if self.reverse:
             collection = list(collection)
             collection.reverse()
-        # TODO - iterable variables
-        for i, item in enumerate(collection):
-            for_context = context.copy()
-            for_context[self.iter_name] = item
-            text = super().render(for_context)
+        for index, item in enumerate(collection):
+            list_context = context.copy()
+            list_context[self.iter_name] = item
+            self.update_iteration_counters(list_context, collection, index)
+            text = super().render(list_context)
             output.append(text)
         return self.build_output(output)
 

@@ -159,7 +159,8 @@ class Parser():
         while self.tok.value not in (lexer.END, lexer.ELSE, lexer.EOF):
             block.append(self.statement())
         if self.tok.value == lexer.EOF:
-            raise Exception('{!r} is missing, block not matched'.format(lexer.END))
+            raise Exception('{!r} is missing, '
+                'block not matched'.format(lexer.END))
         if not branch:
             self.consume(lexer.END)
         return block
@@ -201,10 +202,10 @@ class Parser():
         return node
 
     def revlist_stmt(self):
-        return self._list_stmt(reverse=True)
+        return self._list_stmt()
 
     def list_stmt(self):
-        return self._list_stmt(reverse=False)
+        return self._list_stmt(reverse=True)
     
     def print_stmt(self):
         self.next_token()
@@ -254,6 +255,7 @@ class Parser():
         return node
 
     def expression_list(self):
+        # parse a list of expressions
         nodes = []
         if (self.tok.value == lexer.CLOSE_PARENS):
             return nodes
