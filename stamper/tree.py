@@ -87,8 +87,11 @@ class Operation(Node):
     def render(self, context):
         output = self.children[0].render(context)
         # need to calculate with first child because of the NOT
-        for child in self.children[1:]:
-            output = self.value(output, child.render(context))
+        if len(self.children) > 1:
+            for child in self.children[1:]:
+                output = self.value(output, child.render(context))
+        else:
+            output = self.value(output)
         return output
 
 

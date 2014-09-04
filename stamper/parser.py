@@ -47,15 +47,17 @@ class Parser():
         self.error('Identifier expected')
 
     def parse_name(self):
-        name = [self.tok.value]
+        tok_val = self.tok.value
+        name = [tok_val]
+        if tok_val in lexer.BOOLEAN_VALUES:
+            self.next_token()
+            return tree.Boolean(tok_val)
         self.next_token()
         while self.tok.value == lexer.DOT:
             self.next_token()
             name.append(self.identifier())
         if self.tok.value == lexer.OPEN_PARENS:
             node = self.function_call(name)
-        elif name in lexer.BOOLEAN_VALUES:
-            node = tree.Boolean(name)
         else: 
             node = tree.Variable(name)
         return node
@@ -66,7 +68,6 @@ class Parser():
             if self.tok.value == lexer.MINUS:
                 unary = tree.UnaryMinus()
             self.next_token()
-
         if self.tok.type == lexer.NUMBER:
             node = tree.Number(self.tok.value)
             self.next_token()
@@ -90,7 +91,7 @@ class Parser():
     def multiplicative_expr(self):
         node = self.factor()
         while self.tok.is_mulop():
-            value = self.tok.value    
+            value = self.tok.value
             self.next_token()
             operands = [node, self.factor()]
             node = tree.Operation(OPMAP[value])
@@ -99,7 +100,7 @@ class Parser():
 
     def additive_expr(self):
         node = self.multiplicative_expr()
-        while self.tok.is_addop():    
+        while self.tok.is_addop():
             value = self.tok.value
             self.next_token()
             operands = [node, self.multiplicative_expr()]
