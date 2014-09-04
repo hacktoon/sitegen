@@ -52,9 +52,12 @@ END = 'end'
 LIST = 'list'
 REVLIST = 'rlist'
 AS = 'as'
+USE = 'use'
+REGION = 'region'
 KEYWORDS = (IF, ELSE, WHILE, BOOL_OR, AS,
     BOOL_AND, BOOL_NOT, FUNCTION, RETURN,
-    PRINT, INCLUDE, PARSE, END, LIST, REVLIST)
+    PRINT, INCLUDE, PARSE, END, LIST, 
+    REVLIST, USE, REGION)
 
 OPMAP = {
     MUL: operator.mul,

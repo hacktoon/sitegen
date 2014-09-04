@@ -10,6 +10,8 @@ class Parser():
     def __init__(self, code):
         self.lex = lexer.Lexer(code)
         self.tok = self.lex.get_token()
+        self.base_template = None
+        self.regions = {}
         self.stmt_map = {
             lexer.IF: self.if_stmt,
             lexer.WHILE: self.while_stmt,
@@ -19,7 +21,9 @@ class Parser():
             lexer.INCLUDE: self.include_stmt,
             lexer.PARSE: self.parse_stmt,
             lexer.FUNCTION: self.function_definition,
-            lexer.RETURN: self.function_return
+            lexer.RETURN: self.function_return,
+            lexer.USE: self.use_stmt,
+            lexer.REGION: self.region_stmt
         }
 
     def error(self, msg):
@@ -228,6 +232,37 @@ class Parser():
         node = tree.ParseCommand(exp_node, Parser)
         return node
 
+    def use_stmt(self):
+        self.next_token()
+        if self.tok.type != lexer.STRING:
+            self.error('String expected')
+        self.base_template = self.tok.value
+        self.next_token()
+        self.consume(lexer.SEMICOLON)
+        return None
+
+    def replace_region(self, node):
+        if node.value in self.regions:
+            return self.regions[node.value]
+        return node
+
+    def region_stmt(self):
+        self.next_token()
+        if self.tok.type != lexer.STRING:
+            self.error('String expected')
+        region_name = self.tok.value
+        node = tree.Node(region_name)
+        self.next_token()
+        node.add_child(self.stmt_block())
+        if self.base_template:
+            # currently parsing a child template
+            self.regions[region_name] = node
+        else:
+            # parsing a base template, replace regions by 
+            # those defined in child template
+            node = self.replace_region(node)
+        return node
+
     def params_list(self):
         params = []
         if self.tok.type == lexer.IDENTIFIER:
@@ -303,9 +338,16 @@ class Parser():
             self.error('Unexpected token [{!r}]'.format(self.tok.value))
         return node
 
-    def parse(self):
+    def parse(self, regions=None):
+        self.regions = regions or {}
         tree_root = tree.Node()
         while self.tok.type != lexer.EOF:
             node = self.statement()
             tree_root.add_child(node)
+        # parse the base template and return it instead
+        if self.base_template:
+            fp = open(self.base_template, 'r')
+            p = Parser(fp.read())
+            fp.close()
+            tree_root = p.parse(regions=self.regions)
         return tree_root
