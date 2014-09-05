@@ -175,7 +175,6 @@ class Parser():
         node = tree.Assignment(name)
         exp = self.expression()
         node.rvalue = exp
-        self.consume(lexer.SEMICOLON)
         return node
 
     def if_stmt(self):
@@ -215,21 +214,18 @@ class Parser():
     def print_stmt(self):
         self.next_token()
         exp_node = self.expression()
-        self.consume(lexer.SEMICOLON)
         node = tree.PrintCommand(exp_node)
         return node
 
     def include_stmt(self):
         self.next_token()
         exp_node = self.expression()
-        self.consume(lexer.SEMICOLON)
         node = tree.IncludeCommand(exp_node)
         return node
 
     def parse_stmt(self):
         self.next_token()
         exp_node = self.expression()
-        self.consume(lexer.SEMICOLON)
         node = tree.ParseCommand(exp_node, Parser)
         return node
 
@@ -239,7 +235,6 @@ class Parser():
             self.error('String expected')
         self.base_template = self.tok.value
         self.next_token()
-        self.consume(lexer.SEMICOLON)
         return None
 
     def replace_region(self, node):
@@ -312,7 +307,6 @@ class Parser():
     def function_return(self):
         self.next_token()
         exp = self.expression()
-        self.consume(lexer.SEMICOLON)
         return tree.BlockReturn(exp)
 
     def statement(self):
@@ -327,7 +321,6 @@ class Parser():
             next_token = self.tok.value
             if next_token == lexer.OPEN_PARENS:
                 node = self.function_call(name, procedure=True)
-                self.consume(lexer.SEMICOLON)
             elif next_token == lexer.ASSIGN:
                 node = self.assignment(name)
             else:
