@@ -1,7 +1,7 @@
 import sys
+import re
 import operator
 
-EOF = '\0'
 NEWLINE = '\n'
 STRING_DELIMITERS = ['"', "'"]
 NUMBER = 'Number'
@@ -10,11 +10,17 @@ IDENTIFIER = 'Identifier'
 KEYWORD = 'Keyword'
 TEXT = 'Text'
 SYMBOL = 'Symbol'
+
+OPEN_CMD = '{%'
+CLOSE_CMD = '%}'
+OPEN_VAR = '{{'
+CLOSE_VAR = '}}'
+OPEN_COMMENT = '{#'
+CLOSE_COMMENT = '#}'
+
 OPEN_PARENS = '('
 CLOSE_PARENS = ')'
 COLON = ':'
-OPEN_TAG = '{%'
-CLOSE_TAG = '%}'
 ASSIGN = '='
 EQUAL = '=='
 DIFF = '!='
@@ -32,7 +38,7 @@ DOT = '.'
 VALID_SYMBOLS = (EQUAL, DIFF, LE, GE, LT,
     GT, PLUS, MINUS, MUL, DIV, MOD, COMMA,
     ASSIGN, COLON, OPEN_PARENS,
-    CLOSE_PARENS, CLOSE_TAG, DOT)
+    CLOSE_PARENS, DOT)
 SYMBOLS = set(''.join(VALID_SYMBOLS))
 
 BOOLEAN_VALUES = ['true', 'false']
@@ -74,11 +80,14 @@ OPMAP = {
     BOOL_NOT: lambda x: not x
 }
 
+TAG_REGEX = re.compile(r'(?P<var>{{.*?}})|(?P<cmd>{%.*?%})|(?P<comment>{#.*?#})')
 
 class Token():
-    def __init__(self, val, type):
+    def __init__(self, val, type, line, column):
         self.value = val
         self.type = type
+        self.line = line
+        self.column = column
 
     def check_symbol(self, *values):
         return self.type == SYMBOL and self.value in values
@@ -100,27 +109,21 @@ class Token():
 
 
 class Lexer():
-    def __init__(self, code):
+    def __init__(self, template):
         self.index = 0
-        self.code = code
-        self.len = len(code)
+        self.template = template
         self.line = 1
         self.column = 1
-        self.char = self.get_char()
-        self.char_buffer = ''
-        self.text_mode = True
-    
-    def get_char(self):
-        if self.index >= self.len:
-            return EOF
-        char = self.code[self.index]
-        self.column += 1
-        self.index += 1
-        if char == NEWLINE:
-            self.line += 1
-            self.column = 1
-        return char
 
+    def update_count(substr):
+        for char in substr:
+            self.index += 1
+            if char == '\n':
+                self.line += 1
+                self.column = 1
+                continue
+            self.column += 1
+    
     def issymbol(self, c):
         return c in SYMBOLS
 
@@ -169,11 +172,8 @@ class Lexer():
         self.next_char()
         return Token(string_value, STRING)
 
-    def peek(self):
-        return self.code[self.index]
-
     def get_symbol(self):
-        symbol = self.char + self.peek()
+        symbol = self.char + self.template[self.index]
         if symbol in VALID_SYMBOLS:
             self.next_char()
             self.next_char()
@@ -184,20 +184,10 @@ class Lexer():
             self.error('Invalid symbol {!r}'.format(symbol))
         return Token(symbol, SYMBOL)
 
-    def get_text(self):
-        while not self.char_buffer.endswith(OPEN_TAG) and self.char != EOF:
-            self.char_buffer += self.char
-            self.next_char()
-        text = self.char_buffer.replace(OPEN_TAG, '')
-        self.text_mode = False
-        self.char_buffer = ''
-        return Token(text, TEXT)
+    def strip_tags(self, tag):
+        re.sub()
 
-    def get_token(self):
-        tok = None
-
-        if self.text_mode:
-            return self.get_text()
+    def tokenize(self, tag):
         self.skip_whitespaces()
 
         if self.char == EOF:
@@ -208,11 +198,33 @@ class Lexer():
             tok = self.get_name()
         elif self.issymbol(self.char):
             tok = self.get_symbol()
-            if tok.value == CLOSE_TAG:
-                self.text_mode = True
-                tok = self.get_token()
         elif self.char in STRING_DELIMITERS:
             tok = self.get_string(self.char)
         else:
             self.error('Unrecognized character {!r}'.format(self.char))
         return tok
+
+    def make_token(self, value, type):
+        self.update_count(value)
+        return Token(value, type, self.line, self.column)
+
+    def get_token(self):
+        match_column = 0
+        template = self.template
+        for match in TAG_REGEX.finditer(template):
+            start, end = match.start(), match.end()
+            matches = match.groupdict()
+            tag_type = [key for key,val in matches.items() if val][0]
+            text = template[match_column:start]
+            if text:
+                yield self.make_token(text, TEXT)
+            for token in self.tokenize(matches[tag_type], tag_type)
+                yield token
+            match_column = end
+
+        # produces a token with the rest of the text
+        text = template[match_column:]
+        if text:
+            yield self.make_token(text, TEXT)
+
+        
