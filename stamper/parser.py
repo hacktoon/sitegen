@@ -7,9 +7,8 @@ from . import tree
 
 
 class Parser():
-    def __init__(self, code):
-        self.lex = lexer.Lexer(code)
-        self.tok = self.lex.get_token()
+    def __init__(self, template):
+        self.lex = lexer.Lexer(template)
         self.base_template = None
         self.regions = {}
         self.stmt_map = {
@@ -335,7 +334,12 @@ class Parser():
     def parse(self, regions=None):
         self.regions = regions or {}
         tree_root = tree.Node()
-        while self.tok.type != lexer.EOF:
+
+        for tok in self.lex.tokeniter():
+            print(tok)
+        
+        return tree_root
+        '''while self.tok.type != lexer.EOF:
             node = self.statement()
             tree_root.add_child(node)
         # parse the base template and return it instead
@@ -344,4 +348,4 @@ class Parser():
             p = Parser(fp.read())
             fp.close()
             tree_root = p.parse(regions=self.regions)
-        return tree_root
+        return tree_root'''
