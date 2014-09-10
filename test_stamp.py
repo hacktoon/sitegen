@@ -1,11 +1,10 @@
 import stamper.parser as stamp
 
-tpl = '''<html> 
+tpl = '''<html>
 {% use "base.html" %}
-
 {% region"body":
  	list pages as page:
-		if page.age >= 16:  %}
+		if (page.age >= 16):  %}
 			<p> {{ page.title }} </p>
 			<p> {{ page.content }} </p>
 		{% else: %}

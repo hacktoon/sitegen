@@ -8,8 +8,9 @@ NUMBER = 'number'
 STRING = 'string'
 IDENTIFIER = 'identifier'
 KEYWORD = 'keyword'
-TEXT_TYPE = 'text'
+TEXT = 'text'
 SYMBOL = 'symbol'
+WHITESPACE = 'whitespace'
 
 OPEN_CMD = '{%'
 CLOSE_CMD = '%}'
@@ -58,10 +59,20 @@ REGION = 'region'
 
 BOOLEAN_VALUES = ['true', 'false']
 
+ID_OPEN_VAR = 'open_var'
+ID_CLOSE_VAR = 'close_var'
+ID_COMMAND_OPEN = 'open_cmd'
+ID_COMMAND_CLOSE = 'close_cmd'
+ID_COMMENT_OPEN = 'open_comment'
+ID_COMMENT_CLOSE = 'close_comment'
+
 TAG_MAP = {
-    'variable': (OPEN_VAR, CLOSE_VAR),
-    'command': (OPEN_CMD, CLOSE_CMD),
-    'comment': (OPEN_COMMENT, CLOSE_COMMENT)
+    ID_OPEN_VAR: OPEN_VAR,
+    ID_CLOSE_VAR: CLOSE_VAR,
+    ID_COMMAND_OPEN: OPEN_CMD,
+    ID_COMMAND_CLOSE: CLOSE_CMD,
+    ID_COMMENT_OPEN: OPEN_COMMENT,
+    ID_COMMENT_CLOSE: CLOSE_COMMENT
 }
 
 OPMAP = {
@@ -82,38 +93,47 @@ OPMAP = {
 }
 
 def build_token_regex():
-    COMPOUND_SYMBOLS = (EQUAL, DIFF, LE, GE)
-    SINGLE_SYMBOLS = (LT, GT, PLUS, MINUS, 
-        MUL, DIV, MOD, COMMA, ASSIGN, COLON,
+    # double char symbols must come first
+    SYMBOLS = (EQUAL, DIFF, LE, GE, LT, GT, PLUS,
+        MINUS, MUL, DIV, MOD, COMMA, ASSIGN, COLON,
         OPEN_PARENS, CLOSE_PARENS, DOT)
-    SYMBOLS = '|'.join([re.escape(x) for x in COMPOUND_SYMBOLS+SINGLE_SYMBOLS])
+    SYMBOLS = '|'.join([re.escape(x) for x in SYMBOLS])
 
-    KEYWORDS = '|'.join([IF, ELSE, WHILE, AS,
-        FUNCTION, RETURN, PRINT, INCLUDE,
-        PARSE, END, LIST, REVLIST, USE, REGION])
+    KEYWORDS = r'\b|\b'.join([IF, ELSE, WHILE, AS,
+        FUNCTION, RETURN, PRINT, INCLUDE, BOOL_NOT,
+        BOOL_AND, BOOL_OR, PARSE, END, LIST, REVLIST,
+        USE, REGION])
+
+    TAGS = []
+    for key, tag in TAG_MAP.items():
+        TAGS.append('(?P<{}>{})'.format(re.escape(key), re.escape(tag)))
 
     # organize by matching priority
-    return re.compile('|'.join([
-        r'(?P<keyword>'+KEYWORDS+')',
-        r'(?P<identifier>[a-zA-Z_][a-zA-Z0-9_]*(\.[_a-zA-Z_][_a-zA-Z0-9_]*)?)',
-        r'(?P<string>\".*?\"|\'.*?\')',
-        r'(?P<number>[-+]?[0-9]+)',
-        r'(?P<symbol>'+SYMBOLS+')',
-        r'(?P<whitespace>\s+)',
+    # using \b in keywords avoids matching "use" in "used"
+    regex = '|'.join([
+        '|'.join(TAGS),
+        r'(?P<{}>\b{}\b)'.format(KEYWORD, KEYWORDS),
+        r'(?P<{}>\b[a-zA-Z_]\w*(\.[a-zA-Z_]\w*)?\b)'.format(IDENTIFIER),
+        r'(?P<{}>\".*?\"|\'.*?\')'.format(STRING),
+        r'(?P<{}>[-+]?[0-9]+)'.format(NUMBER),
+        r'(?P<{}>{})'.format(SYMBOL, SYMBOLS),
+        r'(?P<{}>\s+)'.format(WHITESPACE),
         r'(?P<unknow>.)'
-    ]), re.DOTALL)
+    ])
+    return re.compile(regex, re.DOTALL)
 
 def build_tag_regex():
-    exp = []
-    for name, delimiter in TAG_MAP.items():
-        topen = re.escape(delimiter[0])
-        tclose = re.escape(delimiter[1])
-        tag_re = '(?P<{}>{}.*?{})'.format(name, topen, tclose)
-        exp.append(tag_re)
-    return re.compile('|'.join(exp), re.DOTALL)
+    base = '({}.*?{})'
+    tag_re = '|'.join([
+        base.format(OPEN_VAR, CLOSE_VAR),
+        base.format(OPEN_CMD, CLOSE_CMD),
+        base.format(OPEN_COMMENT, CLOSE_COMMENT),
+    ])
+    return re.compile(tag_re, re.DOTALL)
 
 TAG_REGEX = build_tag_regex()
 TOKEN_REGEX = build_token_regex()
+
 
 class Token():
     def __init__(self, type, value, column):
@@ -144,40 +164,42 @@ class Token():
 class Lexer:
     def __init__(self, template):
         self.template = template
+        self.lines = template.split('\n')
         self.tokens = []
+        self.linemap = {}
+        #for line in self.lines:
+        #    print(line)
 
     def error(self, msg):
         line = 0
-        column = self.column
+        column = 0
         sys.exit('Error: {} at line {}, column {}'.format(msg, line, column))
-
-    def strip_tags(self, text, tag_type):
-        pattern = '|'.join([re.escape(x) for x in TAG_MAP[tag_type]])
-        return re.sub(pattern, '', text)
+    
+    def make_token(self, type, value, index_in_tpl):
+        return Token(type, value, index_in_tpl)
 
     def extract_tokens(self, text, tag_matched):
-        start = tag_matched.start()
-        tag_type = tag_matched.lastgroup
-        text = self.strip_tags(text, tag_type)
+        offset = tag_matched.start()
         for match in TOKEN_REGEX.finditer(text):
-            if match.lastgroup == 'whitespace':
+            if match.lastgroup == WHITESPACE:
                 continue
-            column = match.start()+start+len(TAG_MAP[tag_type][0])
             value = text[match.start(): match.end()]
-            self.tokens.append(Token(match.lastgroup, value, column))
+            # offset value = start position of the entire tag
+            index = match.start() + offset - 1
+            self.tokens.append(Token(match.lastgroup, value, index))
 
     def tokeniter(self):
-        column = 0
+        index = 0
         text = self.template
         for match in TAG_REGEX.finditer(text):
             start = match.start()
             end = match.end()
-            if text[column:start]:
-                self.tokens.append(Token(TEXT_TYPE, text[column:start], column))
+            if text[index:start]:
+                self.tokens.append(Token(TEXT, text[index:start], index))
             self.extract_tokens(text[start: end], match)
-            column = end
-        if text[column:]:
-            self.tokens.append(Token(TEXT_TYPE, text[column:], column))
+            index = end
+        if text[index:]:
+            self.tokens.append(Token(TEXT, text[index:], index))
         return self.tokens
 
         
