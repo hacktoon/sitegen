@@ -81,27 +81,27 @@ OPMAP = {
     BOOL_NOT: lambda x: not x
 }
 
+def build_token_regex():
+    COMPOUND_SYMBOLS = (EQUAL, DIFF, LE, GE)
+    SINGLE_SYMBOLS = (LT, GT, PLUS, MINUS, 
+        MUL, DIV, MOD, COMMA, ASSIGN, COLON,
+        OPEN_PARENS, CLOSE_PARENS, DOT)
+    SYMBOLS = '|'.join([re.escape(x) for x in COMPOUND_SYMBOLS+SINGLE_SYMBOLS])
 
-COMPOUND_SYMBOLS = (EQUAL, DIFF, LE, GE)
-SINGLE_SYMBOLS = (LT, GT, PLUS, MINUS, 
-    MUL, DIV, MOD, COMMA, ASSIGN, COLON,
-    OPEN_PARENS, CLOSE_PARENS, DOT)
-SYMBOLS = '|'.join([re.escape(x) for x in COMPOUND_SYMBOLS+SINGLE_SYMBOLS])
+    KEYWORDS = '|'.join([IF, ELSE, WHILE, AS,
+        FUNCTION, RETURN, PRINT, INCLUDE,
+        PARSE, END, LIST, REVLIST, USE, REGION])
 
-KEYWORDS = '|'.join([IF, ELSE, WHILE, AS,
-    FUNCTION, RETURN, PRINT, INCLUDE,
-    PARSE, END, LIST, REVLIST, USE, REGION])
-
-# organize by matching priority
-RE_TOKENS = '|'.join([
-    r'(?P<keyword>'+KEYWORDS+')',
-    r'(?P<identifier>[a-zA-Z_][a-zA-Z0-9_]*(\.[_a-zA-Z_][_a-zA-Z0-9_]*)?)',
-    r'(?P<string>\".*?\"|\'.*?\')',
-    r'(?P<number>[-+]?[0-9]+)',
-    r'(?P<symbol>'+SYMBOLS+')',
-    r'(?P<whitespace>\s+)',
-    r'(?P<unknow>.)'
-])
+    # organize by matching priority
+    return re.compile('|'.join([
+        r'(?P<keyword>'+KEYWORDS+')',
+        r'(?P<identifier>[a-zA-Z_][a-zA-Z0-9_]*(\.[_a-zA-Z_][_a-zA-Z0-9_]*)?)',
+        r'(?P<string>\".*?\"|\'.*?\')',
+        r'(?P<number>[-+]?[0-9]+)',
+        r'(?P<symbol>'+SYMBOLS+')',
+        r'(?P<whitespace>\s+)',
+        r'(?P<unknow>.)'
+    ]), re.DOTALL)
 
 def build_tag_regex():
     exp = []
@@ -113,7 +113,7 @@ def build_tag_regex():
     return re.compile('|'.join(exp), re.DOTALL)
 
 TAG_REGEX = build_tag_regex()
-tokens_regex = re.compile(RE_TOKENS, re.DOTALL)
+TOKEN_REGEX = build_token_regex()
 
 class Token():
     def __init__(self, type, value, column):
@@ -140,6 +140,7 @@ class Token():
         return '{} [{}] - {}'.format(self.type, self.value.strip(), self.column)
 
 
+
 class Lexer:
     def __init__(self, template):
         self.template = template
@@ -158,12 +159,12 @@ class Lexer:
         start = tag_matched.start()
         tag_type = tag_matched.lastgroup
         text = self.strip_tags(text, tag_type)
-        for match in tokens_regex.finditer(text):
+        for match in TOKEN_REGEX.finditer(text):
             if match.lastgroup == 'whitespace':
                 continue
             column = match.start()+start+len(TAG_MAP[tag_type][0])
             value = text[match.start(): match.end()]
-            return Token(match.lastgroup, value, column)
+            self.tokens.append(Token(match.lastgroup, value, column))
 
     def tokeniter(self):
         column = 0
@@ -173,7 +174,7 @@ class Lexer:
             end = match.end()
             if text[column:start]:
                 self.tokens.append(Token(TEXT_TYPE, text[column:start], column))
-            self.tokens.append(self.extract_tokens(text[start: end], match))
+            self.extract_tokens(text[start: end], match)
             column = end
         if text[column:]:
             self.tokens.append(Token(TEXT_TYPE, text[column:], column))
