@@ -336,7 +336,7 @@ class Parser():
         tree_root = tree.Node()
 
         for tok in self.lex.tokeniter():
-            print(tok)
+            pass#print(tok)
         
         return tree_root
         '''while self.tok.type != lexer.EOF:

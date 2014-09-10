@@ -167,8 +167,22 @@ class Lexer:
         self.lines = template.split('\n')
         self.tokens = []
         self.linemap = {}
-        #for line in self.lines:
-        #    print(line)
+        self.show_line_error(68)
+        print(template[69:71])
+
+    def show_line_error(self, index):
+        start = 0
+        end = 0
+        for line in self.lines:
+            end = start + len(line) - 1
+            if start <= index <= end:
+                print('Error at line {}!'.format())
+                print(line)
+                mark = list(' ' * len(line))
+                mark[index - start] = '^'
+                print(''.join(mark))
+                break
+            start += len(line)
 
     def error(self, msg):
         line = 0
