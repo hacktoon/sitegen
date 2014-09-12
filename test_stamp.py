@@ -1,11 +1,11 @@
 import stamper.parser as stamp
-
+import re
 tpl = '''<html>
-{% use "base.html" %}
+{% use "base.html" %}		
 {% region"body":
 	list pages as page:
 		if (page.age >= 16):  %}
-			<p> {{ page.title }} </p>
+<p> {{ page.title }} </p>
 			<p> {{ page.content }} </p>
 		{% else: %}
 			<p> {{ 'cant list' }} </p>
@@ -14,8 +14,11 @@ tpl = '''<html>
 	print false
 	print not true
 end %}
+    </html>'''
 
-</html>'''
+#for m in re.finditer('<html>', tpl):
+#	print(m.start(), m.end())
+
 
 p = stamp.Parser(tpl)
 t = p.parse()

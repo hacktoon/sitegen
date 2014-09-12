@@ -124,10 +124,11 @@ def build_token_regex():
 
 def build_tag_regex():
     base = '({}.*?{})'
+    e = re.escape
     tag_re = '|'.join([
-        base.format(OPEN_VAR, CLOSE_VAR),
-        base.format(OPEN_CMD, CLOSE_CMD),
-        base.format(OPEN_COMMENT, CLOSE_COMMENT),
+        base.format(e(OPEN_VAR), e(CLOSE_VAR)),
+        base.format(e(OPEN_CMD), e(CLOSE_CMD)),
+        base.format(e(OPEN_COMMENT), e(CLOSE_COMMENT)),
     ])
     return re.compile(tag_re, re.DOTALL)
 
@@ -157,40 +158,34 @@ class Token():
         return self.check_symbol(LT, LE, GE, GT)
 
     def __str__(self):
-        return '{} [{}] - {}'.format(self.type, self.value.strip(), self.column)
+        return '{} [{}] - {}'.format(self.type, self.value, self.column)
 
 
 
 class Lexer:
     def __init__(self, template):
         self.template = template
-        self.lines = template.split('\n')
         self.tokens = []
         self.linemap = {}
-        self.show_line_error(68)
-        print(template[69:71])
 
-    def show_line_error(self, index):
-        start = 0
-        end = 0
-        for line in self.lines:
-            end = start + len(line) - 1
-            if start <= index <= end:
-                print('Error at line {}!'.format())
-                print(line)
-                mark = list(' ' * len(line))
-                mark[index - start] = '^'
-                print(''.join(mark))
-                break
-            start += len(line)
+    def search_line_error(self, index):
+        line = 1
+        col = 1
+        for i, char in enumerate(self.template):
+            if index == i:
+                return (line, col)
+            if char == '\n':
+                line += 1
+                col = 1
+            else:
+                col += 1
 
     def error(self, msg):
-        line = 0
-        column = 0
+        line, column = self.search_line_error(4)
         sys.exit('Error: {} at line {}, column {}'.format(msg, line, column))
     
     def make_token(self, type, value, index_in_tpl):
-        return Token(type, value, index_in_tpl)
+        self.tokens.append(Token(type, value, index_in_tpl))
 
     def extract_tokens(self, text, tag_matched):
         offset = tag_matched.start()
@@ -199,8 +194,8 @@ class Lexer:
                 continue
             value = text[match.start(): match.end()]
             # offset value = start position of the entire tag
-            index = match.start() + offset - 1
-            self.tokens.append(Token(match.lastgroup, value, index))
+            index = match.start() + offset
+            self.make_token(match.lastgroup, value, index)
 
     def tokeniter(self):
         index = 0
@@ -209,11 +204,9 @@ class Lexer:
             start = match.start()
             end = match.end()
             if text[index:start]:
-                self.tokens.append(Token(TEXT, text[index:start], index))
+                self.make_token(TEXT, text[index:start], index)
             self.extract_tokens(text[start: end], match)
             index = end
         if text[index:]:
-            self.tokens.append(Token(TEXT, text[index:], index))
+            self.make_token(TEXT, text[index:], index)
         return self.tokens
-
-        
