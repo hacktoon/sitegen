@@ -197,7 +197,7 @@ class Lexer:
             index = match.start() + offset
             self.make_token(match.lastgroup, value, index)
 
-    def tokeniter(self):
+    def tokenize(self):
         index = 0
         text = self.template
         for match in TAG_REGEX.finditer(text):

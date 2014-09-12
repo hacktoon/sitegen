@@ -10,6 +10,9 @@ class Parser():
     def __init__(self, template):
         self.lex = lexer.Lexer(template)
         self.base_template = None
+        self.tokens = self.lex.tokenize()
+        self.tok_index = 0
+        self.tok = self.tokens[self.tok_index]
         self.regions = {}
         self.stmt_map = {
             lexer.IF: self.if_stmt,
@@ -29,7 +32,11 @@ class Parser():
         self.lex.error(msg)
 
     def next_token(self):
-        self.tok = self.lex.get_token()
+        self.tok_index += 1
+        try:
+            self.tok = self.tokens[self.tok_index]
+        except IndexError:
+            self.tok = None
 
     def consume(self, tok_val=''):
         if self.tok.value == tok_val:
@@ -334,12 +341,8 @@ class Parser():
     def parse(self, regions=None):
         self.regions = regions or {}
         tree_root = tree.Node()
-
-        for tok in self.lex.tokeniter():
-            print(tok)
         
-        return tree_root
-        '''while self.tok.type != lexer.EOF:
+        while self.tok:
             node = self.statement()
             tree_root.add_child(node)
         # parse the base template and return it instead
@@ -348,4 +351,4 @@ class Parser():
             p = Parser(fp.read())
             fp.close()
             tree_root = p.parse(regions=self.regions)
-        return tree_root'''
+        return tree_root
