@@ -54,7 +54,7 @@ class Text(Node):
 
 class Variable(Node):
     def render(self, context):
-        value = self.lookup_context(context, self.value)
+        value = self.lookup_context(context, self.value)        
         if value is None:
             raise Exception('Variable {!r} not defined'
                 .format('.'.join(self.value)))

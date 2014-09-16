@@ -52,16 +52,13 @@ class Parser():
             return ident
         self.error('Identifier expected')
 
-    def parse_name(self):
+    def parse_identifier(self):
         tok_val = self.tok.value
-        name = [tok_val]
         if tok_val in lexer.BOOLEAN_VALUES:
             self.next_token()
             return tree.Boolean(tok_val)
         self.next_token()
-        while self.tok.value == lexer.DOT:
-            self.next_token()
-            name.append(self.identifier())
+        name = tok_val.split(lexer.DOT)
         if self.tok.value == lexer.OPEN_PARENS:
             node = self.function_call(name)
         else: 
@@ -82,7 +79,7 @@ class Parser():
             node = tree.String(value)
             self.next_token()
         elif self.tok.type == lexer.IDENTIFIER:
-            node = self.parse_name()
+            node = self.parse_identifier()
         elif self.tok.value == lexer.OPEN_PARENS:
             self.consume(lexer.OPEN_PARENS)
             node = self.expression()
