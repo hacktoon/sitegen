@@ -2,8 +2,6 @@ import sys
 import operator
 import re
 
-NEWLINE = '\n'
-
 NUMBER = 'number'
 STRING = 'string'
 IDENTIFIER = 'identifier'
@@ -11,13 +9,6 @@ KEYWORD = 'keyword'
 TEXT = 'text'
 SYMBOL = 'symbol'
 WHITESPACE = 'whitespace'
-
-OPEN_CMD = '{%'
-CLOSE_CMD = '%}'
-OPEN_VAR = '{{'
-CLOSE_VAR = '}}'
-OPEN_COMMENT = '{#'
-CLOSE_COMMENT = '#}'
 
 #symbols
 OPEN_PARENS = '('
@@ -59,20 +50,27 @@ REGION = 'region'
 
 BOOLEAN_VALUES = ['true', 'false']
 
-ID_OPEN_VAR = 'open_var'
-ID_CLOSE_VAR = 'close_var'
-ID_COMMAND_OPEN = 'open_cmd'
-ID_COMMAND_CLOSE = 'close_cmd'
-ID_COMMENT_OPEN = 'open_comment'
-ID_COMMENT_CLOSE = 'close_comment'
+OPEN_CMD = '{%'
+CLOSE_CMD = '%}'
+OPEN_VAR = '{{'
+CLOSE_VAR = '}}'
+OPEN_COMMENT = '{#'
+CLOSE_COMMENT = '#}'
+
+TAG_VAR_OPEN = 'open_var'
+TAG_VAR_CLOSE = 'close_var'
+TAG_CMD_OPEN = 'open_cmd'
+TAG_CMD_CLOSE = 'close_cmd'
+TAG_COMMENT_OPEN = 'open_comment'
+TAG_COMMENT_CLOSE = 'close_comment'
 
 TAG_MAP = {
-    ID_OPEN_VAR: OPEN_VAR,
-    ID_CLOSE_VAR: CLOSE_VAR,
-    ID_COMMAND_OPEN: OPEN_CMD,
-    ID_COMMAND_CLOSE: CLOSE_CMD,
-    ID_COMMENT_OPEN: OPEN_COMMENT,
-    ID_COMMENT_CLOSE: CLOSE_COMMENT
+    TAG_VAR_OPEN: OPEN_VAR,
+    TAG_VAR_CLOSE: CLOSE_VAR,
+    TAG_CMD_OPEN: OPEN_CMD,
+    TAG_CMD_CLOSE: CLOSE_CMD,
+    TAG_COMMENT_OPEN: OPEN_COMMENT,
+    TAG_COMMENT_CLOSE: CLOSE_COMMENT
 }
 
 OPMAP = {
@@ -99,6 +97,7 @@ def build_token_regex():
         OPEN_PARENS, CLOSE_PARENS, DOT)
     SYMBOLS = '|'.join([re.escape(x) for x in SYMBOLS])
 
+    # using \b in keywords avoids matching "use" in "used"
     KEYWORDS = r'\b|\b'.join([IF, ELSE, WHILE, AS,
         FUNCTION, RETURN, PRINT, INCLUDE, BOOL_NOT,
         BOOL_AND, BOOL_OR, PARSE, END, LIST, REVLIST,
@@ -106,10 +105,9 @@ def build_token_regex():
 
     TAGS = []
     for key, tag in TAG_MAP.items():
-        TAGS.append('(?P<{}>{})'.format(re.escape(key), re.escape(tag)))
+        TAGS.append('(?P<{}>{})'.format(key, re.escape(tag)))
 
     # organize by matching priority
-    # using \b in keywords avoids matching "use" in "used"
     regex = '|'.join([
         '|'.join(TAGS),
         r'(?P<{}>\b{}\b)'.format(KEYWORD, KEYWORDS),
@@ -123,12 +121,12 @@ def build_token_regex():
     return re.compile(regex, re.DOTALL)
 
 def build_tag_regex():
-    base = '({}.*?{})'
+    base = '(?P<{}>{}.*?{})'
     e = re.escape
     tag_re = '|'.join([
-        base.format(e(OPEN_VAR), e(CLOSE_VAR)),
-        base.format(e(OPEN_CMD), e(CLOSE_CMD)),
-        base.format(e(OPEN_COMMENT), e(CLOSE_COMMENT)),
+        base.format(TAG_VAR_OPEN, e(OPEN_VAR), e(CLOSE_VAR)),
+        base.format(TAG_CMD_OPEN, e(OPEN_CMD), e(CLOSE_CMD)),
+        base.format(TAG_COMMENT_OPEN, e(OPEN_COMMENT), e(CLOSE_COMMENT))
     ])
     return re.compile(tag_re, re.DOTALL)
 
@@ -161,12 +159,10 @@ class Token():
         return '{} [{}] - {}'.format(self.type, self.value, self.column)
 
 
-
 class Lexer:
     def __init__(self, template):
         self.template = template
         self.tokens = []
-        self.linemap = {}
 
     def search_line_error(self, index):
         line = 1
@@ -180,8 +176,8 @@ class Lexer:
             else:
                 col += 1
 
-    def error(self, msg):
-        line, column = self.search_line_error(4)
+    def error(self, msg, tok):
+        line, column = self.search_line_error(tok.column)
         sys.exit('Error: {} at line {}, column {}'.format(msg, line, column))
     
     def make_token(self, type, value, index_in_tpl):
@@ -190,10 +186,10 @@ class Lexer:
     def extract_tokens(self, text, tag_matched):
         offset = tag_matched.start()
         for match in TOKEN_REGEX.finditer(text):
-            if match.lastgroup == WHITESPACE:
+            # ignore these tokens, emit only the VAR type
+            if match.lastgroup in (WHITESPACE, TAG_CMD_OPEN, TAG_CMD_CLOSE):
                 continue
             value = text[match.start(): match.end()]
-            # offset value = start position of the entire tag
             index = match.start() + offset
             self.make_token(match.lastgroup, value, index)
 
@@ -205,7 +201,8 @@ class Lexer:
             end = match.end()
             if text[index:start]:
                 self.make_token(TEXT, text[index:start], index)
-            self.extract_tokens(text[start: end], match)
+            if match.lastgroup != TAG_COMMENT_OPEN:
+                self.extract_tokens(text[start: end], match)
             index = end
         if text[index:]:
             self.make_token(TEXT, text[index:], index)

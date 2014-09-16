@@ -1,6 +1,7 @@
 import stamper.parser as stamp
 import re
 tpl = '''<html>
+{# este eh um comentario #}
 {% use "base.html" %}		
 {% region"body":
 	list pages as page:
@@ -15,10 +16,6 @@ tpl = '''<html>
 	print not true
 end %}
     </html>'''
-
-#for m in re.finditer('<html>', tpl):
-#	print(m.start(), m.end())
-
 
 p = stamp.Parser(tpl)
 t = p.parse()

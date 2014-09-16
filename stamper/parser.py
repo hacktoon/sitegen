@@ -29,7 +29,7 @@ class Parser():
         }
 
     def error(self, msg):
-        self.lex.error(msg)
+        self.lex.error(msg, self.tok)
 
     def next_token(self):
         self.tok_index += 1
@@ -78,7 +78,8 @@ class Parser():
             node = tree.Number(self.tok.value)
             self.next_token()
         elif self.tok.type == lexer.STRING:
-            node = tree.String(self.tok.value)
+            value = self.tok.value[1:-1] # remove quotes
+            node = tree.String(value)
             self.next_token()
         elif self.tok.type == lexer.IDENTIFIER:
             node = self.parse_name()
@@ -167,11 +168,8 @@ class Parser():
     def stmt_block(self, branch=False):
         block = []
         self.consume(lexer.COLON)
-        while self.tok.value not in (lexer.END, lexer.ELSE, lexer.EOF):
+        while self.tok.value not in (lexer.END, lexer.ELSE):
             block.append(self.statement())
-        if self.tok.value == lexer.EOF:
-            raise Exception('{!r} is missing, '
-                'block not matched'.format(lexer.END))
         if not branch:
             self.consume(lexer.END)
         return block
@@ -239,7 +237,7 @@ class Parser():
         self.next_token()
         if self.tok.type != lexer.STRING:
             self.error('String expected')
-        self.base_template = self.tok.value
+        self.base_template = self.tok.value[1:-1]
         self.next_token()
         return None
 
@@ -318,9 +316,15 @@ class Parser():
     def statement(self):
         tok_type = self.tok.type
         node = None
+        
         if tok_type == lexer.TEXT:
             node = tree.Text(self.tok.value)
             self.next_token()
+        elif tok_type == lexer.TAG_VAR_OPEN:
+            self.next_token()
+            exp_node = self.expression()
+            node = tree.PrintCommand(exp_node)
+            self.consume(lexer.CLOSE_VAR)
         elif tok_type == lexer.IDENTIFIER:
             name = self.tok.value
             self.next_token()
@@ -341,13 +345,18 @@ class Parser():
     def parse(self, regions=None):
         self.regions = regions or {}
         tree_root = tree.Node()
-        
+        #for t in self.tokens:
+        #    print(t)
+        #return tree_root
         while self.tok:
             node = self.statement()
             tree_root.add_child(node)
         # parse the base template and return it instead
         if self.base_template:
-            fp = open(self.base_template, 'r')
+            try:
+                fp = open(self.base_template, 'r')
+            except IOError:
+                self.error('File {!r} not found'.format(self.base_template))
             p = Parser(fp.read())
             fp.close()
             tree_root = p.parse(regions=self.regions)
