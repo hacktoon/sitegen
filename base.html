@@ -1,3 +1,14 @@
+{%
+function listNerdson():
+	list pages as page:
+		if page.category == 'nerdson': %}
+			<p>{{page.title}}</p>
+		{% end
+	end
+end
+
+%}
+
 <!DOCTYPE html>
 <html lang="en">
 <head>

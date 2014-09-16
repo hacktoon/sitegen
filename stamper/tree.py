@@ -1,23 +1,30 @@
 import os
+import sys
+
+from . import exceptions
 
 def load_file(self, filename):
     if not isinstance(filename, str):
-        raise Exception('String expected')
+        raise exceptions.RuntimeError('String expected')
+
     try:
         fp = open(filename, 'r')
     except:
-        raise Exception('File not found')
-    file_path = os.path.realpath(filename)
+        msg = 'File {!r} not found'.format(filename)
+        raise exceptions.FileNotFoundError(msg)
     file_content = fp.read()
     fp.close()
     return file_content
 
+
 class Node:
-    def __init__(self, value=''):
+    def __init__(self, value='', token=None):
         self.value = value
+        self.token = token
         self.children = []
 
     def lookup_context(self, context, name):
+        name = name.split('.')
         ref = context.get(name[0])
         for part in name[1:]:
             try:
@@ -38,7 +45,11 @@ class Node:
     def render(self, context):
         output = []
         for child in self.children:
-            output.append(str(child.render(context)))
+            try:
+                rendered = str(child.render(context))
+            except exceptions.RuntimeError as error:
+                sys.exit('Error: {} {}'.format(error, self.token.column))
+            output.append(rendered)
             if isinstance(child, ReturnCommand):
                 return self.build_output(output)
         return self.build_output(output)
@@ -54,10 +65,7 @@ class Text(Node):
 
 class Variable(Node):
     def render(self, context):
-        value = self.lookup_context(context, self.value)        
-        if value is None:
-            raise Exception('Variable {!r} not defined'
-                .format('.'.join(self.value)))
+        value = self.lookup_context(context, self.value)
         return value
 
 
@@ -87,17 +95,22 @@ class Operation(Node):
     def render(self, context):
         output = self.children[0].render(context)
         # need to calculate with first child because of the NOT
-        if len(self.children) > 1:
-            for child in self.children[1:]:
-                output = self.value(output, child.render(context))
-        else:
-            output = self.value(output)
+        try:
+            if len(self.children) > 1:
+                for child in self.children[1:]:
+                    output = self.value(output, child.render(context))
+            else:
+                output = self.value(output)
+        except ZeroDivisionError:
+            raise exceptions.RuntimeError('Division by zero')
+        except TypeError:
+            raise exceptions.RuntimeError('Wrong types in operation')
         return output
 
 
 class Condition(Node):
-    def __init__(self, value):
-        super().__init__(value)
+    def __init__(self, value, token):
+        super().__init__(value, token)
         self.true_block = None
         self.false_block = None
 
@@ -106,6 +119,8 @@ class Condition(Node):
             self.children = self.true_block
         elif self.false_block: # just check if there's an ELSE clause
             self.children = self.false_block
+        else:
+            self.children = []
         return super().render(context)
 
 
@@ -119,8 +134,8 @@ class WhileLoop(Node):
 
 
 class List(Node):
-    def __init__(self, iter_name, collection_name, reverse=False):
-        super().__init__('List')
+    def __init__(self, iter_name, collection_name, token, reverse=False):
+        super().__init__('List', token)
         self.iter_name = iter_name
         self.collection_name = collection_name
         self.reverse = reverse
@@ -148,8 +163,8 @@ class List(Node):
 
 
 class Function(Node):
-    def __init__(self, name, params):
-        self.name = name
+    def __init__(self, value, params, token):
+        super().__init__(value, token)
         self.params = params
         self.context = {}
 
@@ -157,32 +172,29 @@ class Function(Node):
         received = len(args)
         expected = len(self.params)
         if expected > received:
-            raise Exception('Expected {} params, '
-                'received {}'.format(expected, received))
+            msg = 'Expected {} params, received {}'.format(expected, received)
+            raise exceptions.RuntimeError(msg)
         scope_context = dict(zip(self.params, args))
         self.context.update(scope_context)
         return super().render(self.context)
 
     def render(self, context):
-        context[self.name] = self
+        context[self.value] = self
         self.context = context.copy()
         return ''
 
 
 class FunctionCall(Node):
-    def __init__(self, name, args, procedure=False):
-        self.name = name
+    def __init__(self, value, args, token):
+        super().__init__(value, token)
         self.args = args
-        self.procedure = procedure
 
     def render(self, context):
-        func = self.lookup_context(context, self.name)
+        func = self.lookup_context(context, self.value)
         if not func:
-            raise Exception('Function {!r} not defined'
-                .format('.'.join(self.name)))
+            raise exceptions.RuntimeError('Function {!r} not defined'
+                .format(self.value))
         args = [arg.render(context) for arg in self.args]
-        if self.procedure:
-            return ''
         return func.call(args)
 
 
@@ -203,8 +215,8 @@ class IncludeCommand(Node):
 
 
 class ParseCommand(Node):
-    def __init__(self, value, parser):
-        self.value = value
+    def __init__(self, value, parser, token):
+        super().__init__(value, token)
         self.parser = parser
 
     def render(self, context):
@@ -218,14 +230,11 @@ class ParseCommand(Node):
 
 
 class Assignment(Node):
-    def __init__(self, value):
-        self.value = value
+    def __init__(self, value, token):
+        super().__init__(value, token)
         self.rvalue = None
 
     def render(self, context):
         value = self.rvalue.render(context)
         context[self.value] = value
         return ''
-
-    def __str__(self):
-        return '{} - {} = {}\n'.format(type(self), str(self.value), str(self.rvalue))
