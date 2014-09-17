@@ -16,6 +16,45 @@ end
 	<meta charset="UTF-8">
 	<title>title</title>
 	{% end %}
+	<script>
+	    $(document).ready(function(){
+	        var container = $('.thumb-list');
+	        var totalItens = container.children().length;
+	        var thumbSize = container.find('.list-item').outerWidth();
+	        var viewer = $('.thumb-viewer');
+	        var currentPage = 1;
+	        var clickEnabled = true;
+
+	        container.width(totalItens * thumbSize);
+
+	        $('.thumb-navigation').on('click', function(e){
+	            e.preventDefault();
+	            if (! clickEnabled){
+	                return;
+	            }
+	            clickEnabled = false;
+	            var itensPerPage = Math.floor(viewer.width() / thumbSize);
+	            var totalPages = Math.ceil(totalItens / itensPerPage);
+	            var pageSize = itensPerPage * thumbSize;
+
+	            var left = parseInt(container.css('left'), 10);
+	            if ($(e.target).hasClass('thumb-prev')){
+	                currentPage = currentPage == 1 ? totalPages : currentPage - 1;
+	            } else { // next page
+	                currentPage = currentPage == totalPages ? 1 : currentPage + 1;
+	            }
+	            // offset da paginas com poucos itens
+	            if (currentPage == totalPages){
+	                var move = (totalItens - itensPerPage) * thumbSize;
+	            } else {
+	                var move = (currentPage - 1) * pageSize;
+	            }
+	            container.animate({left: -move}, 250, function(){
+	                clickEnabled = true;
+	            });
+	        });
+		});
+	</script>
 </head>
 <body>
 	{% region "body": %}
