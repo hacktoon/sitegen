@@ -1,10 +1,17 @@
-import stamper.parser as stamp
-import re
+import stamper.parser
 
 filename = 'tpl.html'
 tpl = open(filename).read()
-p = stamp.Parser(tpl, filename=filename)
-t = p.parse()
+
+class Stamper:
+	def __init__(self, tpl, filename=''):
+		self.tpl = tpl
+		self.filename = filename
+
+	def render(self, content):
+		parse_tree = stamper.parser.Parser(tpl, filename=filename).parse()
+		return parse_tree.render(context)
+
 context = {'nome': 'joao', 'pages': [
 	{'title': 'primeiro post', 'content': 'lalalala conteudo velho', 'age': 85},
 	{'title': 'segundo post', 'content': 'super novidades', 'age': 40},
@@ -15,4 +22,5 @@ context = {'nome': 'joao', 'pages': [
 	{'title': 'post nerdson 4', 'content': 'nerdson 4', 'category': 'nerdson', 'age': 15}
 ]}
 
-print(t.render(context))
+stamp = Stamper(tpl, filename)
+print(stamp.render(context))

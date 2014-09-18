@@ -28,6 +28,7 @@ DIV = '/'
 MOD = '%'
 COMMA = ','
 DOT = '.'
+PIPE = '|'
 
 # keywords
 IF = 'if'
@@ -111,7 +112,7 @@ def build_token_regex():
     regex = '|'.join([
         '|'.join(TAGS),
         r'(?P<{}>\b{}\b)'.format(KEYWORD, KEYWORDS),
-        r'(?P<{}>\b[a-zA-Z_]\w*(\.[a-zA-Z_]\w*)?\b)'.format(IDENTIFIER),
+        r'(?P<{}>\b[a-zA-Z_]\w*(\.[a-zA-Z_]\w*)*\b)'.format(IDENTIFIER),
         r'(?P<{}>\".*?\"|\'.*?\')'.format(STRING),
         r'(?P<{}>[-+]?[0-9]+)'.format(NUMBER),
         r'(?P<{}>{})'.format(SYMBOL, SYMBOLS),
@@ -173,6 +174,8 @@ class Lexer:
             if match.lastgroup in (WHITESPACE, TAG_CMD_OPEN, TAG_CMD_CLOSE):
                 continue
             value = text[match.start(): match.end()]
+            if match.lastgroup == STRING:
+                value = value[1:-1]  # remove string quotes
             index = match.start() + offset
             self.make_token(match.lastgroup, value, index)
 

@@ -1,5 +1,5 @@
 import os
-import sys
+from datetime import datetime
 
 from . import exceptions
 
@@ -15,12 +15,11 @@ class Node:
 
     def lookup_context(self, context, name):
         name = name.split('.')
-        ref = context.get(name[0])
+        ref = context.get(name[0], '')
         for part in name[1:]:
-            try:
-                ref = ref.get(part)
-            except AttributeError as error:
-                return
+            if not part in ref:
+                return ''
+            ref = ref[part]
         return ref
 
     def set_metadata(self, parser):
@@ -44,9 +43,10 @@ class Node:
                 return self.build_output(output)
         return self.build_output(output)
 
-    def load_file(self, filename):
+    def load_file(self, filename, path=''):
         if not isinstance(filename, str):
             self.error(RUNTIME_EXCEPTION, 'String expected')
+        filename = os.path.join(path, filename)
         try:
             with open(filename, 'r') as fp:
                 file_content = fp.read()
@@ -153,11 +153,10 @@ class List(Node):
         self.reverse = reverse
 
     def update_iteration_counters(self, context, collection, index):
-        context[self.iter_name].update({
-            'first': True if index == 0 else False,
-            'last': True if index == len(collection) - 1 else False,
-            'index': index
-        })
+        item = context[self.iter_name]
+        item['first'] = True if index == 0 else False,
+        item['last'] = True if index == len(collection) - 1 else False,
+        item['index'] = index
 
     def render(self, context):
         output = []
@@ -216,14 +215,25 @@ class ReturnCommand(Node):
 
 
 class PrintCommand(Node):
+    def __init__(self, value, token, tag_filter=None):
+        super().__init__(value, token)
+        self.tag_filter = tag_filter
+
     def render(self, context):
-        return str(self.value.render(context))
+        value = self.value.render(context)
+        if isinstance(value, datetime):
+            if self.tag_filter:
+                value = value.strftime(self.tag_filter)
+            else:
+                value = value.strftime('%Y-%m-%d %H:%M:%S')
+        return str(value)
 
 
 class IncludeCommand(Node):
     def render(self, context):
+        path = self.parser.include_path
         filename = self.value.render(context)
-        return self.load_file(filename)
+        return self.load_file(filename, path)
 
 
 class ParseCommand(Node):
@@ -232,13 +242,15 @@ class ParseCommand(Node):
         self.parser_cls = parser
 
     def render(self, context):
+        path = self.parser.include_path
         filename = self.value.render(context)
-        file_content = self.load_file(filename)
+        file_content = self.load_file(filename, path)
         try:
             p = self.parser_cls(file_content, filename=filename)
             subtree = p.parse()
         except RuntimeError:
-            sys.exit('{} is including itself.'.format(filename))
+            msg = '{} is including itself.'.format(filename)
+            self.error(RUNTIME_EXCEPTION, msg)
         return subtree.render(context)
 
 

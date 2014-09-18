@@ -1,4 +1,5 @@
 import sys
+import os
 import operator
 
 from . import exceptions
@@ -8,9 +9,10 @@ from . import tree
 
 
 class Parser():
-    def __init__(self, template, filename=''):
+    def __init__(self, template, filename='', include_path=''):
         self.template = template
         self.filename = filename
+        self.include_path = include_path
         self.tokens = lexer.Lexer().tokenize(self.template)
         self.tok_index = 0
         self.tok = self.tokens[self.tok_index]
@@ -91,7 +93,7 @@ class Parser():
             node = self.create_node(tree.Number, self.tok.value, self.tok)
             self.next_token()
         elif self.tok.type == lexer.STRING:
-            value = self.tok.value[1:-1] # remove quotes
+            value = self.tok.value
             node = self.create_node(tree.String, value, self.tok)
             self.next_token()
         elif self.tok.type == lexer.IDENTIFIER:
@@ -264,7 +266,7 @@ class Parser():
         self.next_token()
         if self.tok.type != lexer.STRING:
             self.error('String expected')
-        self.base_template = self.tok.value[1:-1]
+        self.base_template = self.tok.value
         self.next_token()
         return None
 
@@ -343,6 +345,19 @@ class Parser():
         exp = self.expression()
         return self.create_node(tree.ReturnCommand, exp, token)
 
+    def print_tag_stmt(self, token):
+        exp_node = self.expression()
+        tag_filter = None
+        if self.tok.value == lexer.PIPE:
+            self.next_token()
+            if self.tok.type != lexer.STRING:
+                self.error('String expected')
+            tag_filter = self.tok.value
+            self.next_token()
+        self.consume(lexer.CLOSE_VAR)
+        return self.create_node(tree.PrintCommand, 
+            exp_node, token, tag_filter)
+
     def statement(self):
         token = self.tok
         tok_type = self.tok.type
@@ -353,9 +368,7 @@ class Parser():
             self.next_token()
         elif tok_type == lexer.TAG_VAR_OPEN:
             self.next_token()
-            exp_node = self.expression()
-            node = self.create_node(tree.PrintCommand, exp_node, token)
-            self.consume(lexer.CLOSE_VAR)
+            node = self.print_tag_stmt(token)
         elif tok_type == lexer.IDENTIFIER:
             name = self.tok.value
             self.next_token()
@@ -387,11 +400,12 @@ class Parser():
             tree_root.add_child(node)
         # parse the base template and return it instead
         if self.base_template:
+            filename = os.path.join(self.include_path, self.base_template)
             try:
-                fp = open(self.base_template, 'r')
+                fp = open(filename, 'r')
             except IOError:
-                self.error('File {!r} not found'.format(self.base_template))
-            p = Parser(fp.read(), filename=self.base_template)
+                self.error('File {!r} not found'.format(filename))
+            p = Parser(fp.read(), filename=filename)
             fp.close()
             tree_root = p.parse(regions=self.regions)
         return tree_root
