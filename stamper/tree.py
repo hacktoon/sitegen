@@ -229,13 +229,14 @@ class IncludeCommand(Node):
 class ParseCommand(Node):
     def __init__(self, value, parser, token):
         super().__init__(value, token)
-        self.parser = parser
+        self.parser_cls = parser
 
     def render(self, context):
         filename = self.value.render(context)
         file_content = self.load_file(filename)
         try:
-            subtree = self.parser(file_content).parse()
+            p = self.parser_cls(file_content, filename=filename)
+            subtree = p.parse()
         except RuntimeError:
             sys.exit('{} is including itself.'.format(filename))
         return subtree.render(context)
