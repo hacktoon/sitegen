@@ -74,25 +74,25 @@ class Parser():
         tok_val = self.tok.value
         if tok_val in lexer.BOOLEAN_VALUES:
             self.next_token()
-            return tree.Boolean(tok_val, token)
+            return self.create_node(tree.Boolean, tok_val, token)
         self.next_token()
         if self.tok.value == lexer.OPEN_PARENS:
             return self.function_call(tok_val, token)
         else:
-            return tree.Variable(tok_val, token)
+            return self.create_node(tree.Variable, tok_val, token)
 
     def factor(self):
         unary = None
         if self.tok.is_addop():
             if self.tok.value == lexer.MINUS:
-                unary = tree.UnaryMinus(token=self.tok)
+                unary = self.create_node(tree.UnaryMinus, None, self.tok)
             self.next_token()
         if self.tok.type == lexer.NUMBER:
-            node = tree.Number(self.tok.value, self.tok)
+            node = self.create_node(tree.Number, self.tok.value, self.tok)
             self.next_token()
         elif self.tok.type == lexer.STRING:
             value = self.tok.value[1:-1] # remove quotes
-            node = tree.String(value, self.tok)
+            node = self.create_node(tree.String, value, self.tok)
             self.next_token()
         elif self.tok.type == lexer.IDENTIFIER:
             node = self.parse_identifier()
@@ -115,7 +115,7 @@ class Parser():
             value = self.tok.value
             self.next_token()
             operands = [node, self.factor()]
-            node = tree.Operation(OPMAP[value], token)
+            node = self.create_node(tree.Operation, OPMAP[value], token)
             node.add_child(operands)
         return node
 
@@ -126,7 +126,7 @@ class Parser():
             value = self.tok.value
             self.next_token()
             operands = [node, self.multiplicative_expr()]
-            node = tree.Operation(OPMAP[value], token)
+            node = self.create_node(tree.Operation, OPMAP[value], token)
             node.add_child(operands)
         return node
 
@@ -137,7 +137,7 @@ class Parser():
             value = self.tok.value
             self.next_token()
             operands = [node, self.additive_expr()]
-            node = tree.Operation(OPMAP[value], token)
+            node = self.create_node(tree.Operation, OPMAP[value], token)
             node.add_child(operands)
         return node
 
@@ -148,7 +148,7 @@ class Parser():
             value = self.tok.value
             self.next_token()
             operands = [node, self.relational_expr()]
-            node = tree.Operation(OPMAP[value], token)
+            node = self.create_node(tree.Operation, OPMAP[value], token)
             node.add_child(operands)
         return node
 
@@ -157,7 +157,7 @@ class Parser():
         if self.tok.value == lexer.BOOL_NOT:
             value = self.tok.value
             self.next_token()
-            node = tree.Operation(OPMAP[value], token)
+            node = self.create_node(tree.Operation, OPMAP[value], token)
             node.add_child(self.not_expr())
         else:
             node = self.equality_expr()
@@ -170,7 +170,7 @@ class Parser():
             value = self.tok.value
             self.next_token()
             operands = [node, self.not_expr()]
-            node = tree.Operation(OPMAP[value], token)
+            node = self.create_node(tree.Operation, OPMAP[value], token)
             node.add_child(operands)
         return node
 
@@ -181,7 +181,7 @@ class Parser():
             value = self.tok.value
             self.next_token()
             operands = [node, self.and_expr()]
-            node = tree.Operation(OPMAP[value], token)
+            node = self.create_node(tree.Operation, OPMAP[value], token)
             node.add_child(operands)
         return node
 
@@ -196,7 +196,7 @@ class Parser():
 
     def assignment(self, name):
         self.consume(lexer.ASSIGN)
-        node = tree.Assignment(name, self.tok)
+        node = self.create_node(tree.Assignment, name, self.tok)
         exp = self.expression()
         node.rvalue = exp
         return node
@@ -205,7 +205,7 @@ class Parser():
         token = self.tok
         self.next_token()
         exp_node = self.expression()
-        node = tree.Condition(exp_node, token)
+        node = self.create_node(tree.Condition, exp_node, token)
         node.true_block = self.stmt_block(branch=True)
         if self.tok.value == lexer.ELSE:
             self.next_token()
@@ -218,7 +218,7 @@ class Parser():
         token = self.tok
         self.next_token()
         exp_node = self.expression()
-        node = tree.WhileLoop(exp_node, token)
+        node = self.create_node(tree.WhileLoop, exp_node, token)
         node.add_child(self.stmt_block())
         return node
 
@@ -228,7 +228,8 @@ class Parser():
         collection = self.identifier()
         self.consume(lexer.AS)
         iter_name = self.identifier()
-        node = tree.List(iter_name, collection, token, reverse)
+        node = self.create_node(tree.List, iter_name, 
+            collection, token, reverse)
         node.add_child(self.stmt_block())
         return node
 
@@ -242,21 +243,21 @@ class Parser():
         token = self.tok
         self.next_token()
         exp_node = self.expression()
-        node = tree.PrintCommand(exp_node, token)
+        node = self.create_node(tree.PrintCommand, exp_node, token)
         return node
 
     def include_stmt(self):
         token = self.tok
         self.next_token()
         exp_node = self.expression()
-        node = tree.IncludeCommand(exp_node, token)
+        node = self.create_node(tree.IncludeCommand, exp_node, token)
         return node
 
     def parse_stmt(self):
         token = self.tok
         self.next_token()
         exp_node = self.expression()
-        node = tree.ParseCommand(exp_node, Parser, token)
+        node = self.create_node(tree.ParseCommand, exp_node, Parser, token)
         return node
 
     def use_stmt(self):
@@ -278,7 +279,7 @@ class Parser():
         if self.tok.type != lexer.STRING:
             self.error('String expected')
         region_name = self.tok.value
-        node = tree.Node(region_name, token)
+        node = self.create_node(tree.Node, region_name, token)
         self.next_token()
         node.add_child(self.stmt_block())
         if self.base_template:
@@ -313,7 +314,7 @@ class Parser():
         if self.tok.value != lexer.CLOSE_PARENS:
             params = self.params_list()
         self.consume(lexer.CLOSE_PARENS)
-        node = tree.Function(name, params, token)
+        node = self.create_node(tree.Function, name, params, token)
         node.add_child(self.stmt_block())
         return node
 
@@ -334,13 +335,13 @@ class Parser():
         self.consume(lexer.OPEN_PARENS)
         params = self.expression_list()
         self.consume(lexer.CLOSE_PARENS)
-        return tree.FunctionCall(name, params, token)
+        return self.create_node(tree.FunctionCall, name, params, token)
 
     def function_return(self):
         token = self.tok
         self.next_token()
         exp = self.expression()
-        return tree.ReturnCommand(exp, token)
+        return self.create_node(tree.ReturnCommand, exp, token)
 
     def statement(self):
         token = self.tok
@@ -348,12 +349,12 @@ class Parser():
         node = None
         
         if tok_type == lexer.TEXT:
-            node = tree.Text(self.tok.value, token)
+            node = self.create_node(tree.Text, self.tok.value, token)
             self.next_token()
         elif tok_type == lexer.TAG_VAR_OPEN:
             self.next_token()
             exp_node = self.expression()
-            node = tree.PrintCommand(exp_node, token)
+            node = self.create_node(tree.PrintCommand, exp_node, token)
             self.consume(lexer.CLOSE_VAR)
         elif tok_type == lexer.IDENTIFIER:
             name = self.tok.value
@@ -374,12 +375,12 @@ class Parser():
 
     def create_node(self, nodetype, *args):
         node = nodetype(*args)
-        node.set_metadata()
+        node.set_metadata(parser=self)
         return node
 
     def parse(self, regions=None):
         self.regions = regions or {}
-        tree_root = tree.Root(parser=self)
+        tree_root = self.create_node(tree.Root)
 
         while self.tok:
             node = self.statement()

@@ -23,8 +23,8 @@ class Node:
                 return
         return ref
 
-    def set_metadata(self, data):
-        pass
+    def set_metadata(self, parser=None):
+        self.parser = parser
 
     def add_child(self, child):
         if isinstance(child, list):
@@ -65,10 +65,6 @@ class Node:
 
 
 class Root(Node):
-    def __init__(self, parser):
-        super().__init__()
-        self.parser = parser
-
     def render(self, context):
         try:
             output = super().render(context)
