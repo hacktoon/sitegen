@@ -516,7 +516,7 @@ class Library:
             cat.paginate()
         pages = scriber.page_list
         env = {
-            'pages': pages,
+            'pages': [p for p in pages if p.is_listable()],
             'site': self.meta,
             'render_cache': {}
         }
