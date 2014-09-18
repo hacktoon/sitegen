@@ -2,9 +2,15 @@
 class TemplateError(Exception):
 	pass
 
+
 class RuntimeError(Exception):
-	pass
+	def __init__(self, msg, token):
+		self.token = token
+		super().__init__(msg)
+
 
 class FileNotFoundError(Exception):
-	pass
+	def __init__(self, msg, token):
+		self.token = token
+		super().__init__(msg)
 		

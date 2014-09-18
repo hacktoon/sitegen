@@ -29,8 +29,8 @@ class Parser():
             lexer.REGION: self.region_stmt
         }
 
-    def error(self, msg):
-        self.lex.error(msg, self.tok)
+    def error(self, msg, token=None):
+        self.lex.error(msg, token or self.tok)
 
     def next_token(self):
         self.tok_index += 1
@@ -358,10 +358,8 @@ class Parser():
 
     def parse(self, regions=None):
         self.regions = regions or {}
-        tree_root = tree.Node()
-        #for t in self.tokens:
-        #    print(t)
-        #return tree_root
+        tree_root = tree.Root(parser=self)
+
         while self.tok:
             node = self.statement()
             tree_root.add_child(node)

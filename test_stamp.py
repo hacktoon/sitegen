@@ -1,21 +1,8 @@
 import stamper.parser as stamp
 import re
-tpl = '''<html>
-{# 
-	este eh um comentario multilinha
-	funciona
-#}
-{% use "base.html" %}
 
-{% region"body":
-	
-
-	listNerdson()
-
-	
-end %}
-</html>'''
-
+tpl = open('test.code').read()
+print(tpl[94:])
 p = stamp.Parser(tpl)
 t = p.parse()
 context = {'nome': 'joao', 'pages': [

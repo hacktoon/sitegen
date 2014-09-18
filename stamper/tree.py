@@ -3,19 +3,8 @@ import sys
 
 from . import exceptions
 
-def load_file(self, filename):
-    if not isinstance(filename, str):
-        raise exceptions.RuntimeError('String expected')
-
-    try:
-        fp = open(filename, 'r')
-    except:
-        msg = 'File {!r} not found'.format(filename)
-        raise exceptions.FileNotFoundError(msg)
-    file_content = fp.read()
-    fp.close()
-    return file_content
-
+FILE_EXCEPTION = exceptions.FileNotFoundError
+RUNTIME_EXCEPTION = exceptions.RuntimeError
 
 class Node:
     def __init__(self, value='', token=None):
@@ -45,17 +34,45 @@ class Node:
     def render(self, context):
         output = []
         for child in self.children:
-            try:
-                rendered = str(child.render(context))
-            except exceptions.RuntimeError as error:
-                sys.exit('Error: {} {}'.format(error, self.token.column))
+            rendered = str(child.render(context))
             output.append(rendered)
             if isinstance(child, ReturnCommand):
                 return self.build_output(output)
         return self.build_output(output)
 
+    def load_file(self, filename):
+        if not isinstance(filename, str):
+            self.error(RUNTIME_EXCEPTION, 'String expected')
+
+        try:
+            fp = open(filename, 'r')
+        except IOError:
+            msg = 'File {!r} not found'.format(filename)
+            self.error(FILE_EXCEPTION, msg)
+        file_content = fp.read()
+        fp.close()
+        return file_content
+
+    def error(self, exception_class, msg):
+        raise exception_class(msg, self.token)
+
     def __str__(self):
         return '{} - [{}]\n'.format(type(self), str(self.value))
+
+
+class Root(Node):
+    def __init__(self, parser):
+        super().__init__()
+        self.parser = parser
+
+    def render(self, context):
+        try:
+            output = super().render(context)
+        except (exceptions.RuntimeError, 
+                exceptions.FileNotFoundError) as error:
+            msg = '{}, [{}]'.format(error, error.token)
+            self.parser.error(msg, error.token)
+        return output
 
 
 class Text(Node):
@@ -102,9 +119,9 @@ class Operation(Node):
             else:
                 output = self.value(output)
         except ZeroDivisionError:
-            raise exceptions.RuntimeError('Division by zero')
+            self.error(RUNTIME_EXCEPTION, 'Division by zero')
         except TypeError:
-            raise exceptions.RuntimeError('Wrong types in operation')
+            self.error(RUNTIME_EXCEPTION, 'Wrong types in operation')
         return output
 
 
@@ -173,7 +190,7 @@ class Function(Node):
         expected = len(self.params)
         if expected > received:
             msg = 'Expected {} params, received {}'.format(expected, received)
-            raise exceptions.RuntimeError(msg)
+            self.error(RUNTIME_EXCEPTION, msg)
         scope_context = dict(zip(self.params, args))
         self.context.update(scope_context)
         return super().render(self.context)
@@ -192,8 +209,8 @@ class FunctionCall(Node):
     def render(self, context):
         func = self.lookup_context(context, self.value)
         if not func:
-            raise exceptions.RuntimeError('Function {!r} not defined'
-                .format(self.value))
+            msg = 'Function {!r} not defined'.format(self.value)
+            self.error(RUNTIME_EXCEPTION, msg)
         args = [arg.render(context) for arg in self.args]
         return func.call(args)
 
@@ -211,7 +228,7 @@ class PrintCommand(Node):
 class IncludeCommand(Node):
     def render(self, context):
         filename = self.value.render(context)
-        return load_file(filename)
+        return self.load_file(filename)
 
 
 class ParseCommand(Node):
@@ -221,7 +238,7 @@ class ParseCommand(Node):
 
     def render(self, context):
         filename = self.value.render(context)
-        file_content = load_file(filename)
+        file_content = self.load_file(filename)
         try:
             subtree = self.parser(file_content).parse()
         except RuntimeError:
