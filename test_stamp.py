@@ -1,9 +1,10 @@
 import stamper.parser as stamp
 import re
 
-tpl = open('test.code').read()
+filename = 'test.code'
+tpl = open(filename).read()
 print(tpl[94:])
-p = stamp.Parser(tpl)
+p = stamp.Parser(tpl, filename=filename)
 t = p.parse()
 context = {'nome': 'joao', 'pages': [
 	{'title': 'primeiro post', 'content': 'lalalala conteudo velho', 'age': 85},

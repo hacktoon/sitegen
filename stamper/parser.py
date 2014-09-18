@@ -8,13 +8,14 @@ from . import tree
 
 
 class Parser():
-    def __init__(self, template):
-        self.lex = lexer.Lexer(template)
-        self.base_template = None
-        self.tokens = self.lex.tokenize()
+    def __init__(self, template, filename=''):
+        self.template = template
+        self.filename = filename
+        self.tokens = lexer.Lexer().tokenize(template)
         self.tok_index = 0
         self.tok = self.tokens[self.tok_index]
         self.regions = {}
+        self.base_template = None
         self.stmt_map = {
             lexer.IF: self.if_stmt,
             lexer.WHILE: self.while_stmt,
@@ -29,8 +30,23 @@ class Parser():
             lexer.REGION: self.region_stmt
         }
 
+    def search_line_error(self, index):
+        line = 1
+        col = 1
+        for i, char in enumerate(self.template):
+            if index == i:
+                return (line, col)
+            if char == '\n':
+                line += 1
+                col = 1
+            else:
+                col += 1
+
     def error(self, msg, token=None):
-        self.lex.error(msg, token or self.tok)
+        token = token or self.tok
+        line, column = self.search_line_error(token.column)
+        sys.exit('Error on file {!r}: {} at line {}, column {}'.format(
+            self.filename, msg, line, column))
 
     def next_token(self):
         self.tok_index += 1
@@ -356,6 +372,11 @@ class Parser():
             self.error('Unexpected token [{!r}]'.format(self.tok.value))
         return node
 
+    def create_node(self, nodetype, *args):
+        node = nodetype(*args)
+        node.set_metadata()
+        return node
+
     def parse(self, regions=None):
         self.regions = regions or {}
         tree_root = tree.Root(parser=self)
@@ -369,7 +390,7 @@ class Parser():
                 fp = open(self.base_template, 'r')
             except IOError:
                 self.error('File {!r} not found'.format(self.base_template))
-            p = Parser(fp.read())
+            p = Parser(fp.read(), filename=self.base_template)
             fp.close()
             tree_root = p.parse(regions=self.regions)
         return tree_root

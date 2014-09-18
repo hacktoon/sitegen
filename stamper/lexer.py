@@ -160,25 +160,8 @@ class Token():
 
 
 class Lexer:
-    def __init__(self, template):
-        self.template = template
+    def __init__(self):
         self.tokens = []
-
-    def search_line_error(self, index):
-        line = 1
-        col = 1
-        for i, char in enumerate(self.template):
-            if index == i:
-                return (line, col)
-            if char == '\n':
-                line += 1
-                col = 1
-            else:
-                col += 1
-
-    def error(self, msg, tok):
-        line, column = self.search_line_error(tok.column)
-        sys.exit('Error: {} at line {}, column {}'.format(msg, line, column))
     
     def make_token(self, type, value, index_in_tpl):
         self.tokens.append(Token(type, value, index_in_tpl))
@@ -193,17 +176,16 @@ class Lexer:
             index = match.start() + offset
             self.make_token(match.lastgroup, value, index)
 
-    def tokenize(self):
+    def tokenize(self, template):
         index = 0
-        text = self.template
-        for match in TAG_REGEX.finditer(text):
+        for match in TAG_REGEX.finditer(template):
             start = match.start()
             end = match.end()
-            if text[index:start]:
-                self.make_token(TEXT, text[index:start], index)
+            if template[index:start]:
+                self.make_token(TEXT, template[index:start], index)
             if match.lastgroup != TAG_COMMENT_OPEN:
-                self.extract_tokens(text[start: end], match)
+                self.extract_tokens(template[start: end], match)
             index = end
-        if text[index:]:
-            self.make_token(TEXT, text[index:], index)
+        if template[index:]:
+            self.make_token(TEXT, template[index:], index)
         return self.tokens

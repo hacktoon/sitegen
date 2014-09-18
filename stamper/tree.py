@@ -6,6 +6,7 @@ from . import exceptions
 FILE_EXCEPTION = exceptions.FileNotFoundError
 RUNTIME_EXCEPTION = exceptions.RuntimeError
 
+
 class Node:
     def __init__(self, value='', token=None):
         self.value = value
@@ -21,6 +22,9 @@ class Node:
             except AttributeError as error:
                 return
         return ref
+
+    def set_metadata(self, data):
+        pass
 
     def add_child(self, child):
         if isinstance(child, list):
