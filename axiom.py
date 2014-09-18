@@ -21,7 +21,7 @@ from datetime import datetime
 import specs
 import book_dweller
 
-from templex import TemplateParser
+from stamper.stamper import Stamper
 from alarum import (ValuesNotDefinedError, FileNotFoundError,
                         SiteAlreadyInstalledError, PageExistsError,
                         PageValueError, TemplateError)
@@ -139,7 +139,7 @@ class RSSRenderer():
         self.tpl_name = tpl_name
 
     def render(self, context):
-        renderer = TemplateParser(self.template, self.tpl_name)
+        renderer = Stamper(self.template, filename=self.tpl_name)
         return renderer.render(context)
 
 
@@ -178,8 +178,8 @@ class HTMLRenderer():
         page_data['styles'] = self.build_style_tags(page.styles)
         page_data['scripts'] = self.build_script_tags(page.scripts)
         env['page'] = page_data
-        renderer = TemplateParser(self.template, self.tpl_name)
-        renderer.set_include_path(env.get('templates_dir', specs.TEMPLATES_DIR))
+        renderer = Stamper(self.template, filename=self.tpl_name,
+            include_path=env.get('templates_dir', specs.TEMPLATES_DIR))
         return renderer.render(env)
 
 
@@ -516,7 +516,7 @@ class Library:
             cat.paginate()
         pages = scriber.page_list
         env = {
-            'pages': pages,
+            'pages': [p for p in pages if p.is_listable()],
             'site': self.meta,
             'render_cache': {}
         }

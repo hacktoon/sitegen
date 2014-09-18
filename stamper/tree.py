@@ -1,30 +1,29 @@
 import os
+from datetime import datetime
 
-def load_file(self, filename):
-    if not isinstance(filename, str):
-        raise Exception('String expected')
-    try:
-        fp = open(filename, 'r')
-    except:
-        raise Exception('File not found')
-    file_path = os.path.realpath(filename)
-    file_content = fp.read()
-    fp.close()
-    return file_content
+from . import exceptions
+
+FILE_EXCEPTION = exceptions.FileNotFoundError
+RUNTIME_EXCEPTION = exceptions.RuntimeError
+
 
 class Node:
-    def __init__(self, value=''):
+    def __init__(self, value='', token=None):
         self.value = value
+        self.token = token
         self.children = []
 
     def lookup_context(self, context, name):
-        ref = context.get(name[0])
+        name = name.split('.')
+        ref = context.get(name[0], '')
         for part in name[1:]:
-            try:
-                ref = ref.get(part)
-            except AttributeError as error:
-                return
+            if not part in ref:
+                return ''
+            ref = ref[part]
         return ref
+
+    def set_metadata(self, parser):
+        self.parser = parser
 
     def add_child(self, child):
         if isinstance(child, list):
@@ -38,13 +37,38 @@ class Node:
     def render(self, context):
         output = []
         for child in self.children:
-            output.append(str(child.render(context)))
+            rendered = str(child.render(context))
+            output.append(rendered)
             if isinstance(child, ReturnCommand):
                 return self.build_output(output)
         return self.build_output(output)
 
+    def load_file(self, filename, path=''):
+        if not isinstance(filename, str):
+            self.error(RUNTIME_EXCEPTION, 'String expected')
+        filename = os.path.join(path, filename)
+        try:
+            with open(filename, 'r') as fp:
+                file_content = fp.read()
+        except IOError:
+            msg = 'File {!r} not found'.format(filename)
+            self.error(FILE_EXCEPTION, msg)
+        return file_content
+
+    def error(self, exception_class, msg):
+        raise exception_class(msg, self.token, self.parser)
+
     def __str__(self):
         return '{} - [{}]\n'.format(type(self), str(self.value))
+
+
+class Root(Node):
+    def render(self, context):
+        try:
+            output = super().render(context)
+        except (RUNTIME_EXCEPTION, FILE_EXCEPTION) as err:
+            err.parser.error(err, err.token)
+        return output
 
 
 class Text(Node):
@@ -54,11 +78,7 @@ class Text(Node):
 
 class Variable(Node):
     def render(self, context):
-        value = self.lookup_context(context, self.value)
-        if value is None:
-            raise Exception('Variable {!r} not defined'
-                .format('.'.join(self.value)))
-        return value
+        return self.lookup_context(context, self.value)
 
 
 class Number(Node):
@@ -87,17 +107,22 @@ class Operation(Node):
     def render(self, context):
         output = self.children[0].render(context)
         # need to calculate with first child because of the NOT
-        if len(self.children) > 1:
-            for child in self.children[1:]:
-                output = self.value(output, child.render(context))
-        else:
-            output = self.value(output)
+        try:
+            if len(self.children) > 1:
+                for child in self.children[1:]:
+                    output = self.value(output, child.render(context))
+            else:
+                output = self.value(output)
+        except ZeroDivisionError:
+            self.error(RUNTIME_EXCEPTION, 'Division by zero')
+        except TypeError:
+            self.error(RUNTIME_EXCEPTION, 'Wrong types in operation')
         return output
 
 
 class Condition(Node):
-    def __init__(self, value):
-        super().__init__(value)
+    def __init__(self, value, token):
+        super().__init__(value, token)
         self.true_block = None
         self.false_block = None
 
@@ -106,6 +131,8 @@ class Condition(Node):
             self.children = self.true_block
         elif self.false_block: # just check if there's an ELSE clause
             self.children = self.false_block
+        else:
+            self.children = []
         return super().render(context)
 
 
@@ -119,18 +146,17 @@ class WhileLoop(Node):
 
 
 class List(Node):
-    def __init__(self, iter_name, collection_name, reverse=False):
-        super().__init__('List')
+    def __init__(self, iter_name, collection_name, token, reverse=False):
+        super().__init__('List', token)
         self.iter_name = iter_name
         self.collection_name = collection_name
         self.reverse = reverse
 
     def update_iteration_counters(self, context, collection, index):
-        context[self.iter_name].update({
-            'first': True if index == 0 else False,
-            'last': True if index == len(collection) - 1 else False,
-            'index': index
-        })
+        item = context[self.iter_name]
+        item['first'] = True if index == 0 else False,
+        item['last'] = True if index == len(collection) - 1 else False,
+        item['index'] = index
 
     def render(self, context):
         output = []
@@ -148,8 +174,8 @@ class List(Node):
 
 
 class Function(Node):
-    def __init__(self, name, params):
-        self.name = name
+    def __init__(self, value, params, token):
+        super().__init__(value, token)
         self.params = params
         self.context = {}
 
@@ -157,32 +183,29 @@ class Function(Node):
         received = len(args)
         expected = len(self.params)
         if expected > received:
-            raise Exception('Expected {} params, '
-                'received {}'.format(expected, received))
+            msg = 'Expected {} params, received {}'.format(expected, received)
+            self.error(RUNTIME_EXCEPTION, msg)
         scope_context = dict(zip(self.params, args))
         self.context.update(scope_context)
         return super().render(self.context)
 
     def render(self, context):
-        context[self.name] = self
+        context[self.value] = self
         self.context = context.copy()
         return ''
 
 
 class FunctionCall(Node):
-    def __init__(self, name, args, procedure=False):
-        self.name = name
+    def __init__(self, value, args, token):
+        super().__init__(value, token)
         self.args = args
-        self.procedure = procedure
 
     def render(self, context):
-        func = self.lookup_context(context, self.name)
+        func = self.lookup_context(context, self.value)
         if not func:
-            raise Exception('Function {!r} not defined'
-                .format('.'.join(self.name)))
+            msg = 'Function {!r} not defined'.format(self.value)
+            self.error(RUNTIME_EXCEPTION, msg)
         args = [arg.render(context) for arg in self.args]
-        if self.procedure:
-            return ''
         return func.call(args)
 
 
@@ -192,40 +215,51 @@ class ReturnCommand(Node):
 
 
 class PrintCommand(Node):
+    def __init__(self, value, token, tag_filter=None):
+        super().__init__(value, token)
+        self.tag_filter = tag_filter
+
     def render(self, context):
-        return str(self.value.render(context))
+        value = self.value.render(context)
+        if isinstance(value, datetime):
+            if self.tag_filter:
+                value = value.strftime(self.tag_filter)
+            else:
+                value = value.strftime('%Y-%m-%d %H:%M:%S')
+        return str(value)
 
 
 class IncludeCommand(Node):
     def render(self, context):
+        path = self.parser.include_path
         filename = self.value.render(context)
-        return load_file(filename)
+        return self.load_file(filename, path)
 
 
 class ParseCommand(Node):
-    def __init__(self, value, parser):
-        self.value = value
-        self.parser = parser
+    def __init__(self, value, parser, token):
+        super().__init__(value, token)
+        self.parser_cls = parser
 
     def render(self, context):
+        path = self.parser.include_path
         filename = self.value.render(context)
-        file_content = load_file(filename)
+        file_content = self.load_file(filename, path)
         try:
-            subtree = self.parser(file_content).parse()
+            p = self.parser_cls(file_content, filename=filename)
+            subtree = p.parse()
         except RuntimeError:
-            sys.exit('{} is including itself.'.format(filename))
+            msg = '{} is including itself.'.format(filename)
+            self.error(RUNTIME_EXCEPTION, msg)
         return subtree.render(context)
 
 
 class Assignment(Node):
-    def __init__(self, value):
-        self.value = value
+    def __init__(self, value, token):
+        super().__init__(value, token)
         self.rvalue = None
 
     def render(self, context):
         value = self.rvalue.render(context)
         context[self.value] = value
         return ''
-
-    def __str__(self):
-        return '{} - {} = {}\n'.format(type(self), str(self.value), str(self.rvalue))
