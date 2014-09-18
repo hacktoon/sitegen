@@ -3,14 +3,16 @@ class TemplateError(Exception):
 	pass
 
 
-class RuntimeError(Exception):
-	def __init__(self, msg, token):
+class NodeError(Exception):
+	def __init__(self, msg, token, parser):
 		self.token = token
+		self.parser = parser
 		super().__init__(msg)
 
 
-class FileNotFoundError(Exception):
-	def __init__(self, msg, token):
-		self.token = token
-		super().__init__(msg)
-		
+class RuntimeError(NodeError):
+	pass
+
+
+class FileNotFoundError(NodeError):
+	pass

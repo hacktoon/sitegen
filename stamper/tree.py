@@ -23,7 +23,7 @@ class Node:
                 return
         return ref
 
-    def set_metadata(self, parser=None):
+    def set_metadata(self, parser):
         self.parser = parser
 
     def add_child(self, child):
@@ -47,18 +47,16 @@ class Node:
     def load_file(self, filename):
         if not isinstance(filename, str):
             self.error(RUNTIME_EXCEPTION, 'String expected')
-
         try:
-            fp = open(filename, 'r')
+            with open(filename, 'r') as fp:
+                file_content = fp.read()
         except IOError:
             msg = 'File {!r} not found'.format(filename)
             self.error(FILE_EXCEPTION, msg)
-        file_content = fp.read()
-        fp.close()
         return file_content
 
     def error(self, exception_class, msg):
-        raise exception_class(msg, self.token)
+        raise exception_class(msg, self.token, self.parser)
 
     def __str__(self):
         return '{} - [{}]\n'.format(type(self), str(self.value))
@@ -68,10 +66,8 @@ class Root(Node):
     def render(self, context):
         try:
             output = super().render(context)
-        except (exceptions.RuntimeError, 
-                exceptions.FileNotFoundError) as error:
-            msg = '{}, [{}]'.format(error, error.token)
-            self.parser.error(msg, error.token)
+        except (RUNTIME_EXCEPTION, FILE_EXCEPTION) as err:
+            err.parser.error(err, err.token)
         return output
 
 
@@ -82,8 +78,7 @@ class Text(Node):
 
 class Variable(Node):
     def render(self, context):
-        value = self.lookup_context(context, self.value)
-        return value
+        return self.lookup_context(context, self.value)
 
 
 class Number(Node):

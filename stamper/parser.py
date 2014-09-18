@@ -11,7 +11,7 @@ class Parser():
     def __init__(self, template, filename=''):
         self.template = template
         self.filename = filename
-        self.tokens = lexer.Lexer().tokenize(template)
+        self.tokens = lexer.Lexer().tokenize(self.template)
         self.tok_index = 0
         self.tok = self.tokens[self.tok_index]
         self.regions = {}

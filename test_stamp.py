@@ -1,9 +1,8 @@
 import stamper.parser as stamp
 import re
 
-filename = 'test.code'
+filename = 'tpl.html'
 tpl = open(filename).read()
-print(tpl[94:])
 p = stamp.Parser(tpl, filename=filename)
 t = p.parse()
 context = {'nome': 'joao', 'pages': [
