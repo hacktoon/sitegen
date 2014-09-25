@@ -154,8 +154,8 @@ class List(Node):
 
     def update_iteration_counters(self, context, collection, index):
         item = context[self.iter_name]
-        item['first'] = True if index == 0 else False,
-        item['last'] = True if index == len(collection) - 1 else False,
+        item['first'] = True if index == 0 else False
+        item['last'] = True if index == len(collection) - 1 else False
         item['index'] = index
 
     def render(self, context):
