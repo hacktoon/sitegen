@@ -123,7 +123,28 @@ class CategoryList:
         self.items[category_name].add_page(page)
 
 
-class JSONRenderer():
+class Renderer:
+    def __init__(self, template, tpl_name):
+        self.template = template
+        self.tpl_name = tpl_name
+        self.include_path = ''
+
+    def render(self, context):
+        cache = context['render_cache']
+        if self.tpl_name in cache.keys():
+            renderer = cache[self.tpl_name]
+        else:
+            renderer = Stamper(self.template, 
+                filename=self.tpl_name, include_path=self.include_path)
+            cache[self.tpl_name] = renderer
+        return renderer.render(context)
+
+
+class RSSRenderer(Renderer):
+    pass
+
+
+class JSONRenderer(Renderer):
     def __init__(self):
         pass
 
@@ -133,24 +154,8 @@ class JSONRenderer():
         return json.dumps(page_data, skipkeys=True)
 
 
-class RSSRenderer():
-    def __init__(self, template, tpl_name):
-        self.template = template
-        self.tpl_name = tpl_name
-
-    def render(self, context):
-        renderer = Stamper(self.template, filename=self.tpl_name)
-        return renderer.render(context)
-
-
-class HTMLRenderer():
+class HTMLRenderer(Renderer):
     '''Manage HTML rendering process'''
-    def __init__(self, template, tpl_name):
-        self.link_tpl = '<link rel="stylesheet" type="text/css" href="{0}"/>'
-        self.script_tpl = '<script src="{0}"></script>'
-        self.template = template
-        self.tpl_name = tpl_name
-
     def build_external_tags(self, links, tpl):
         '''To help in organization'''
         tag_list = []
@@ -162,25 +167,26 @@ class HTMLRenderer():
         '''To organize the book style'''
         if not links:
             return ''
+        link_tpl = '<link rel="stylesheet" type="text/css" href="{0}"/>'
         links = [f for f in links if f.endswith('.css')]
-        return self.build_external_tags(links, self.link_tpl)
+        return self.build_external_tags(links, link_tpl)
 
     def build_script_tags(self, links):
         '''To organize the behavior scripts'''
         if not links:
             return ''
+        script_tpl = '<script src="{0}"></script>'
         links = [f for f in links if f.endswith('.js')]
-        return self.build_external_tags(links, self.script_tpl)
+        return self.build_external_tags(links, script_tpl)
 
     def render(self, page, env):
         '''Show a book in HTML format'''
+        self.include_path = env.get('templates_dir', specs.TEMPLATES_DIR)
         page_data = page.data.copy()
         page_data['styles'] = self.build_style_tags(page.styles)
         page_data['scripts'] = self.build_script_tags(page.scripts)
         env['page'] = page_data
-        renderer = Stamper(self.template, filename=self.tpl_name,
-            include_path=env.get('templates_dir', specs.TEMPLATES_DIR))
-        return renderer.render(env)
+        return super().render(env)
 
 
 class Page():
