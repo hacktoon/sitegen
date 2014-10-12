@@ -258,11 +258,15 @@ class Page():
         '''To get some extra behavior'''
         self.scripts = book_dweller.extract_multivalues(scripts)
 
-    def set_date(self, date, options):
+    def set_date(self, date_string, options):
         '''converts date string to datetime object'''
         try:
             date_format = options.get('date_format', '')
-            self['date'] = datetime.strptime(date, date_format)
+            date = datetime.strptime(date_string, date_format)
+            self['date'] = date
+            self['year'] = date.year
+            self['month'] = date.month
+            self['day'] = date.day
         except ValueError:
             raise PageValueError('Wrong date format '
             'detected at {!r}!'.format(self.path))
