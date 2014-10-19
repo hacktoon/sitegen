@@ -167,10 +167,9 @@ class List(Node):
             collection = list(collection)
             collection.reverse()
         for index, item in enumerate(collection):
-            list_context = context.copy()
-            list_context[self.iter_name] = item
-            self.update_iteration_counters(list_context, collection, index)
-            text = super().render(list_context)
+            context[self.iter_name] = item
+            self.update_iteration_counters(context, collection, index)
+            text = super().render(context)
             output.append(text)
         return self.build_output(output)
 
