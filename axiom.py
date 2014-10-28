@@ -140,10 +140,6 @@ class Renderer:
         return renderer.render(context)
 
 
-class RSSRenderer(Renderer):
-    pass
-
-
 class JSONRenderer(Renderer):
     def __init__(self):
         pass
@@ -283,6 +279,10 @@ class Page():
         '''Sometimes book publishers are shy'''
         return 'nofeed' not in self.props
 
+    def is_json_writable(self):
+        '''Sometimes book publishers like other formats'''
+        return 'nojson' not in self.props
+
 
 class MechaniScribe:
     '''An infinite automaton that can write books at a blazing speed'''
@@ -417,7 +417,7 @@ class MechaniScribe:
         feed_dir = self.meta.get('feed_dir', specs.FEED_DIR)
         feed_path = os.path.join(specs.BASE_PATH, feed_dir)
         base_url = self.meta.get('base_url', specs.BASE_URL)
-        renderer = RSSRenderer(template, 'rss')
+        renderer = Renderer(template, 'rss')
         try:
             feed_num = int(self.meta.get('feed_num', specs.FEED_NUM))
         except ValueError:
@@ -530,9 +530,15 @@ class Library:
             'site': self.meta,
             'render_cache': {}
         }
+        summary = {'pages': []}
         for page in pages:
             env['page'] = page
+            if page.is_json_writable():
+                summary['pages'].append(page.path)
             scriber.publish_page(page, env)
-            print("Generated page {!r}.".format(page.path))
+            print('Generated page {!r}.'.format(page.path))
         scriber.publish_feeds()
+
+        print('Generated pages summary: {!r}.'.format('pages.json'))
+        book_dweller.write_file('pages.json', json.dumps(summary))
         return pages
