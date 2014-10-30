@@ -163,13 +163,14 @@ class List(Node):
     def render(self, context):
         output = []
         collection = context.get(self.collection_name)
+        loop_context = context.copy()
         if self.reverse:
             collection = list(collection)
             collection.reverse()
         for index, item in enumerate(collection):
-            context[self.iter_name] = item
-            self.update_iteration_counters(context, collection, index)
-            text = super().render(context)
+            loop_context[self.iter_name] = item
+            self.update_iteration_counters(loop_context, collection, index)
+            text = super().render(loop_context)
             output.append(text)
         return self.build_output(output)
 
@@ -264,3 +265,4 @@ class Assignment(Node):
         value = self.rvalue.render(context)
         context[self.value] = value
         return ''
+
