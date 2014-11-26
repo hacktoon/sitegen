@@ -21,6 +21,7 @@ from datetime import datetime
 import specs
 import book_dweller
 
+from mem import MemReader
 from stamper.stamper import Stamper
 from alarum import (ValuesNotDefinedError, FileNotFoundError,
                         SiteAlreadyInstalledError, PageExistsError,
@@ -291,25 +292,13 @@ class MechaniScribe:
         self.categories = CategoryList()
         self.meta = meta or {}
     
-    def parse_input_file(self, file_string):
+    def read_mem_file(self, file_string):
         '''Read the book data from a bare specification'''
-        file_data = {}
-        lines = file_string.split('\n')
-        for num, line in enumerate(lines):
-            # avoids empty lines and comments
-            line = line.strip()
-            if not line or line.startswith('#'):
-                continue
-            if(line == 'content'):
-                # read the rest of the file
-                file_data['content'] = ''.join(lines[num + 1:])
-                break
-            try:
-                key, value = [l.strip() for l in line.split('=', 1)]
-            except ValueError:
-                raise PageValueError('Wrong line format '
-            'detected at {!r}!'.format(line))
-            file_data[key] = value
+        try:
+            file_data = MemReader(file_string).parse()
+        except PageValueError as err:
+            print(file_string)
+            raise PageValueError(err)
         return file_data
 
     def read_page(self, path):
@@ -317,7 +306,7 @@ class MechaniScribe:
         data_file_path = self.meta.get('data_file', specs.DATA_FILE)
         file_path = os.path.join(path, data_file_path)
         if os.path.exists(file_path):
-            return self.parse_input_file(book_dweller.bring_file(file_path))
+            return self.read_mem_file(book_dweller.bring_file(file_path))
         return
 
     def build_page(self, path, page_data):
@@ -499,7 +488,7 @@ class Library:
             raise FileNotFoundError()
         scriber = MechaniScribe()
         config_file = book_dweller.bring_file(config_path)
-        self.meta = scriber.parse_input_file(config_file)
+        self.meta = scriber.read_mem_file(config_file)
         blocked = self.meta.get('blocked_dirs', [])
         self.meta['blocked_dirs'] = book_dweller.extract_multivalues(blocked)
 
