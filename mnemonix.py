@@ -33,6 +33,8 @@ def publish(args):
 		lib.enter(path)
 	except FileNotFoundError:
 		sys.exit('No library were ever built in {!r}.'.format(path))
+	except PageValueError as err:
+		sys.exit(err)
 
 	try:
 		pages = lib.publish_pages(path)

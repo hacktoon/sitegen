@@ -256,6 +256,18 @@ class Page():
             raise PageValueError('Wrong date format '
             'detected at {!r}!'.format(self.path))
 
+    def set_props(self, props, options):
+        '''Books can have some different properties'''
+        self.props = props
+
+    def set_styles(self, styles, options):
+        '''To get some extra style'''
+        self.styles = styles
+
+    def set_scripts(self, scripts, options):
+        '''To get some extra behavior'''
+        self.scripts = scripts
+
     def is_draft(self):
         '''To decide if the book is not ready yet'''
         return 'draft' in self.props
@@ -282,19 +294,19 @@ class MechaniScribe:
     
     def read_mem_file(self, file_string):
         '''Read the book data from a bare specification'''
-        try:
-            file_data = MemReader(file_string).parse()
-        except PageValueError as err:
-            print(file_string)
-            raise PageValueError(err)
-        return file_data
+        return MemReader(file_string).parse()
 
     def read_page(self, path):
         '''Return the page data specified by path'''
         data_file_path = self.meta.get('data_file', specs.DATA_FILE)
         file_path = os.path.join(path, data_file_path)
         if os.path.exists(file_path):
-            return self.read_mem_file(book_dweller.bring_file(file_path))
+            file_content = book_dweller.bring_file(file_path)
+            try:
+                mem_data = self.read_mem_file(file_content)
+            except PageValueError as err:
+                raise PageValueError('In file {!r}: {}'.format(file_path, err))
+            return mem_data
         return
 
     def build_page(self, path, page_data):
@@ -476,7 +488,10 @@ class Library:
             raise FileNotFoundError()
         scriber = MechaniScribe()
         config_file = book_dweller.bring_file(config_path)
-        self.meta = scriber.read_mem_file(config_file)
+        try:
+            self.meta = scriber.read_mem_file(config_file)
+        except PageValueError as err:
+            raise PageValueError('In file {!r}: {}'.format(config_path, err))
         blocked = self.meta.get('blocked_dirs', [])
 
     def write_page(self, path):

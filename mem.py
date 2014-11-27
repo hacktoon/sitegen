@@ -51,8 +51,9 @@ class MemReader:
 		self.stack = [self.data]
 
 	def error(self, msg):
+		token = self.current_token
 		raise PageValueError('{} at line {}, column {}'.format(
-			msg, self.line, self.column))
+			msg, token.line, token.column))
 
 	def create_token(self, type, value):
 		if not value:
@@ -67,28 +68,26 @@ class MemReader:
 		cache = []
 		inlist = False
 		for index, char in enumerate(text):
-			if char in KEYCHARS:
-				if not inlist and char == TOK_COMMA:
-					cache.append(char)
-					continue
-				name = ''.join(cache).strip()
-				inlist = {
-					TOK_OPENLIST: True,
-					TOK_CLOSELIST: False
-				}.get(char, False)
-				if name == TOK_TEXT:
-					self.create_token(TOK_TEXT, text[index:].strip())
-					return
-				self.create_token(TOK_NAME, name)
-				if char == NEWLINE:
-					self.line += 1
-					self.column = 0
-				else:
-					self.column += 1
-					self.create_token(char, char)
-				cache = []
-			else:
+			if char not in KEYCHARS or not inlist and char == TOK_COMMA:
 				cache.append(char)
+				continue
+			name = ''.join(cache).strip()
+			inlist = {
+				TOK_OPENLIST: True,
+				TOK_CLOSELIST: False
+			}.get(char, inlist)
+			if name == TOK_TEXT:
+				self.create_token(TOK_TEXT, text[index:].strip())
+				return
+			self.create_token(TOK_NAME, name)
+			if char == NEWLINE:
+				self.line += 1
+				self.column = 0
+			else:
+				self.column += 1
+				self.create_token(char, char)
+			cache = []
+				
 		# remaining chars
 		name = ''.join(cache).strip()
 		self.create_token(TOK_NAME, name)
