@@ -256,17 +256,23 @@ class Page():
             raise PageValueError('Wrong date format '
             'detected at {!r}!'.format(self.path))
 
+    def convert_param_list(self, param):
+        '''Convert param string to list'''
+        if isinstance(param, str):
+            return [x.strip() for x in param.split(',')]
+        return param
+
     def set_props(self, props, options):
         '''Books can have some different properties'''
-        self.props = props
+        self.props = self.convert_param_list(props)
 
     def set_styles(self, styles, options):
         '''To get some extra style'''
-        self.styles = styles
+        self.styles = self.convert_param_list(styles)
 
     def set_scripts(self, scripts, options):
         '''To get some extra behavior'''
-        self.scripts = scripts
+        self.scripts = self.convert_param_list(scripts)
 
     def is_draft(self):
         '''To decide if the book is not ready yet'''
