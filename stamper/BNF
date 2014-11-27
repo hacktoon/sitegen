@@ -1,0 +1,22 @@
+'''
+<statement>  =  <conditional> | <while> | <assignment>
+<assignment>  =  <identifier> '=' <expression>
+<conditional>   = 'if' <expression> <block> ['else' <block>]
+<while>   = 'while' <expression> <block>
+<block> = ':' <statement>+ 'end'
+-----
+<expression> = <logical-and> | <logical-and> 'or' <logical-and> 
+<logical-and> = <not-unary> | <not-unary> 'and' <not-unary>
+<not-unary> = 'not' <not-unary> | <equality-expr>
+<equality-expr> = <relational-expr> | <relational-expr> <eq-op> <relational-expr>
+<relational-expr> = <additive-expr> | <additive-expr> <rel-op> <additive-expr>
+<additive-expr> = <multiplicative-expr> | <multiplicative-expr> <add-op> <multiplicative-expr>
+<multiplicative-expr> = <factor> | <factor> <mult-op> <factor>
+<factor> :=  [<unary-op>] <literal> | ( <expression> )
+
+<unary-op> = '+' | '-'
+<mult-op> = '*' | '/' | '%'
+<add-op> = '+' | '-'
+<rel op> = '<' | '<=' | '>=' | '>'
+<eq-op> = '==' | '!='
+'''

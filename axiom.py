@@ -13,295 +13,529 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 '''
 
 import os
-import sys
+import json
 import re
 import shutil
-import time
 from datetime import datetime
 
-import config
+import specs
+import book_dweller
+
+from mem import MemReader
+from stamper.stamper import Stamper
+from alarum import (ValuesNotDefinedError, FileNotFoundError,
+                        SiteAlreadyInstalledError, PageExistsError,
+                        PageValueError, TemplateError)
 
 
-def urljoin(base, *slug):
-	'''Custom URL join function to concatenate and add slashes'''
-	fragments = [base]
-	fragments.extend(filter(None, slug))
-	return '/'.join(s.strip('/') for s in fragments)
+REQUIRED_KEYS = ('title', 'date')
 
 
-def read_file(path):
-	if not os.path.exists(path):
-		sys.exit('File {!r} couldn\'t be found!'.format(path))
-	with open(path, 'r') as f:
-		return f.read()
+class Category:
+    '''Define a category of pages'''
+    def __init__(self, name):
+        self.name = name
+        self.pages = PageList()
+
+    def add_page(self, page):
+        '''To add a book to a category'''
+        self.pages.insert(page)
+    
+    def paginate(self):
+        '''To sort books in the shelves'''
+        self.pages.paginate()
 
 
-def write_file(path, content=''):
-	with open(path, 'w') as f:
-		f.write(content)
+class PageList:
+    '''Define an ordered list of pages'''
+    def __init__(self):
+        self.pages = []
+
+    def __iter__(self):
+        for page in self.pages:
+            yield page
+
+    def __len__(self):
+        return len(self.pages)
+    
+    def __setitem__(self, key, value):
+        self.pages[key] = value
+
+    def __getitem__(self, key):
+        return self.pages[key]
+    
+    def __delitem__(self, key):
+        del self.pages[key]
+    
+    def reverse(self):
+        '''To reverse the list of books'''
+        return self.pages.reverse()
+
+    def page_struct(self, index):
+        '''To create a tag to find books'''
+        page = self.pages[index]
+        return {
+            'url': page['url'],
+            'title': page['title']
+        }
+
+    def paginate(self):
+        '''To sort books in shelves'''
+        length = len(self.pages)
+        for index, page in enumerate(self.pages):
+            page['first'] = self.page_struct(0)
+            next_index = index + 1 if index < length - 1 else -1
+            page['next'] = self.page_struct(next_index)
+            prev_index = index - 1 if index > 0 else 0
+            page['prev'] = self.page_struct(prev_index)
+            page['last'] = self.page_struct(-1)
+
+    def insert(self, page):
+        '''To insert book in right position by date'''
+        count = 0
+        while True:
+            if count == len(self.pages) or page <= self.pages[count]:
+                self.pages.insert(count, page)
+                break
+            count += 1
 
 
-def parse_input_file(file_string):
-	file_data = {}
-	lines = file_string.split('\n')
-	for num, line in enumerate(lines):
-		# avoids empty lines and comments
-		line = line.strip()
-		if not line or line.startswith('#'):
-			continue
-		if(line == 'content'):
-			# read the rest of the file
-			file_data['content'] = ''.join(lines[num + 1:])
-			break
-		key, value = [l.strip() for l in line.split('=', 1)]
-		file_data[key] = value
-	return file_data
+class CategoryList:
+    '''Define a list of categories'''
+    def __init__(self):
+        self.items = {}
+
+    def __iter__(self):
+        for category in self.items.values():
+            yield category
+
+    def add_category(self, category_name):
+        '''To create a new category of books'''
+        if category_name in self.items.keys() or not category_name:
+            return
+        self.items[category_name] = Category(category_name)
+
+    def add_page(self, category_name, page):
+        '''To add a book to a specific category in a list'''
+        if not category_name:
+            return
+        if category_name not in self.items.keys():
+            self.add_category(category_name)
+        self.items[category_name].add_page(page)
 
 
-def extract_multivalues(tag_string):
-	'''Converts a comma separated list of tags into a list'''
-	tag_list = []
-	if tag_string:
-		tags = tag_string.strip(',').split(',')
-		tag_list = [tag.strip() for tag in tags]
-	return tag_list
+class Renderer:
+    def __init__(self, template, tpl_name):
+        self.template = template
+        self.tpl_name = tpl_name
+        self.include_path = ''
+
+    def render(self, context):
+        cache = context['render_cache']
+        if self.tpl_name in cache.keys():
+            renderer = cache[self.tpl_name]
+        else:
+            renderer = Stamper(self.template, 
+                filename=self.tpl_name, include_path=self.include_path)
+            cache[self.tpl_name] = renderer
+        return renderer.render(context)
 
 
-def read_template(tpl_filename):
-	'''Returns a template string from the template folder'''
-	if not tpl_filename.endswith('.tpl'):
-		tpl_filename = '{0}.tpl'.format(tpl_filename)
-	tpl_filepath = os.path.join(config.TEMPLATES_DIR, tpl_filename)
-	if not os.path.exists(tpl_filepath):
-		return ''
-	return read_file(tpl_filepath)
+class JSONRenderer(Renderer):
+    def __init__(self):
+        pass
+
+    def render(self, page):
+        page_data = page.data.copy()
+        page_data['date'] = page['date'].strftime(specs.DATE_FORMAT)
+        return json.dumps(page_data, skipkeys=True)
 
 
-def get_site_config():
-	'''returns the current site config'''
-	config_path = os.path.join(os.getcwd(), config.CONFIG_FILE)
-	if not os.path.exists(config_path):
-		return
-	return parse_input_file(read_file(config_path))
+class HTMLRenderer(Renderer):
+    '''Manage HTML rendering process'''
+    def build_external_tags(self, links, tpl):
+        '''To help in organization'''
+        tag_list = []
+        for link in links:
+            tag_list.append(tpl.format(link))
+        return '\n'.join(tag_list)
+
+    def build_style_tags(self, links):
+        '''To organize the book style'''
+        if not links:
+            return ''
+        link_tpl = '<link rel="stylesheet" type="text/css" href="{0}"/>'
+        links = [f for f in links if f.endswith('.css')]
+        return self.build_external_tags(links, link_tpl)
+
+    def build_script_tags(self, links):
+        '''To organize the behavior scripts'''
+        if not links:
+            return ''
+        script_tpl = '<script src="{0}"></script>'
+        links = [f for f in links if f.endswith('.js')]
+        return self.build_external_tags(links, script_tpl)
+
+    def render(self, page, env):
+        '''Show a book in HTML format'''
+        self.include_path = env.get('templates_dir', specs.TEMPLATES_DIR)
+        page_data = page.data.copy()
+        page_data['styles'] = self.build_style_tags(page.styles)
+        page_data['scripts'] = self.build_script_tags(page.scripts)
+        env['page'] = page_data
+        return super().render(env)
 
 
-def create_site():
-	if get_site_config():
-		sys.exit('Mnemonix is already installed in this folder!')
-	# copy the config file
-	shutil.copyfile(config.MODEL_CONFIG_FILE, config.CONFIG_FILE)
-	# copy the templates folder
-	shutil.copytree(config.MODEL_TEMPLATES_DIR, config.TEMPLATES_DIR)
+class Page():
+    '''Define a page'''
+    def __init__(self):
+        self.children = PageList()
+        self.parent = None
+        self.props = []
+        self.path = ''
+        self.styles = []
+        self.scripts = []
+        self.template = ''
+        self.data = {}
+
+    def __le__(self, other):
+        return self['date'] <= other['date']
+    
+    def __len__(self):
+        return 0
+
+    def __str__(self):
+        return 'Page {!r}'.format(self.path)
+
+    def __setitem__(self, key, value):
+        self.data[key] = value
+
+    def __getitem__(self, key):
+        if not key in self.data.keys():
+            return None
+        return self.data[key]
+
+    def __delitem__(self, key):
+        del self.data[key]
+
+    def __contains__(self, key):
+        return key in self.data.keys()
+
+    def initialize(self, params, options):
+        ''' Set books properties dynamically'''
+        for key in params.keys():
+            method_name = 'set_{}'.format(key)
+            if hasattr(self, method_name):
+                getattr(self, method_name)(params[key], options)
+            else:
+                self.data[key] = params[key]
+        for key in REQUIRED_KEYS:
+            if key in params:
+                continue
+            msg = 'The following value was not defined: {!r}'
+            raise ValuesNotDefinedError(msg.format(key))
+    
+    def add_child(self, page):
+        '''Link books in a familiar way'''
+        self.children.insert(page)
+
+    def set_template(self, tpl, options):
+        '''To give a book a good look and diagramation'''
+        self.template = tpl
+
+    def set_date(self, date_string, options):
+        '''converts date string to datetime object'''
+        try:
+            date_format = options.get('date_format', '')
+            date = datetime.strptime(date_string, date_format)
+            self['date'] = date
+            self['year'] = date.year
+            self['month'] = date.month
+            self['day'] = date.day
+        except ValueError:
+            raise PageValueError('Wrong date format '
+            'detected at {!r}!'.format(self.path))
+
+    def convert_param_list(self, param):
+        '''Convert param string to list'''
+        if isinstance(param, str):
+            return [x.strip() for x in param.split(',')]
+        return param
+
+    def set_props(self, props, options):
+        '''Books can have some different properties'''
+        self.props = self.convert_param_list(props)
+
+    def set_styles(self, styles, options):
+        '''To get some extra style'''
+        self.styles = self.convert_param_list(styles)
+
+    def set_scripts(self, scripts, options):
+        '''To get some extra behavior'''
+        self.scripts = self.convert_param_list(scripts)
+
+    def is_draft(self):
+        '''To decide if the book is not ready yet'''
+        return 'draft' in self.props
+    
+    def is_listable(self):
+        '''Sometimes a book shall not be listed'''
+        return 'nolist' not in self.props and not self.is_draft()
+
+    def is_feed_enabled(self):
+        '''Sometimes book publishers are shy'''
+        return 'nofeed' not in self.props
+
+    def is_json_writable(self):
+        '''Sometimes book publishers like other formats'''
+        return 'nojson' not in self.props
 
 
-def create_page(path):
-	'''Creates a data.ion file in the folder passed as parameter'''
-	if not get_site_config():
-		sys.exit('Mnemonix is not installed!')
-	if not os.path.exists(path):
-		os.makedirs(path)
-	# full path of page data file
-	dest_file = os.path.join(path, config.DATA_FILE)
-	if os.path.exists(dest_file):
-		sys.exit('Page {!r} already exists.'.format(path))
-	# copy the skel page data file to new page
-	content = read_file(config.MODEL_DATA_FILE)
-	# saving date in the format configured
-	date = datetime.today().strftime(config.DATE_FORMAT)
-	# need to write file contents to insert creation date
-	write_file(dest_file, content.format(date))
-	return dest_file
+class MechaniScribe:
+    '''An infinite automaton that can write books at a blazing speed'''
+    def __init__(self, meta=None):
+        self.page_list = PageList()
+        self.categories = CategoryList()
+        self.meta = meta or {}
+    
+    def read_mem_file(self, file_string):
+        '''Read the book data from a bare specification'''
+        return MemReader(file_string).parse()
+
+    def read_page(self, path):
+        '''Return the page data specified by path'''
+        data_file_path = self.meta.get('data_file', specs.DATA_FILE)
+        file_path = os.path.join(path, data_file_path)
+        if os.path.exists(file_path):
+            file_content = book_dweller.bring_file(file_path)
+            try:
+                mem_data = self.read_mem_file(file_content)
+            except PageValueError as err:
+                raise PageValueError('In file {!r}: {}'.format(file_path, err))
+            return mem_data
+        return
+
+    def build_page(self, path, page_data):
+        '''Page object factory'''
+        options = {}
+        page = Page()
+        page.path = re.sub(r'^\.$|\./|\.\\', '', path)
+        options['date_format'] = self.meta.get('date_format', specs.DATE_FORMAT)
+        base_url = self.meta.get('base_url', specs.BASE_URL)
+        page_data['url'] = book_dweller.urljoin(base_url, page.path) + '/'
+        if 'category' in page_data.keys():
+            cat_name = page_data.get('category', '')
+            category_url = book_dweller.urljoin(base_url, cat_name) + '/'
+        else:
+            category_url = base_url + '/'
+        page_data['category_url'] = category_url
+        content = page_data.get('content', '')
+        regexp = r'<!--\s*more\s*-->'
+        page_data['excerpt'] = re.split(regexp, content, 1)[0]
+        page_data['content'] = re.sub(regexp, '', content)
+        try:
+            page.initialize(page_data, options)
+        except ValuesNotDefinedError as error:
+            raise ValuesNotDefinedError('{} at page {!r}'.format(error, path))
+        if not page.template:
+            page.template = self.meta.get('default_template', 
+            specs.DEFAULT_TEMPLATE)
+        return page
+    
+    def read_page_tree(self, path, parent=None):
+        '''Read the folders recursively and create an ordered list
+        of page objects.'''
+        if os.path.basename(path) in self.meta.get('blocked_dirs'):
+            return
+        page_data = self.read_page(path)
+        page = None
+        if page_data:
+            page = self.build_page(path, page_data)
+            page.parent = parent
+            if page.is_listable():
+                self.categories.add_page(page['category'], page)
+            if parent:
+                parent.add_child(page)
+            # add page to ordered list of pages
+            if not page.is_draft():
+                self.page_list.insert(page)
+        for subpage_path in self.read_subpages_list(path):
+            self.read_page_tree(subpage_path, page)
+
+    def read_subpages_list(self, path):
+        '''Return a list containing the full path of the subpages'''
+        for folder in os.listdir(path):
+            fullpath = os.path.join(path, folder)
+            if os.path.isdir(fullpath):
+                yield fullpath
+
+    def read_template(self, tpl_filename):
+        '''To return a template string from the template folder'''
+        templates_dir = self.meta.get('templates_dir', specs.TEMPLATES_DIR )
+        tpl_filepath = os.path.join(templates_dir, tpl_filename)
+        tpl_filepath += specs.TEMPLATES_EXT
+        if not os.path.exists(tpl_filepath):
+            raise FileNotFoundError('Template {!r}'
+            ' not found'.format(tpl_filepath))
+        return book_dweller.bring_file(tpl_filepath)
+    
+    def write_json(self, page):
+        '''To write the book data in a style-free, raw format'''
+        if 'nojson' in page.props:
+            return
+        json_path = os.path.join(page.path, self.meta.get('json_filename',
+            specs.JSON_FILENAME))
+        output = JSONRenderer().render(page)
+        book_dweller.write_file(json_path, output)
+
+    def write_html(self, page, env):
+        '''To write a book in the HTML format'''
+        if 'nohtml' in page.props:
+            return
+        template = self.read_template(page.template)
+        renderer = HTMLRenderer(template, page.template)
+        html_path = os.path.join(page.path, self.meta.get('html_filename', 
+            specs.HTML_FILENAME))
+        try:
+            output = renderer.render(page, env)
+        except TemplateError as error:
+            raise TemplateError('{} at template {!r}'.format(error, 
+            page.template))
+        book_dweller.write_file(html_path, output)
+    
+    def write_feed(self, env, page_list, name):
+        '''To write an announcement about new books'''
+        if not len(page_list):
+            return
+        tpl_filepath = os.path.join(specs.DATA_DIR, specs.FEED_FILE)
+        template = book_dweller.bring_file(tpl_filepath)
+        feed_dir = self.meta.get('feed_dir', specs.FEED_DIR)
+        feed_path = os.path.join(specs.BASE_PATH, feed_dir)
+        base_url = self.meta.get('base_url', specs.BASE_URL)
+        renderer = Renderer(template, 'rss')
+        try:
+            feed_num = int(self.meta.get('feed_num', specs.FEED_NUM))
+        except ValueError:
+            feed_num = specs.FEED_NUM
+        if not os.path.exists(feed_path):
+            os.makedirs(feed_path)
+        
+        fname = '{}.xml'.format(name)
+        env['feed'] = {
+            'link': book_dweller.urljoin(base_url, feed_dir, fname),
+            'build_date': datetime.today()
+        }
+        page_list =  [p for p in page_list if p.is_feed_enabled()]
+        page_list.reverse()
+        page_list = page_list[:feed_num]
+        env['pages'] = page_list
+        output = renderer.render(env)
+        rss_file = os.path.join(feed_path, fname)
+        book_dweller.write_file(rss_file, output)
+        return rss_file
+
+    def publish_page(self, page, env):
+        '''To actually finishing a book and sending it to the shelves'''
+        try:
+            self.write_html(page, env)
+            self.write_json(page)
+        except FileNotFoundError as error:
+            raise FileNotFoundError('{} at page {!r}'.format(error, page.path))
+
+    def publish_feeds(self):
+        '''To write the announcements of new books to the public'''
+        env = { 'site': self.meta, 'render_cache': {}}
+        # unique feed
+        file_path = self.write_feed(env, self.page_list, 'rss')
+        print("Generated {!r}.".format(file_path))
+        # generate feeds based on categories
+        for cat in self.categories:
+            file_path = self.write_feed(env, cat.pages, cat.name)
+            if file_path:
+                print("Generated {!r}.".format(file_path))
+            else:
+                print("Category {!r} has no content!".format(cat.name))
 
 
-def convert_page_date(page_data):
-	date = page_data.get('date')
-	if date:
-		try:
-			# converts date string to datetime object
-			date = datetime.strptime(date, config.DATE_FORMAT)
-		except ValueError:
-			sys.exit('Wrong date format detected at {!r}!'.format(data_file))
-	else:
-		date = datetime.now()
-	return date
+class Library:
+    '''The Abissal library of wonders'''
+    def __init__(self):
+        self.meta = {}
 
+    def build(self, path):
+        '''Build the wonder library'''
+        config_file = os.path.join(path, specs.CONFIG_FILE)
+        templates_dir = os.path.join(path, specs.TEMPLATES_DIR)
+        if os.path.exists(config_file):
+            raise SiteAlreadyInstalledError('A wonderful library '
+            'is already built here!')
+        if not os.path.exists(templates_dir):
+            model_templates_dir = os.path.join(specs.DATA_DIR, templates_dir)
+            shutil.copytree(model_templates_dir, templates_dir)
+        if not os.path.exists(config_file):
+            model_config_file = os.path.join(specs.DATA_DIR, config_file)
+            shutil.copyfile(model_config_file, config_file)
+    
+    def lookup_config(self, path):
+        '''Search a config file upwards in path provided'''
+        while True:
+            path, _ = os.path.split(path)
+            config_path = os.path.join(path, specs.CONFIG_FILE)
+            if os.path.exists(config_path):
+                return config_path
+            if not path:
+                break
+        return ''
 
-def get_page_data(env, path):
-	'''Returns a dictionary with the page data'''
-	#removing '.' of the path in the case of root directory of site
-	data_file = os.path.join(path, config.DATA_FILE)
-	# avoid directories that doesn't have a data file
-	if not os.path.exists(data_file):
-		return
-	page_data = parse_input_file(read_file(data_file))
-	page_data['path'] = path
-	page_data['date'] = convert_page_date(page_data)
-	# absolute link of the page
-	page_data['permalink'] = urljoin(env['base_url'], path)
-	# splits tags into a list
-	page_data['tags'] = extract_multivalues(page_data.get('tags'))
-	# get the page properties
-	page_data['props'] = extract_multivalues(page_data.get('props'))
-	# register group in the environment for feed generation
-	if 'group' in page_data['props']:
-		group_name = os.path.basename(path)
-		env['groups'].append(group_name)
-	
-	return page_data
+    def enter(self, path):
+        '''Load the config'''
+        config_path = self.lookup_config(path)
+        if not os.path.exists(config_path):
+            raise FileNotFoundError()
+        scriber = MechaniScribe()
+        config_file = book_dweller.bring_file(config_path)
+        try:
+            self.meta = scriber.read_mem_file(config_file)
+        except PageValueError as err:
+            raise PageValueError('In file {!r}: {}'.format(config_path, err))
+        blocked = self.meta.get('blocked_dirs', [])
 
+    def write_page(self, path):
+        '''Create a book in the library'''
+        data_file_path = self.meta.get('data_file', specs.DATA_FILE)
+        page_file = os.path.join(path, data_file_path)
+        if os.path.exists(page_file):
+            raise PageExistsError('Page {!r} already exists.'.format(path))
+        if not os.path.exists(path):
+            os.makedirs(path)
+        data_file_path = self.meta.get('data_file', specs.DATA_FILE)
+        model_page_file = os.path.join(specs.DATA_DIR, data_file_path)
+        content = book_dweller.bring_file(model_page_file)
+        date_format = self.meta.get('date_format', specs.DATE_FORMAT)
+        date = datetime.today().strftime(date_format)
+        book_dweller.write_file(page_file, content.format(date))
 
-def get_page_children(env, path, folders):
-	'''Returns a list containing the full path of the children pages,
-	removing the ignored folders like templates'''
-	join = os.path.join
-	isdir = os.path.isdir
-	children = []
-	for folder in folders:
-		fullpath = join(path, folder)
-		if isdir(fullpath) and fullpath not in env['ignore_folders']:
-			children.append(fullpath)
-	return children
+    def publish_pages(self, path):
+        '''Send the books to the wonderful Mechaniscriber for rendering'''
+        scriber = MechaniScribe(self.meta)
+        scriber.read_page_tree(path)
+        for cat in scriber.categories:
+            cat.paginate()
+        pages = scriber.page_list
+        env = {
+            'pages': [p for p in pages if p.is_listable()],
+            'site': self.meta,
+            'render_cache': {}
+        }
+        summary = {'pages': []}
+        for page in pages:
+            env['page'] = page
+            if page.is_json_writable():
+                summary['pages'].append(page.path)
+            scriber.publish_page(page, env)
+            print('Generated page {!r}.'.format(page.path))
+        scriber.publish_feeds()
 
-
-def read_page_files(env, path, parent=None):
-	'''Read the folders recursively and creates a dictionary
-	containing the pages' data.'''
-	file_list = os.listdir(path)
-	page_data = None
-	# removing dot from path
-	path = re.sub(r'^\.$|\./|\.\\', '', path)
-	children = get_page_children(env, path, file_list)
-
-	# there's a data file in this path
-	if os.path.exists(os.path.join(path, config.DATA_FILE)):
-		page_data = get_page_data(env, path)
-		# inherit the template from parent, if not defined its own
-		if 'template' not in page_data:
-			template = env.get('default_template', 
-								config.DEFAULT_TEMPLATE)
-			if parent:
-				template = parent.get('template', template)
-			page_data['template'] = template
-		# stores the path of its children
-		page_data['children'] = children
-		env['pages'][path] = page_data
-
-	# process the children pages, passing the parent page
-	for child_path in children:
-		read_page_files(env, child_path, page_data)
-
-
-def paginate_groups(env):
-	groups = env['groups']
-	key = 'permalink'
-	for group in groups:
-		pages = list(env['pages'].copy().values())
-		pages = dataset_filter_group(pages, group)
-		pages = dataset_sort(pages, 'date', 'desc')
-		length = len(pages)
-		for index, page in enumerate(pages):
-			page['first'] = pages[0][key]
-			page['last'] = pages[-1][key]
-			next_index = index + 1 if index < length - 1 else -1
-			page['next'] = pages[next_index][key]
-			prev_index = index - 1 if index > 0 else 0
-			page['prev'] = pages[prev_index][key]
-
-
-def get_env():
-	'''Returns a dict containing the site data'''
-	env = get_site_config()
-	if not env:
-		sys.exit('Mnemonix is not installed in this folder!')
-	if not env.get('base_url'):
-		sys.exit('base_url was not set in config!')
-	# add a trailing slash to base url, if necessary
-	env['site_tags'] = extract_multivalues(env.get('site_tags'))
-	env['feed_sources'] = extract_multivalues(env.get('feed_sources'))
-	ignore_folders = extract_multivalues(env.get('ignore_folders'))
-	ignore_folders.extend([config.TEMPLATES_DIR, env.get('feed_dir')])
-	env['ignore_folders'] = ignore_folders
-	env['pages'] = {}
-	env['groups'] = []
-	env['feeds'] = []
-	# now let's read all the pages and groups from files 
-	read_page_files(env, os.curdir)
-	paginate_groups(env)
-	return env
-
-
-def dataset_filter_group(dataset, group_name):
-	if not group_name:
-		return dataset
-	from_group = lambda page: page.get('group') == group_name
-	dataset = [page for page in dataset if from_group(page)]
-	return dataset
-
-
-def dataset_sort(dataset, field_sort, order='asc'):
-	reverse = (order == 'desc')
-	# all pages have a date, even if not specified in data files
-	sort_by = lambda page: page[field_sort]
-	dataset = sorted(dataset, key=sort_by, reverse=reverse)
-	return dataset
-
-
-def dataset_range(dataset, num_range):
-	if not num_range:
-		return dataset
-	# if an integer was passed, returns a slice
-	try:
-		num = int(num_range)
-		return dataset[:num]
-	except ValueError:
-		pass
-	# limit number of objects to show
-	start, end = num_range.partition(':')[::2]
-	try:
-		start = abs(int(start)) if start else 0
-		end = abs(int(end)) if end else None
-	except ValueError:
-		sys.exit('[{}, {}] Bad range argument!'.format(start, end))
-	if ':' in num_range:
-		return dataset[start:end]
-	else: # a single number means quantity of posts
-		return dataset[:start]
-
-
-def dataset_filter_props(dataset, props):
-	if not props:
-		return dataset
-	has_props = lambda p: any(x in p.get('props', []) for x in props)
-	dataset = [page for page in dataset if not has_props(page)]
-	return dataset
-
-
-def apply_page_filters(pages, args):
-	# pages with these props will be filtered
-	pages = dataset_filter_props(pages, ['draft', 'nolist'])
-	# must limit the group first
-	pages = dataset_filter_group(pages, args.get('group'))
-	# listing order
-	pages = dataset_sort(pages, args.get('sort', 'date'), args.get('ord'))
-	# number must be the last one
-	pages = dataset_range(pages, args.get('num'))
-	return pages
-
-
-def query_pages(env, page, args):
-	'''Make queries to the environment data set'''
-	src = args.get('src', '')
-	sources = ['pages', 'feeds', 'children']
-	# calling the proper query function
-	if not src in sources:
-		sys.exit('"src" argument is'
-		' missing or invalid!'.format(src))
-	if src == 'feeds':
-		# feeds are already sorted and filtered
-		return env['feeds']
-	if src == 'pages':
-		dataset = list(env['pages'].values())
-	elif src == 'children':
-		pages = page.get('children', [])
-		dataset = [env['pages'][p] for p in pages if p in env['pages']]
-	return apply_page_filters(dataset, args)
+        print('Generated pages summary: {!r}.'.format('pages.json'))
+        book_dweller.write_file('pages.json', json.dumps(summary))
+        return pages

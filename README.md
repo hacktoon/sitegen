@@ -9,25 +9,26 @@ You only need Python 3 to run Mnemonix.
 ### Creating a site
 Create a directory to be your web root. Enter it and call the following command:
     
-	mnemonix init
+	mnemonix build
 
 ### Configure
 After installing, Mnemonix will setup some basic configuration to you, but you must change these values.
 
 Open the *site* config file and define your settings. Here are some examples:
-* **site_tags** - Tags used in HTML meta tags
+* **tags** - Tags used in HTML meta tags
 * **base_url** - Will be used for absolute linking.
 * **default_template** - If a custom template is not provided for a page, this one will be used.
 * **feed_num** - Number of items to be listed in feeds
+* **blocked_dirs** - List of directories separated by comma that Mnemonix won't read.
 
 ### Create your home page
-Just run the *add* command in the site root folder to create a new page:
+Just run the *write* command in the site root folder to create a new page:
 
-    mnemonix add .
+    mnemonix write .
     
 To create a different page, you have to pass a path as second parameter:
 
-    mnemonix add path/to/folder
+    mnemonix write path/to/folder
 
 This will create a *page* model file. You're ready to start adding your own content:
 
@@ -37,9 +38,15 @@ This will create a *page* model file. You're ready to start adding your own cont
     content
     My page content
 
-Now run the *gen* command to generate the pages.
+The HTML comment tag <!-- more --> can be used to define a limit to distinguish the excerpt from the content.
+
+	This is the excerpt
+	<!-- more -->
+	This is the rest of the content
+
+Now run the *publish* command to generate the pages.
     
-    mnemonix gen
+    mnemonix publish
 
 This will create (by default) a HTML and a JSON file in the folder you specified. Done!
 
@@ -60,7 +67,7 @@ Defining new variables is as simple as that. Just add any new definition to your
 
 ... and print its value in the template:
 
-    {{author}}
+    {{page.author}}
 
 ### Styles and scripts
 If a page uses specific CSS or Javascript files, they can be put in the page's folder and listed in the **page** file:
@@ -68,7 +75,7 @@ If a page uses specific CSS or Javascript files, they can be put in the page's f
 	styles = main.css
 	scripts = jquery.js, site.js
 
-They will be printed in the template through the variables {{styles}} and {{scripts}}.
+They will be printed in the template through the variables {{page.styles}} and {{page.scripts}}.
 
 ### Page properties
 Properties listed in a page data file can be used to change how Mnemonix will manage the page.
@@ -78,47 +85,48 @@ Properties listed in a page data file can be used to change how Mnemonix will ma
 * nolist - The page will not appear in listings
 * nofeed - The page will not be listed in feeds.
 * draft - The page will not be generated, listed or syndicated in feeds.
-* group - This page's children pages will be defined as a group.
 
 Example:
 
 	props = nojson, nolist
 
-### Page groups
-Groups can be used to provide pagination, filter pages in listings and feeds. To define a group, you have to add the 'group' key to the page props definition in **page** file:
+### Categories
+Categories can be used to provide pagination, filter pages in listings and feeds. To define a category, you have to add the 'category' key in **page** file:
 
-	props = group, nofeed, ...
+	category = my_category ...
 
 ### Collections and template listings
 By default, Mnemonix provides some collections of data for using in templates. The first is the **pages** collection. You can list a subset of the pages of your site by passing arguments in the template tag:
 
-	{{list src=pages num=10}}
-        <li>{{title}}</li>
-    {{end}}
+	{%pagelist num="10" %}
+        <li>{{each.title}}</li>
+    {%end%}
 
 The **children** collection lists all the child pages of the current page being generated.
 
-	{{list src=children sort=date}}
-        <li>{{title}}</li>
-    {{end}}
+	{%childlist %}
+        <li>{{each.title}}</li>
+    {%end%}
 
 The list options can control the items that will be rendered:
 
 * sort - The 'sort by' option. Can be any page property. Default: 'date'.
 * ord - Order of listing. Can be 'asc' or 'desc'. It only works if a sort parameter is passed. Default: 'asc'.
-* group - Filter by group. The group is the URL name of the page where it was defined.
-* num - Range of pages or the last x pages.
+* cat - Filter by category.
+* start - Starting index in the list of pages.
+* num - Number of pages to be listed.
+* exclude - Lists everything but the category specified.
 
 Examples:
 
-    {{list src=pages group=blog num=6}}
-		<li>{{title}}</li>
-	{{end}}
+    {%pagelist cat="blog" num="6" %}
+		<li>{{each.title}}</li>
+	{%end%}
 
-Renders the last 6 pages of the 'blog' group.
+Renders the last 6 pages of the 'blog' category.
+    
+	{%pagelist start="1" exclude="blog" num="3" %}
+		<li>{{each.title}}</li>
+	{%end%}
 
-	{{list src=pages sort=date ord=desc num=1:7}}
-		<li>{{title}}</li>
-	{{end}}
-
-Renders the pages from 1st to 7th array position in decrescent order of date.
+Renders the last 3 pages except the 'blog' category ones, starting by the second item.
