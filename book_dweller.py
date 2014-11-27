@@ -15,14 +15,6 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 import os
 from alarum import FileNotFoundError
 
-def extract_multivalues(tag_string):
-	'''Converts a comma separated list of tags into a list'''
-	tag_list = []
-	if tag_string:
-		tags = tag_string.strip(',').split(',')
-		tag_list = [tag.strip() for tag in tags]
-	return tag_list
-
 def normalize(name):
 	return name.replace(' ', '-').lower()
 

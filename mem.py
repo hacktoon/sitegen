@@ -3,21 +3,22 @@
 import sys
 from alarum import PageValueError
 
+NEWLINE = '\n'
+
 TOK_NAME = 'name'
 TOK_TEXT = 'content'
 TOK_EOF = '\0'
 TOK_ASSIGN = '='
 TOK_COMMA = ','
-TOK_NEWLINE = '\n'
 TOK_OPENLIST = '['
 TOK_CLOSELIST = ']'
 TOK_OPENGROUP = '{'
 TOK_CLOSEGROUP = '}'
 
 KEYCHARS = ''.join([
+	NEWLINE,
 	TOK_ASSIGN,
 	TOK_COMMA,
-	TOK_NEWLINE,
 	TOK_OPENLIST,
 	TOK_CLOSELIST,
 	TOK_OPENGROUP,
@@ -32,12 +33,10 @@ class Token:
 		self.column = 0
 
 	def __str__(self):
-		type = 'NAME' if self.type == TOK_NAME else 'SYMBOL'
-		return "({!r}: {!r})".format(type, self.value)
+		return "({!r}: {!r})".format(self.type, self.value)
 
 	def __repr__(self):
-		val = self.value
-		return '{!r}'.format(val if val != TOK_NEWLINE else '\n')
+		return '{!r}'.format(self.value)
 
 
 class MemReader:
@@ -66,24 +65,33 @@ class MemReader:
 	def tokenize(self):
 		text = self.text.strip()
 		cache = []
-		for char in text:
-			self.column += 1
+		inlist = False
+		for index, char in enumerate(text):
 			if char in KEYCHARS:
-				if char == TOK_NEWLINE:
+				if not inlist and char == TOK_COMMA:
+					cache.append(char)
+					continue
+				name = ''.join(cache).strip()
+				inlist = {
+					TOK_OPENLIST: True,
+					TOK_CLOSELIST: False
+				}.get(char, False)
+				if name == TOK_TEXT:
+					self.create_token(TOK_TEXT, text[index:].strip())
+					return
+				self.create_token(TOK_NAME, name)
+				if char == NEWLINE:
 					self.line += 1
 					self.column = 0
-				name = ''.join(cache).strip()
-				self.create_token(TOK_NAME, name)
-				self.create_token(char, char)
+				else:
+					self.column += 1
+					self.create_token(char, char)
 				cache = []
-			elif char not in KEYCHARS:
-				cache.append(char)
 			else:
-				self.error('Wrong character: '+ char)
+				cache.append(char)
 		# remaining chars
 		name = ''.join(cache).strip()
 		self.create_token(TOK_NAME, name)
-		self.current_token = self.tokens[0]
 
 	def next_token(self):
 		self.index += 1
@@ -93,10 +101,6 @@ class MemReader:
 			next = Token(TOK_EOF, TOK_EOF)
 		self.current_token = next
 		return next
-
-	def skip_newlines(self):
-		while self.current_token.type == TOK_NEWLINE:
-			self.next_token()
 
 	def consume(self, expected):
 		token = self.current_token
@@ -109,17 +113,14 @@ class MemReader:
 	def parse_group(self):
 		rules = {}
 		self.stack.append(rules)
-		self.skip_newlines()
 		while self.current_token.type not in (TOK_CLOSEGROUP, TOK_EOF):
 			self.parse_rule()
-			self.skip_newlines()
 		self.consume(TOK_CLOSEGROUP)
 		self.stack.pop()
 		return rules
 
 	def parse_list(self):
 		names = []
-		self.skip_newlines()
 		while True:
 			token = self.current_token
 			if token.type == TOK_CLOSELIST:
@@ -128,13 +129,11 @@ class MemReader:
 			if token.type == TOK_NAME:
 				names.append(token.value)
 				self.next_token()
-				self.skip_newlines()
 			else:
 				self.error('Expected a name, got {!r}'.format(token.value))
 			token = self.current_token
 			if token.type == TOK_COMMA:
 				token = self.next_token()
-				self.skip_newlines()
 				continue
 			elif token.type == TOK_CLOSELIST:
 				self.next_token()
@@ -158,39 +157,21 @@ class MemReader:
 			self.error('Invalid value format')
 		return value
 
-	def parse_text(self):
-		if len(self.stack) > 1:
-				self.error('Forbidden key name')
-		self.next_token()
-		self.skip_newlines()
-		text = self.tokens[self.index:]
-		self.index = len(self.tokens) - 1
-		self.next_token()
-		return ''.join(map(lambda x: x.value, text))
-
 	def parse_rule(self):
 		token = self.current_token
-		if token.type != TOK_NAME:
+		if token.type not in (TOK_NAME, TOK_TEXT):
 			self.error('Expected a name, got {!r}'.format(token.value))
 		name = token.value
-		if name == TOK_TEXT:
-			text = self.parse_text()
-			self.data[name] = text
+		if token.type == TOK_TEXT:
+			if len(self.stack) > 1:
+				self.error('Wrong syntax')
+			self.data[TOK_TEXT] = token.value
+			self.next_token()
 			return
 		token = self.next_token()
-		self.skip_newlines()
 		if token.type == TOK_ASSIGN:
 			self.next_token()
-			if self.current_token.type == TOK_NEWLINE:
-				value = ''
-				self.skip_newlines()
-			else:
-				self.skip_newlines()
-				value = self.parse_value()
-				self.consume(TOK_NEWLINE)
-		elif token.type in (TOK_NEWLINE, TOK_EOF):
-			value = True
-			self.next_token()
+			value = self.parse_value()
 		else:
 			self.error('Invalid syntax')
 		self.stack[-1][name] = value
@@ -198,9 +179,9 @@ class MemReader:
 	def parse_ruleset(self):
 		while self.current_token.type not in (TOK_EOF, TOK_CLOSEGROUP):
 			self.parse_rule()
-			self.skip_newlines()
 
 	def parse(self):
 		self.tokenize()
+		self.current_token = self.tokens[0]
 		self.parse_ruleset()
 		return self.data

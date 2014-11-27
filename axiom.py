@@ -243,18 +243,6 @@ class Page():
         '''To give a book a good look and diagramation'''
         self.template = tpl
 
-    def set_props(self, props, options):
-        '''Books can have some different properties'''
-        self.props = book_dweller.extract_multivalues(props)
-
-    def set_styles(self, styles, options):
-        '''To get some extra style'''
-        self.styles = book_dweller.extract_multivalues(styles)
-
-    def set_scripts(self, scripts, options):
-        '''To get some extra behavior'''
-        self.scripts = book_dweller.extract_multivalues(scripts)
-
     def set_date(self, date_string, options):
         '''converts date string to datetime object'''
         try:
@@ -490,7 +478,6 @@ class Library:
         config_file = book_dweller.bring_file(config_path)
         self.meta = scriber.read_mem_file(config_file)
         blocked = self.meta.get('blocked_dirs', [])
-        self.meta['blocked_dirs'] = book_dweller.extract_multivalues(blocked)
 
     def write_page(self, path):
         '''Create a book in the library'''
