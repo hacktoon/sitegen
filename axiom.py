@@ -297,10 +297,6 @@ class MechaniScribe:
         self.page_list = PageList()
         self.categories = CategoryList()
         self.meta = meta or {}
-    
-    def read_mem_file(self, file_string):
-        '''Read the book data from a bare specification'''
-        return MemReader(file_string).parse()
 
     def read_page(self, path):
         '''Return the page data specified by path'''
@@ -309,7 +305,7 @@ class MechaniScribe:
         if os.path.exists(file_path):
             file_content = book_dweller.bring_file(file_path)
             try:
-                mem_data = self.read_mem_file(file_content)
+                mem_data = MemReader(file_content).parse()
             except PageValueError as err:
                 raise PageValueError('In file {!r}: {}'.format(file_path, err))
             return mem_data
@@ -491,11 +487,10 @@ class Library:
         '''Load the config'''
         config_path = self.lookup_config(path)
         if not os.path.exists(config_path):
-            raise FileNotFoundError()
-        scriber = MechaniScribe()
+            raise FileNotFoundError
         config_file = book_dweller.bring_file(config_path)
         try:
-            self.meta = scriber.read_mem_file(config_file)
+            self.meta = MemReader(config_file).parse()
         except PageValueError as err:
             raise PageValueError('In file {!r}: {}'.format(config_path, err))
         blocked = self.meta.get('blocked_dirs', [])
