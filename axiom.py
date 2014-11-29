@@ -18,7 +18,6 @@ import re
 import shutil
 from datetime import datetime
 
-import specs
 import book_dweller
 
 from mem import MemReader
@@ -27,6 +26,24 @@ from alarum import (ValuesNotDefinedError, FileNotFoundError,
                         SiteAlreadyInstalledError, PageExistsError,
                         PageValueError, TemplateError)
 
+
+BASE_URL = 'http://localhost/'
+TEMPLATES_DIR = 'templates'
+DATA_DIR = 'data'
+DATA_FILE = 'page.me'
+CONFIG_FILE = 'config.me'
+FEED_FILE = 'feed.xml'
+DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
+DEFAULT_TEMPLATE = 'default'
+FEED_DIR = 'feed'
+FEED_NUM = 8
+TEMPLATES_EXT = '.tpl'
+JSON_FILENAME = 'data.json'
+HTML_FILENAME = 'index.html'
+
+MODEL_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(MODEL_DIR, DATA_DIR)
+BASE_PATH = os.curdir
 
 REQUIRED_KEYS = ('title', 'date')
 
@@ -147,7 +164,7 @@ class JSONRenderer(Renderer):
 
     def render(self, page):
         page_data = page.data.copy()
-        page_data['date'] = page['date'].strftime(specs.DATE_FORMAT)
+        page_data['date'] = page['date'].strftime(DATE_FORMAT)
         return json.dumps(page_data, skipkeys=True)
 
 
@@ -178,7 +195,7 @@ class HTMLRenderer(Renderer):
 
     def render(self, page, env):
         '''Show a book in HTML format'''
-        self.include_path = env.get('templates_dir', specs.TEMPLATES_DIR)
+        self.include_path = env.get('templates_dir', TEMPLATES_DIR)
         page_data = page.data.copy()
         page_data['styles'] = self.build_style_tags(page.styles)
         page_data['scripts'] = self.build_script_tags(page.scripts)
@@ -300,7 +317,7 @@ class MechaniScribe:
 
     def read_page(self, path):
         '''Return the page data specified by path'''
-        data_file_path = self.meta.get('data_file', specs.DATA_FILE)
+        data_file_path = self.meta.get('data_file', DATA_FILE)
         file_path = os.path.join(path, data_file_path)
         if os.path.exists(file_path):
             file_content = book_dweller.bring_file(file_path)
@@ -316,8 +333,8 @@ class MechaniScribe:
         options = {}
         page = Page()
         page.path = re.sub(r'^\.$|\./|\.\\', '', path)
-        options['date_format'] = self.meta.get('date_format', specs.DATE_FORMAT)
-        base_url = self.meta.get('base_url', specs.BASE_URL)
+        options['date_format'] = self.meta.get('date_format', DATE_FORMAT)
+        base_url = self.meta.get('base_url', BASE_URL)
         page_data['url'] = book_dweller.urljoin(base_url, page.path) + '/'
         if 'category' in page_data.keys():
             cat_name = page_data.get('category', '')
@@ -335,7 +352,7 @@ class MechaniScribe:
             raise ValuesNotDefinedError('{} at page {!r}'.format(error, path))
         if not page.template:
             page.template = self.meta.get('default_template', 
-            specs.DEFAULT_TEMPLATE)
+            DEFAULT_TEMPLATE)
         return page
     
     def read_page_tree(self, path, parent=None):
@@ -367,9 +384,9 @@ class MechaniScribe:
 
     def read_template(self, tpl_filename):
         '''To return a template string from the template folder'''
-        templates_dir = self.meta.get('templates_dir', specs.TEMPLATES_DIR )
+        templates_dir = self.meta.get('templates_dir', TEMPLATES_DIR )
         tpl_filepath = os.path.join(templates_dir, tpl_filename)
-        tpl_filepath += specs.TEMPLATES_EXT
+        tpl_filepath += TEMPLATES_EXT
         if not os.path.exists(tpl_filepath):
             raise FileNotFoundError('Template {!r}'
             ' not found'.format(tpl_filepath))
@@ -380,7 +397,7 @@ class MechaniScribe:
         if 'nojson' in page.props:
             return
         json_path = os.path.join(page.path, self.meta.get('json_filename',
-            specs.JSON_FILENAME))
+            JSON_FILENAME))
         output = JSONRenderer().render(page)
         book_dweller.write_file(json_path, output)
 
@@ -391,7 +408,7 @@ class MechaniScribe:
         template = self.read_template(page.template)
         renderer = HTMLRenderer(template, page.template)
         html_path = os.path.join(page.path, self.meta.get('html_filename', 
-            specs.HTML_FILENAME))
+            HTML_FILENAME))
         try:
             output = renderer.render(page, env)
         except TemplateError as error:
@@ -403,16 +420,16 @@ class MechaniScribe:
         '''To write an announcement about new books'''
         if not len(page_list):
             return
-        tpl_filepath = os.path.join(specs.DATA_DIR, specs.FEED_FILE)
+        tpl_filepath = os.path.join(DATA_DIR, FEED_FILE)
         template = book_dweller.bring_file(tpl_filepath)
-        feed_dir = self.meta.get('feed_dir', specs.FEED_DIR)
-        feed_path = os.path.join(specs.BASE_PATH, feed_dir)
-        base_url = self.meta.get('base_url', specs.BASE_URL)
+        feed_dir = self.meta.get('feed_dir', FEED_DIR)
+        feed_path = os.path.join(BASE_PATH, feed_dir)
+        base_url = self.meta.get('base_url', BASE_URL)
         renderer = Renderer(template, 'rss')
         try:
-            feed_num = int(self.meta.get('feed_num', specs.FEED_NUM))
+            feed_num = int(self.meta.get('feed_num', FEED_NUM))
         except ValueError:
-            feed_num = specs.FEED_NUM
+            feed_num = FEED_NUM
         if not os.path.exists(feed_path):
             os.makedirs(feed_path)
         
@@ -460,23 +477,23 @@ class Library:
 
     def build(self, path):
         '''Build the wonder library'''
-        config_file = os.path.join(path, specs.CONFIG_FILE)
-        templates_dir = os.path.join(path, specs.TEMPLATES_DIR)
+        config_file = os.path.join(path, CONFIG_FILE)
+        templates_dir = os.path.join(path, TEMPLATES_DIR)
         if os.path.exists(config_file):
             raise SiteAlreadyInstalledError('A wonderful library '
             'is already built here!')
         if not os.path.exists(templates_dir):
-            model_templates_dir = os.path.join(specs.DATA_DIR, templates_dir)
+            model_templates_dir = os.path.join(DATA_DIR, templates_dir)
             shutil.copytree(model_templates_dir, templates_dir)
         if not os.path.exists(config_file):
-            model_config_file = os.path.join(specs.DATA_DIR, config_file)
+            model_config_file = os.path.join(DATA_DIR, config_file)
             shutil.copyfile(model_config_file, config_file)
     
     def lookup_config(self, path):
         '''Search a config file upwards in path provided'''
         while True:
             path, _ = os.path.split(path)
-            config_path = os.path.join(path, specs.CONFIG_FILE)
+            config_path = os.path.join(path, CONFIG_FILE)
             if os.path.exists(config_path):
                 return config_path
             if not path:
@@ -497,16 +514,16 @@ class Library:
 
     def write_page(self, path):
         '''Create a book in the library'''
-        data_file_path = self.meta.get('data_file', specs.DATA_FILE)
+        data_file_path = self.meta.get('data_file', DATA_FILE)
         page_file = os.path.join(path, data_file_path)
         if os.path.exists(page_file):
             raise PageExistsError('Page {!r} already exists.'.format(path))
         if not os.path.exists(path):
             os.makedirs(path)
-        data_file_path = self.meta.get('data_file', specs.DATA_FILE)
-        model_page_file = os.path.join(specs.DATA_DIR, data_file_path)
+        data_file_path = self.meta.get('data_file', DATA_FILE)
+        model_page_file = os.path.join(DATA_DIR, data_file_path)
         content = book_dweller.bring_file(model_page_file)
-        date_format = self.meta.get('date_format', specs.DATE_FORMAT)
+        date_format = self.meta.get('date_format', DATE_FORMAT)
         date = datetime.today().strftime(date_format)
         book_dweller.write_file(page_file, content.format(date))
 
