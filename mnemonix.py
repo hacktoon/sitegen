@@ -65,7 +65,7 @@ def write(args):
 def build(args):
 	'''Builds Mnemonix in the current path'''
 	print('Writing the plans for the wonder library Mnemonix...')
-	print('Building the foundations of the library...')
+	print('Building foundations...')
 	
 	lib = Library()
 	try:

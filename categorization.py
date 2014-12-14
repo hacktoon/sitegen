@@ -11,21 +11,23 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 
 ===============================================================================
 '''
+
 from paging import PageList
+
 
 class Category:
     '''Define a category of pages'''
     def __init__(self, name):
         self.name = name
-        self.pages = PageList()
+        self.pagelist = PageList()
 
     def add_page(self, page):
         '''To add a book to a category'''
-        self.pages.insert(page)
+        self.pagelist.insert(page)
     
     def paginate(self):
         '''To sort books in the shelves'''
-        self.pages.paginate()
+        self.pagelist.paginate()
 
 
 class CategoryList:

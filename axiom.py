@@ -113,7 +113,7 @@ class HTMLRenderer(Renderer):
 class MechaniScribe:
     '''An infinite automaton that can write books at a blazing speed'''
     def __init__(self, meta=None):
-        self.page_list = PageList()
+        self.pagelist = PageList()
         self.categories = CategoryList()
         self.meta = meta or {}
 
@@ -173,7 +173,7 @@ class MechaniScribe:
                 parent.add_child(page)
             # add page to ordered list of pages
             if not page.is_draft():
-                self.page_list.insert(page)
+                self.pagelist.insert(page)
         for subpage_path in self.read_subpages_list(path):
             self.read_page_tree(subpage_path, page)
 
@@ -218,9 +218,9 @@ class MechaniScribe:
             page.template))
         book_dweller.write_file(html_path, output)
     
-    def write_feed(self, env, page_list, name):
+    def write_feed(self, env, pagelist, name):
         '''To write an announcement about new books'''
-        if not len(page_list):
+        if not len(pagelist):
             return
         tpl_filepath = os.path.join(DATA_DIR, FEED_FILE)
         template = book_dweller.bring_file(tpl_filepath)
@@ -240,10 +240,10 @@ class MechaniScribe:
             'link': book_dweller.urljoin(base_url, feed_dir, fname),
             'build_date': datetime.today()
         }
-        page_list =  [p for p in page_list if p.is_feed_enabled()]
-        page_list.reverse()
-        page_list = page_list[:feed_num]
-        env['pages'] = page_list
+        pagelist =  [p for p in pagelist if p.is_feed_enabled()]
+        pagelist.reverse()
+        pagelist = pagelist[:feed_num]
+        env['pages'] = pagelist
         output = renderer.render(env)
         rss_file = os.path.join(feed_path, fname)
         book_dweller.write_file(rss_file, output)
@@ -261,7 +261,7 @@ class MechaniScribe:
         '''To write the announcements of new books to the public'''
         env = { 'site': self.meta, 'render_cache': {}}
         # unique feed
-        file_path = self.write_feed(env, self.page_list, 'rss')
+        file_path = self.write_feed(env, self.pagelist, 'rss')
         print("Generated {!r}.".format(file_path))
         # generate feeds based on categories
         for cat in self.categories:
@@ -335,7 +335,7 @@ class Library:
         scriber.read_page_tree(path)
         for cat in scriber.categories:
             cat.paginate()
-        pages = scriber.page_list
+        pages = scriber.pagelist
         env = {
             'pages': [p for p in pages if p.is_listable()],
             'site': self.meta,
