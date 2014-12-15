@@ -114,8 +114,8 @@ class MechaniScribe:
     '''An infinite automaton that can write books at a blazing speed'''
     def __init__(self, meta=None):
         self.pagelist = PageList()
-        self.categories = CategoryList()
-        self.meta = meta or {}
+        self.categorylist = CategoryList()
+        self.meta = meta.copy() or {}
 
     def read_page(self, path):
         '''Return the page data specified by path'''
@@ -130,6 +130,25 @@ class MechaniScribe:
             return mem_data
         return
 
+    def build_category(self):
+        pass
+
+    def build_category_list(self):
+        category_key = 'categories'
+        if category_key not in self.meta:
+            return
+        cat_dict = self.meta[category_key]
+        for key in cat_dict.keys():
+            item = cat_dict[key]
+            category = self.categorylist.add_category(key)
+            category.path = item.get('path', key)
+            category.title = item.get('title', '')
+            category.template = item.get('template', DEFAULT_TEMPLATE)
+            if category_key in item.keys():
+                subcat_list = CategoryList()
+                for subkey in item[key].keys():
+                    subcat_list.add_category(subkey)
+
     def build_page(self, path, page_data):
         '''Page object factory'''
         options = {}
@@ -138,6 +157,7 @@ class MechaniScribe:
         options['date_format'] = self.meta.get('date_format', DATE_FORMAT)
         base_url = self.meta.get('base_url', BASE_URL)
         page_data['url'] = book_dweller.urljoin(base_url, page.path) + '/'
+        # TODO: new categories
         if 'category' in page_data.keys():
             cat_name = page_data.get('category', '')
             category_url = book_dweller.urljoin(base_url, cat_name) + '/'
@@ -168,7 +188,7 @@ class MechaniScribe:
             page = self.build_page(path, page_data)
             page.parent = parent
             if page.is_listable():
-                self.categories.add_page(page['category'], page)
+                self.categorylist.add_page(page['category'], page)
             if parent:
                 parent.add_child(page)
             # add page to ordered list of pages
@@ -264,7 +284,7 @@ class MechaniScribe:
         file_path = self.write_feed(env, self.pagelist, 'rss')
         print("Generated {!r}.".format(file_path))
         # generate feeds based on categories
-        for cat in self.categories:
+        for cat in self.categorylist:
             file_path = self.write_feed(env, cat.pages, cat.name)
             if file_path:
                 print("Generated {!r}.".format(file_path))
@@ -332,8 +352,9 @@ class Library:
     def publish_pages(self, path):
         '''Send the books to the wonderful Mechaniscriber for rendering'''
         scriber = MechaniScribe(self.meta)
+        scriber.build_categories()
         scriber.read_page_tree(path)
-        for cat in scriber.categories:
+        for cat in scriber.categorylist:
             cat.paginate()
         pages = scriber.pagelist
         env = {

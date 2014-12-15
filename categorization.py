@@ -41,9 +41,10 @@ class CategoryList:
 
     def add_category(self, category_name):
         '''To create a new category of books'''
-        if category_name in self.items.keys() or not category_name:
-            return
-        self.items[category_name] = Category(category_name)
+        if category_name not in self.items.keys():
+            self.items[category_name] = Category(category_name)
+        return self.items[category_name]
+
 
     def add_page(self, category_name, page):
         '''To add a book to a specific category in a list'''
