@@ -43,9 +43,7 @@ class Page():
         self.data[key] = value
 
     def __getitem__(self, key):
-        if not key in self.data.keys():
-            return None
-        return self.data[key]
+        return self.data.get(key)
 
     def __delitem__(self, key):
         del self.data[key]

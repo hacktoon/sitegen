@@ -17,13 +17,22 @@ from paging import PageList
 
 class Category:
     '''Define a category of pages'''
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, idt):
+        self.props = {'id': idt}
         self.pagelist = PageList()
 
     def add_page(self, page):
         '''To add a book to a category'''
         self.pagelist.insert(page)
+
+    def __setitem__(self, key, value):
+        self.props[key] = value
+
+    def __getitem__(self, key):
+        return self.props.get(key)
+
+    def get_dict(self):
+        return self.props
     
     def paginate(self):
         '''To sort books in the shelves'''
@@ -39,17 +48,17 @@ class CategoryList:
         for category in self.items.values():
             yield category
 
-    def add_category(self, category_name):
+    def __getitem__(self, key):
+        return self.items.get(key)
+
+    def add_category(self, category_key):
         '''To create a new category of books'''
-        if category_name not in self.items.keys():
-            self.items[category_name] = Category(category_name)
-        return self.items[category_name]
+        if category_key not in self.items.keys():
+            self.items[category_key] = Category(category_key)
+        return self.items[category_key]
 
-
-    def add_page(self, category_name, page):
+    def add_page(self, category_title, page):
         '''To add a book to a specific category in a list'''
-        if not category_name:
-            return
-        if category_name not in self.items.keys():
-            self.add_category(category_name)
-        self.items[category_name].add_page(page)
+        if category_title not in self.items.keys():
+            self.add_category(category_title)
+        self.items[category_title].add_page(page)
