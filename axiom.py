@@ -18,8 +18,6 @@ import re
 import shutil
 from datetime import datetime
 
-import book_dweller
-
 from mem import MemReader
 from paging import Page, PageList
 from categorization import Category, CategoryList
@@ -117,12 +115,35 @@ class MechaniScribe:
         self.categorylist = CategoryList()
         self.meta = meta or {}
 
+    def urljoin(self, base, *slug):
+        '''Custom URL join function to concatenate and add slashes'''
+        fragments = [base]
+        fragments.extend(filter(None, slug))
+        return '/'.join(s.replace('\\', '/').strip('/') for s in fragments)
+
+    def bring_file(self, path):
+        if not os.path.exists(path):
+            raise FileNotFoundError('File {!r} couldn\'t be found!'.format(path))
+        with open(path, 'r') as f:
+            return f.read()
+
+    def write_file(self, path, content=''):
+        if os.path.exists(path):
+            f = open(path, 'r')
+            current_content = f.read()
+            if current_content == content:
+                return
+            f.close()
+        f = open(path, 'w')
+        f.write(content)
+        f.close()
+
     def read_page(self, path):
         '''Return the page data specified by path'''
         data_file_path = self.meta.get('data_file', DATA_FILE)
         file_path = os.path.join(path, data_file_path)
         if os.path.exists(file_path):
-            file_content = book_dweller.bring_file(file_path)
+            file_content = self.bring_file(file_path)
             try:
                 mem_data = MemReader(file_content).parse()
             except PageValueError as err:
@@ -132,6 +153,7 @@ class MechaniScribe:
 
     def build_categories(self):
         category_key = 'categories'
+        render_list = []
         if category_key not in self.meta:
             return
         category_entry = self.meta[category_key]
@@ -140,10 +162,15 @@ class MechaniScribe:
             item = category_entry[key]
             category = self.categorylist.add_category(key)
             url = item.get('url', key)
-            category['url'] = book_dweller.urljoin(base_url, url) + '/'
+            category['url'] = self.urljoin(base_url, url) + '/'
             category['title'] = item.get('title', '')
             category['template'] = item.get('template', DEFAULT_TEMPLATE)
-        
+            render_list.append({
+                'id': category['id'],
+                'title': category['title'],
+                'url': category['url']
+            })
+        return render_list
 
     def build_page(self, path, page_data):
         '''Page object factory'''
@@ -152,7 +179,7 @@ class MechaniScribe:
         page.path = re.sub(r'^\.$|\./|\.\\', '', path)
         options['date_format'] = self.meta.get('date_format', DATE_FORMAT)
         base_url = self.meta.get('base_url', BASE_URL)
-        page_data['url'] = book_dweller.urljoin(base_url, page.path) + '/'
+        page_data['url'] = self.urljoin(base_url, page.path) + '/'
         
         content = page_data.get('content', '')
         regexp = r'<!--\s*more\s*-->'
@@ -210,7 +237,7 @@ class MechaniScribe:
         if not os.path.exists(tpl_filepath):
             raise FileNotFoundError('Template {!r}'
             ' not found'.format(tpl_filepath))
-        return book_dweller.bring_file(tpl_filepath)
+        return self.bring_file(tpl_filepath)
     
     def write_json(self, page):
         '''To write the book data in a style-free, raw format'''
@@ -219,7 +246,7 @@ class MechaniScribe:
         json_path = os.path.join(page.path, self.meta.get('json_filename',
             JSON_FILENAME))
         output = JSONRenderer().render(page)
-        book_dweller.write_file(json_path, output)
+        self.write_file(json_path, output)
 
     def write_html(self, page, env):
         '''To write a book in the HTML format'''
@@ -227,21 +254,21 @@ class MechaniScribe:
             return
         template = self.read_template(page.template)
         renderer = HTMLRenderer(template, page.template)
-        html_path = os.path.join(page.path, self.meta.get('html_filename', 
+        html_path = os.path.join(page.path, self.meta.get('html_filename',
             HTML_FILENAME))
         try:
             output = renderer.render(page, env)
         except TemplateError as error:
-            raise TemplateError('{} at template {!r}'.format(error, 
+            raise TemplateError('{} at template {!r}'.format(error,
             page.template))
-        book_dweller.write_file(html_path, output)
+        self.write_file(html_path, output)
     
     def write_feed(self, env, pagelist, name):
         '''To write an announcement about new books'''
         if not len(pagelist):
             return
         tpl_filepath = os.path.join(DATA_DIR, FEED_FILE)
-        template = book_dweller.bring_file(tpl_filepath)
+        template = self.bring_file(tpl_filepath)
         feed_dir = self.meta.get('feed_dir', FEED_DIR)
         feed_path = os.path.join(BASE_PATH, feed_dir)
         base_url = self.meta.get('base_url', BASE_URL)
@@ -255,16 +282,16 @@ class MechaniScribe:
         
         fname = '{}.xml'.format(name)
         env['feed'] = {
-            'link': book_dweller.urljoin(base_url, feed_dir, fname),
+            'link': self.urljoin(base_url, feed_dir, fname),
             'build_date': datetime.today()
         }
-        pagelist =  [p for p in pagelist if p.is_feed_enabled()]
+        pagelist = [p for p in pagelist if p.is_feed_enabled()]
         pagelist.reverse()
         pagelist = pagelist[:feed_num]
         env['pages'] = pagelist
         output = renderer.render(env)
         rss_file = os.path.join(feed_path, fname)
-        book_dweller.write_file(rss_file, output)
+        self.write_file(rss_file, output)
         return rss_file
 
     def publish_page(self, page, env):
@@ -322,10 +349,11 @@ class Library:
 
     def enter(self, path):
         '''Load the config'''
+        scriber = MechaniScribe()
         config_path = self.lookup_config(path)
         if not os.path.exists(config_path):
             raise FileNotFoundError
-        config_file = book_dweller.bring_file(config_path)
+        config_file = scriber.bring_file(config_path)
         try:
             self.meta = MemReader(config_file).parse()
         except PageValueError as err:
@@ -342,15 +370,15 @@ class Library:
             os.makedirs(path)
         data_file_path = self.meta.get('data_file', DATA_FILE)
         model_page_file = os.path.join(DATA_DIR, data_file_path)
-        content = book_dweller.bring_file(model_page_file)
+        content = self.bring_file(model_page_file)
         date_format = self.meta.get('date_format', DATE_FORMAT)
         date = datetime.today().strftime(date_format)
-        book_dweller.write_file(page_file, content.format(date))
+        self.write_file(page_file, content.format(date))
 
     def publish_pages(self, path):
         '''Send the books to the wonderful Mechaniscriber for rendering'''
         scriber = MechaniScribe(self.meta)
-        scriber.build_categories()
+        category_list = scriber.build_categories()
         scriber.read_page_tree(path)
         for cat in scriber.categorylist:
             cat.paginate()
@@ -358,6 +386,7 @@ class Library:
         env = {
             'pages': [p for p in pages if p.is_listable()],
             'site': self.meta,
+            'categories': category_list,
             'render_cache': {}
         }
         summary = {'pages': []}
@@ -370,5 +399,5 @@ class Library:
         scriber.publish_feeds()
 
         print('Generated pages summary: {!r}.'.format('pages.json'))
-        book_dweller.write_file('pages.json', json.dumps(summary))
+        scriber.write_file('pages.json', json.dumps(summary))
         return pages
