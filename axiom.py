@@ -160,6 +160,8 @@ class MechaniScribe:
         base_url = self.meta.get('base_url', BASE_URL)
         for key in category_entry.keys():
             item = category_entry[key]
+            if item.get('blocked'):
+                continue
             category = self.categorylist.add_category(key)
             url = item.get('url', key)
             category['url'] = self.urljoin(base_url, url) + '/'
