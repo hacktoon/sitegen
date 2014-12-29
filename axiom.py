@@ -194,7 +194,7 @@ class MechaniScribe:
         
         category_id = page_data.get('category', '')
         category = self.categorylist[category_id]
-        if category_id in self.meta.get('categories', {}).keys():
+        if category and category_id in self.meta.get('categories', {}).keys():
             page['category'] = category.get_dict()
             if page.is_listable():
                 self.categorylist.add_page(category_id, page)
