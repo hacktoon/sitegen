@@ -194,6 +194,7 @@ class MechaniScribe:
         
         category_id = page_data.get('category', '')
         category = self.categorylist[category_id]
+
         if category and category_id in self.meta.get('categories', {}).keys():
             page['category'] = category.get_dict()
             if page.is_listable():
@@ -202,8 +203,8 @@ class MechaniScribe:
             if category and category['template']:
                 template = category['template']
             else:
-                template = DEFAULT_TEMPLATE
-            page.template = self.meta.get('default_template', template)
+                template = self.meta.get('default_template', DEFAULT_TEMPLATE)
+            page.template = template
         return page
     
     def read_page_tree(self, path, parent=None):
