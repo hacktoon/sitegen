@@ -230,8 +230,16 @@ class Parser():
         collection = self.identifier()
         self.consume(lexer.AS)
         iter_name = self.identifier()
+        limit = None
+        if self.tok.value == lexer.LIMIT:
+            self.consume(lexer.LIMIT)
+            if self.tok.value.isdigit():
+                limit = int(self.tok.value)
+                self.next_token()
+            else:
+                self.error("Number expected")
         node = self.create_node(tree.List, iter_name, 
-            collection, token, reverse)
+            collection, token, reverse, limit)
         node.add_child(self.stmt_block())
         return node
 

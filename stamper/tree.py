@@ -146,11 +146,12 @@ class WhileLoop(Node):
 
 
 class List(Node):
-    def __init__(self, iter_name, collection_name, token, reverse=False):
+    def __init__(self, iter_name, collection_name, token, reverse=False, limit=None):
         super().__init__('List', token)
         self.iter_name = iter_name
         self.collection_name = collection_name
         self.reverse = reverse
+        self.limit = limit
 
     def update_iteration_counters(self, context, collection, index):
         item = context[self.iter_name]
@@ -168,6 +169,8 @@ class List(Node):
             collection = list(collection)
             collection.reverse()
         for index, item in enumerate(collection):
+            if self.limit and index > self.limit - 1:
+                break
             loop_context[self.iter_name] = item
             self.update_iteration_counters(loop_context, collection, index)
             text = super().render(loop_context)

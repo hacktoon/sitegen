@@ -48,6 +48,7 @@ REVLIST = 'rlist'
 AS = 'as'
 USE = 'use'
 REGION = 'region'
+LIMIT = 'limit'
 
 BOOLEAN_VALUES = ['true', 'false']
 
