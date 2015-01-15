@@ -29,7 +29,8 @@ class Parser():
             lexer.FUNCTION: self.function_definition,
             lexer.RETURN: self.function_return,
             lexer.USE: self.use_stmt,
-            lexer.REGION: self.region_stmt
+            lexer.REGION: self.region_stmt,
+            lexer.BREAK: self.break_stmt
         }
 
     def search_line_error(self, index):
@@ -352,6 +353,12 @@ class Parser():
         self.next_token()
         exp = self.expression()
         return self.create_node(tree.ReturnCommand, exp, token)
+
+    def break_stmt(self):
+        token = self.tok
+        self.next_token()
+        node = self.create_node(tree.BreakCommand, token)
+        return node
 
     def print_tag_stmt(self, token):
         exp_node = self.expression()

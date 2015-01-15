@@ -49,6 +49,7 @@ AS = 'as'
 USE = 'use'
 REGION = 'region'
 LIMIT = 'limit'
+BREAK = 'break'
 
 BOOLEAN_VALUES = ['true', 'false']
 
@@ -103,7 +104,7 @@ def build_token_regex():
     KEYWORDS = r'\b|\b'.join([IF, ELSE, WHILE, AS,
         FUNCTION, RETURN, PRINT, INCLUDE, BOOL_NOT,
         BOOL_AND, BOOL_OR, PARSE, END, LIST, REVLIST,
-        USE, REGION])
+        USE, REGION, LIMIT, BREAK])
 
     TAGS = []
     for key, tag in TAG_MAP.items():

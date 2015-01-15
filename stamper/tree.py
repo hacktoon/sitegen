@@ -40,7 +40,17 @@ class Node:
             rendered = str(child.render(context))
             output.append(rendered)
             if isinstance(child, ReturnCommand):
-                return self.build_output(output)
+                if isinstance(self, Function):
+                    return self.build_output(output)
+                else:
+                    self.error(RUNTIME_EXCEPTION, 'Invalid return clause')
+            if isinstance(child, BreakCommand):
+                if isinstance(self, List):
+                    return self.build_output(output)
+                else:
+                    print(isinstance(self, List))
+                    print(isinstance(child, BreakCommand))
+                    self.error(RUNTIME_EXCEPTION, 'Invalid break clause')
         return self.build_output(output)
 
     def load_file(self, filename, path=''):
@@ -215,8 +225,19 @@ class FunctionCall(Node):
 
 
 class ReturnCommand(Node):
+    def __init__(self, value, _, token):
+        super().__init__(value, token)
+
     def render(self, context):
         return self.value.render(context)
+
+
+class BreakCommand(Node):
+    def __init__(self, token):
+        super().__init__(None, token)
+
+    def render(self, context):
+        return ''
 
 
 class PrintCommand(Node):
