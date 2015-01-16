@@ -16,6 +16,7 @@ class Parser():
         self.tokens = lexer.Lexer().tokenize(self.template)
         self.tok_index = 0
         self.tok = self.tokens[self.tok_index]
+        self.call_stack = []
         self.regions = {}
         self.base_template = None
         self.stmt_map = {
@@ -239,7 +240,7 @@ class Parser():
                 self.next_token()
             else:
                 self.error("Number expected")
-        node = self.create_node(tree.List, iter_name, 
+        node = self.create_node(tree.ListNode, iter_name, 
             collection, token, reverse, limit)
         node.add_child(self.stmt_block())
         return node
@@ -325,7 +326,7 @@ class Parser():
         if self.tok.value != lexer.CLOSE_PARENS:
             params = self.params_list()
         self.consume(lexer.CLOSE_PARENS)
-        node = self.create_node(tree.Function, name, params, token)
+        node = self.create_node(tree.FunctionNode, name, params, token)
         node.add_child(self.stmt_block())
         return node
 
@@ -403,7 +404,8 @@ class Parser():
 
     def create_node(self, nodetype, *args):
         node = nodetype(*args)
-        node.set_metadata(parser=self)
+        node.call_stack = self.call_stack
+        node.parser = self
         return node
 
     def parse(self, regions=None):
