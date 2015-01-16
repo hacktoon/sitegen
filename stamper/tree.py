@@ -145,12 +145,19 @@ class Condition(Node):
 
 
 class WhileLoop(Node):
+    def __init__(self, value, token):
+        super().__init__(value, token)
+        self.loop_active = True
+
     def render(self, context):
         output = []
         self.call_stack.append(self)
         while self.value.render(context):
             text = super().render(context)
             output.append(text)
+            if not self.loop_active:
+                self.loop_active = True
+                break
         text_output = self.build_output(output)
         self.call_stack.pop()
         return text_output
