@@ -189,6 +189,7 @@ class ListNode(Node):
             text = super().render(loop_context)
             output.append(text)
             if not self.loop_active:
+                self.loop_active = True
                 break
         text_output = self.build_output(output)
         self.call_stack.pop()
