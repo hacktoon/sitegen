@@ -29,6 +29,7 @@ from alarum import (ValuesNotDefinedError, FileNotFoundError,
 
 BASE_URL = 'http://localhost/'
 TEMPLATES_DIR = 'templates'
+STATIC_DIR = 'static'
 DATA_DIR = 'data'
 DATA_FILE = 'page.me'
 CONFIG_FILE = 'config.me'
@@ -44,6 +45,10 @@ HTML_FILENAME = 'index.html'
 MODEL_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(MODEL_DIR, DATA_DIR)
 BASE_PATH = os.curdir
+
+
+def clear_path(path):
+    return re.sub(r'^\.$|\./|\.\\', '', path)
 
 
 class Renderer:
@@ -178,7 +183,7 @@ class MechaniScribe:
         '''Page object factory'''
         options = {}
         page = Page()
-        page.path = re.sub(r'^\.$|\./|\.\\', '', path)
+        page.path = clear_path(path)
         options['date_format'] = self.meta.get('date_format', DATE_FORMAT)
         base_url = self.meta.get('base_url', BASE_URL)
         page_data['url'] = self.urljoin(base_url, page.path) + '/'
@@ -229,6 +234,11 @@ class MechaniScribe:
         '''Return a list containing the full path of the subpages'''
         for folder in os.listdir(path):
             fullpath = os.path.join(path, folder)
+            basedir = os.path.dirname(fullpath)
+            basename = os.path.basename(fullpath)
+            forbidden_dirs = set((STATIC_DIR, TEMPLATES_DIR, FEED_DIR))
+            if set((basedir, basename)).intersection(forbidden_dirs):
+                continue
             if os.path.isdir(fullpath):
                 yield fullpath
 
@@ -392,15 +402,12 @@ class Library:
             'categories': category_list,
             'render_cache': {}
         }
-        summary = {'pages': []}
+        
         for page in pages:
             env['page'] = page
-            if page.is_json_writable():
-                summary['pages'].append(page.path)
             scriber.publish_page(page, env)
             print('Generated page {!r}.'.format(page.path))
         scriber.publish_feeds()
 
-        print('Generated pages summary: {!r}.'.format('pages.json'))
-        scriber.write_file('pages.json', json.dumps(summary))
+       
         return pages
