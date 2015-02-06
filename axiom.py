@@ -46,6 +46,7 @@ MODEL_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(MODEL_DIR, DATA_DIR)
 BASE_PATH = os.curdir
 
+FORBIDDEN_DIRS = set((STATIC_DIR, TEMPLATES_DIR, FEED_DIR))
 
 def clear_path(path):
     return re.sub(r'^\.$|\./|\.\\', '', path)
@@ -232,14 +233,13 @@ class MechaniScribe:
 
     def read_subpages_list(self, path):
         '''Return a list containing the full path of the subpages'''
-        for folder in os.listdir(path):
-            fullpath = os.path.join(path, folder)
-            basedir = os.path.dirname(fullpath)
-            basename = os.path.basename(fullpath)
-            forbidden_dirs = set((STATIC_DIR, TEMPLATES_DIR, FEED_DIR))
-            if set((basedir, basename)).intersection(forbidden_dirs):
-                continue
+        for filename in os.listdir(path):
+            fullpath = os.path.join(path, filename)
             if os.path.isdir(fullpath):
+                basedir = os.path.dirname(fullpath)
+                basename = os.path.basename(fullpath)
+                if set((basedir, basename)).intersection(FORBIDDEN_DIRS):
+                    continue
                 yield fullpath
 
     def read_template(self, tpl_filename):
