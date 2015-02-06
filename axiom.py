@@ -237,7 +237,7 @@ class MechaniScribe:
         is_page = bool(page_data) and page.is_json_enabled() and not page.is_draft()
         # only append this page and its children if
         # it has at least one child or is a page
-        if page_data or len(children):
+        if is_page or children:
             return {page_path: children, 'is_page': is_page}
         return {}
 
