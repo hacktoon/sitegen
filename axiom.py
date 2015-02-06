@@ -212,12 +212,16 @@ class MechaniScribe:
                 template = self.meta.get('default_template', DEFAULT_TEMPLATE)
             page.template = template
         return page
+
+    def build_json_summary(self, page, children):
+        json_content = json.dumps({'pages': children})
+        self.write_file(os.path.join(page.path, 'dir.json'), json_content)
     
     def read_page_tree(self, path, parent=None):
         '''Read the folders recursively and create an ordered list
         of page objects.'''
         if os.path.basename(path) in self.meta.get('blocked_dirs'):
-            return
+            return {}
         page_data = self.read_page(path)
         page = None
         if page_data:
@@ -228,8 +232,20 @@ class MechaniScribe:
             # add page to ordered list of pages
             if not page.is_draft():
                 self.pagelist.insert(page)
+        children_info = []
         for subpage_path in self.read_subpages_list(path):
-            self.read_page_tree(subpage_path, page)
+            sub_info = self.read_page_tree(subpage_path, page)
+            if sub_info:
+                children_info.append({
+                    'name':os.path.basename(subpage_path),
+                    'children': sub_info['children'],
+                    'is_page': sub_info['is_page']
+                })
+        self.build_json_summary(page, children_info)
+        return {
+            'children': len(children_info),
+            'is_page': bool(page_data) and (not page.is_draft()) and page.is_json_enabled()
+        }
 
     def read_subpages_list(self, path):
         '''Return a list containing the full path of the subpages'''

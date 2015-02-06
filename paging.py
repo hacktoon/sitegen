@@ -116,7 +116,7 @@ class Page():
         '''Sometimes book publishers are shy'''
         return 'nofeed' not in self.props
 
-    def is_json_writable(self):
+    def is_json_enabled(self):
         '''Sometimes book publishers like other formats'''
         return 'nojson' not in self.props
 
