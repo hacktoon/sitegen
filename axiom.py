@@ -217,7 +217,7 @@ class MechaniScribe:
         json_content = json.dumps({'pages': children})
         self.write_file(os.path.join(page_path, 'dir.json'), json_content)
     
-    def read_page_tree(self, path, parent=None):
+    def read_page_tree(self, path):
         '''Read the folders recursively and create an ordered list
         of page objects.'''
         if os.path.basename(path) in self.meta.get('blocked_dirs'):
@@ -226,9 +226,6 @@ class MechaniScribe:
         page = None
         if page_data:
             page = self.build_page(path, page_data)
-            page.parent = parent
-            if parent:
-                parent.add_child(page)
             # add page to ordered list of pages
             if not page.is_draft():
                 self.pagelist.insert(page)

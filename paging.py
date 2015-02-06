@@ -22,7 +22,6 @@ class Page():
     '''Define a page'''
     def __init__(self):
         self.children = PageList()
-        self.parent = None
         self.props = []
         self.path = ''
         self.styles = []
