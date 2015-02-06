@@ -233,12 +233,15 @@ class MechaniScribe:
                 children.append(child_info)
         # home page
         if not page_path:
-            return {'pages': children}
+            return {'filetree': children}
         is_page = bool(page_data) and page.is_json_enabled() and not page.is_draft()
         # only append this page and its children if
         # it has at least one child or is a page
         if is_page or children:
-            return {page_path: children, 'is_page': is_page}
+            page_info = {page_path: children}
+            if is_page:
+                page_info['p'] = 1
+            return page_info
         return {}
 
     def read_subpages_list(self, path):
