@@ -213,9 +213,9 @@ class MechaniScribe:
             page.template = template
         return page
 
-    def build_json_summary(self, page, children):
+    def build_json_summary(self, page_path, children):
         json_content = json.dumps({'pages': children})
-        self.write_file(os.path.join(page.path, 'dir.json'), json_content)
+        self.write_file(os.path.join(page_path, 'dir.json'), json_content)
     
     def read_page_tree(self, path, parent=None):
         '''Read the folders recursively and create an ordered list
@@ -235,13 +235,18 @@ class MechaniScribe:
         children_info = []
         for subpage_path in self.read_subpages_list(path):
             sub_info = self.read_page_tree(subpage_path, page)
-            if sub_info:
-                children_info.append({
-                    'name':os.path.basename(subpage_path),
-                    'children': sub_info['children'],
-                    'is_page': sub_info['is_page']
-                })
-        self.build_json_summary(page, children_info)
+            num_children = sub_info.get('children', 0)
+            is_page = sub_info.get('is_page', False)
+            # avoid listing empty "root" (i.e. main category) pages
+            if num_children == 0 and not is_page:
+                continue
+            children_info.append({
+                'name':os.path.basename(subpage_path),
+                'children': num_children,
+                'is_page': is_page
+            })
+        if children_info:  # leaf page
+            self.build_json_summary(path, children_info)
         return {
             'children': len(children_info),
             'is_page': bool(page_data) and (not page.is_draft()) and page.is_json_enabled()
