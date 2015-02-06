@@ -212,42 +212,34 @@ class MechaniScribe:
                 template = self.meta.get('default_template', DEFAULT_TEMPLATE)
             page.template = template
         return page
-
-    def build_json_summary(self, page_path, children):
-        json_content = json.dumps({'pages': children})
-        self.write_file(os.path.join(page_path, 'dir.json'), json_content)
     
     def read_page_tree(self, path):
         '''Read the folders recursively and create an ordered list
         of page objects.'''
-        if os.path.basename(path) in self.meta.get('blocked_dirs'):
+        page_path = clear_path(os.path.basename(path))
+        if page_path in self.meta.get('blocked_dirs'):
             return {}
         page_data = self.read_page(path)
         page = None
+        children = []
         if page_data:
             page = self.build_page(path, page_data)
             # add page to ordered list of pages
             if not page.is_draft():
                 self.pagelist.insert(page)
-        children_info = []
-        for subpage_path in self.read_subpages_list(path):
-            sub_info = self.read_page_tree(subpage_path, page)
-            num_children = sub_info.get('children', 0)
-            is_page = sub_info.get('is_page', False)
-            # avoid listing empty "root" (i.e. main category) pages
-            if num_children == 0 and not is_page:
-                continue
-            children_info.append({
-                'name':os.path.basename(subpage_path),
-                'children': num_children,
-                'is_page': is_page
-            })
-        if children_info:  # leaf page
-            self.build_json_summary(path, children_info)
-        return {
-            'children': len(children_info),
-            'is_page': bool(page_data) and (not page.is_draft()) and page.is_json_enabled()
-        }
+        for subvalid_page_path in self.read_subpages_list(path):
+            child_info = self.read_page_tree(subvalid_page_path)
+            if child_info:
+                children.append(child_info)
+        # home page
+        if not page_path:
+            return {'pages': children}
+        is_page = bool(page_data) and page.is_json_enabled() and not page.is_draft()
+        # only append this page and its children if
+        # it has at least one child or is a page
+        if page_data or len(children):
+            return {page_path: children, 'is_page': is_page}
+        return {}
 
     def read_subpages_list(self, path):
         '''Return a list containing the full path of the subpages'''
@@ -410,7 +402,7 @@ class Library:
         '''Send the books to the wonderful Mechaniscriber for rendering'''
         scriber = MechaniScribe(self.meta)
         category_list = scriber.build_categories()
-        scriber.read_page_tree(path)
+        json_summary = scriber.read_page_tree(path)
         for cat in scriber.categorylist:
             cat.paginate()
         pages = scriber.pagelist
@@ -427,5 +419,7 @@ class Library:
             print('Generated page {!r}.'.format(page.path))
         scriber.publish_feeds()
 
-       
+        scriber.write_file('pages.json', json.dumps(json_summary))
+        print('Generated file tree summary "pages.json"')
+
         return pages
