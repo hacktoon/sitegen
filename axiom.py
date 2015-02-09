@@ -221,7 +221,7 @@ class MechaniScribe:
             return {}
         page_data = self.read_page(path)
         page = None
-        children = []
+        children = {}
         if page_data:
             page = self.build_page(path, page_data)
             # add page to ordered list of pages
@@ -230,18 +230,15 @@ class MechaniScribe:
         for subvalid_page_path in self.read_subpages_list(path):
             child_info = self.read_page_tree(subvalid_page_path)
             if child_info:
-                children.append(child_info)
+                children.update(child_info)
         # home page
         if not page_path:
-            return {'filetree': children}
-        is_page = bool(page_data) and page.is_json_enabled() and not page.is_draft()
+            return children
         # only append this page and its children if
         # it has at least one child or is a page
+        is_page = bool(page_data) and page.is_json_enabled() and not page.is_draft()
         if is_page or children:
-            page_info = {page_path: children}
-            if is_page:
-                page_info['p'] = 1
-            return page_info
+            return {page_path: 1 if is_page else children}
         return {}
 
     def read_subpages_list(self, path):
