@@ -25,162 +25,162 @@ KEYCHARS = ''.join([
 	TOK_CLOSEGROUP
 ])
 
-class Token:
-	def __init__(self, type, value):
-		self.type = type
-		self.value = value
-		self.line = 1
-		self.column = 0
+def _create_env(text):
+	data = {}
+	return {
+		'index': 0,
+		'text': text,
+		'tokens': [],
+		'current_token': None,
+		'data': data,
+		'stack': [data]
+	}
 
-	def __str__(self):
-		return "({!r}: {!r})".format(self.type, self.value)
+def _create_token(type, value, line=1, column=0):
+	return {
+		'type': type,
+		'value': value,
+		'line': line,
+		'column': column
+	}
 
-	def __repr__(self):
-		return '{!r}'.format(self.value)
-
-
-class MemReader:
-	def __init__(self, text):
-		self.index = 0
-		self.text = text
-		self.line = 1
-		self.column = 0
-		self.tokens = []
-		self.current_token = None
-		self.data = {}
-		self.stack = [self.data]
-
-	def error(self, msg):
-		token = self.current_token
-		raise PageValueError('{} at line {}, column {}'.format(
-			msg, token.line, token.column))
-
-	def create_token(self, type, value):
-		if not value:
-			return
-		token = Token(type, value)
-		token.line = self.line
-		token.column = self.column
-		self.tokens.append(token)
-
-	def tokenize(self):
-		text = self.text.strip()
-		cache = []
-		inlist = False
-		for index, char in enumerate(text):
-			if char not in KEYCHARS or not inlist and char == TOK_COMMA:
-				cache.append(char)
-				continue
-			name = ''.join(cache).strip()
-			inlist = {
-				TOK_OPENLIST: True,
-				TOK_CLOSELIST: False
-			}.get(char, inlist)
-			if name == TOK_TEXT:
-				self.create_token(TOK_TEXT, text[index:].strip())
-				return
-			self.create_token(TOK_NAME, name)
-			if char == NEWLINE:
-				self.line += 1
-				self.column = 0
-			else:
-				self.column += 1
-				self.create_token(char, char)
-			cache = []
-				
-		# remaining chars
+def _tokenize(text):
+	line = 1 
+	column = 0
+	cache = []
+	tokens = []
+	inlist = False
+	text = text.strip()
+	for index, char in enumerate(text):
+		if char not in KEYCHARS or not inlist and char == TOK_COMMA:
+			cache.append(char)
+			column += 1
+			continue
 		name = ''.join(cache).strip()
-		self.create_token(TOK_NAME, name)
-
-	def next_token(self):
-		self.index += 1
-		try:
-			next = self.tokens[self.index]
-		except IndexError:
-			next = Token(TOK_EOF, TOK_EOF)
-		self.current_token = next
-		return next
-
-	def consume(self, expected):
-		token = self.current_token
-		if token.type == TOK_EOF:
-			return
-		if token.type != expected:
-			self.error('Expected a {!r}'.format(expected))
-		self.next_token()
-
-	def parse_group(self):
-		rules = {}
-		self.stack.append(rules)
-		while self.current_token.type not in (TOK_CLOSEGROUP, TOK_EOF):
-			self.parse_rule()
-		self.consume(TOK_CLOSEGROUP)
-		self.stack.pop()
-		return rules
-
-	def parse_list(self):
-		names = []
-		while True:
-			token = self.current_token
-			if token.type == TOK_CLOSELIST:
-				self.next_token()
-				break
-			if token.type == TOK_NAME:
-				names.append(token.value)
-				self.next_token()
-			else:
-				self.error('Expected a name, got {!r}'.format(token.value))
-			token = self.current_token
-			if token.type == TOK_COMMA:
-				token = self.next_token()
-				continue
-			elif token.type == TOK_CLOSELIST:
-				self.next_token()
-				break
-			else:
-				self.error('Invalid syntax')
-		return names
-
-	def parse_value(self):
-		token = self.current_token
-		if token.type == TOK_NAME:
-			value = token.value
-			self.next_token()
-		elif token.type == TOK_OPENLIST:
-			self.next_token()
-			value = self.parse_list()
-		elif token.type == TOK_OPENGROUP:
-			self.next_token()
-			value = self.parse_group()
+		inlist = {
+			TOK_OPENLIST: True,
+			TOK_CLOSELIST: False
+		}.get(char, inlist)
+		if name == TOK_TEXT:
+			token = _create_token(TOK_TEXT, text[index:].strip(), line, column)
+			tokens.append(token)
+			return tokens
+		if name:
+			tokens.append(_create_token(TOK_NAME, name, line, column))
+		if char == NEWLINE:
+			line += 1
+			column = 0
 		else:
-			self.error('Invalid value format')
-		return value
+			column += 1
+			tokens.append(_create_token(char, char, line, column))
+		cache = []
+			
+	# remaining chars
+	name = ''.join(cache).strip()
+	if name:
+		tokens.append(_create_token(TOK_NAME, name, line, column))
+	return tokens
 
-	def parse_rule(self):
-		token = self.current_token
-		if token.type not in (TOK_NAME, TOK_TEXT):
-			self.error('Expected a name, got {!r}'.format(token.value))
-		name = token.value
-		if token.type == TOK_TEXT:
-			if len(self.stack) > 1:
-				self.error('Wrong syntax')
-			self.data[TOK_TEXT] = token.value
-			self.next_token()
-			return
-		token = self.next_token()
-		if token.type == TOK_ASSIGN:
-			self.next_token()
-			value = self.parse_value()
+def _error(env, msg):
+	token = env['current_token']
+	raise PageValueError('{} at line {}, column {}'.format(
+		msg, token['line'], token['column']))
+
+def _next_token(env):
+	env['index'] += 1
+	try:
+		next = env['tokens'][env['index']]
+	except IndexError:
+		next = _create_token(TOK_EOF, TOK_EOF)
+	env['current_token'] = next
+	return next
+
+def _consume(env, expected):
+	token = env['current_token']
+	if token['type'] == TOK_EOF:
+		return
+	if token['type'] != expected:
+		_error(env, 'Expected a {!r}'.format(expected))
+	_next_token(env)
+
+def _parse_group(env):
+	rules = {}
+	env['stack'].append(rules)
+	while env['current_token']['type'] not in (TOK_CLOSEGROUP, TOK_EOF):
+		_parse_rule(env)
+	_consume(env, TOK_CLOSEGROUP)
+	env['stack'].pop()
+	return rules
+
+def _parse_list(env):
+	names = []
+	while True:
+		token = env['current_token']
+		if token['type'] == TOK_CLOSELIST:
+			_next_token(env)
+			break
+		if token['type'] == TOK_NAME:
+			names.append(token['value'])
+			_next_token(env)
 		else:
-			self.error('Invalid syntax')
-		self.stack[-1][name] = value
+			_error(env, 'Expected a name, got {!r}'.format(token['value']))
+		token = env['current_token']
+		if token['type'] == TOK_COMMA:
+			token = _next_token(env)
+			continue
+		elif token['type'] == TOK_CLOSELIST:
+			_next_token(env)
+			break
+		else:
+			_error(env, 'Invalid syntax')
+	return names
 
-	def parse_ruleset(self):
-		while self.current_token.type not in (TOK_EOF, TOK_CLOSEGROUP):
-			self.parse_rule()
+def _parse_value(env):
+	token = env['current_token']
+	if token['type'] == TOK_NAME:
+		value = token['value']
+		_next_token(env)
+	elif token['type'] == TOK_OPENLIST:
+		_next_token(env)
+		value = _parse_list(env)
+	elif token['type'] == TOK_OPENGROUP:
+		_next_token(env)
+		value = _parse_group(env)
+	else:
+		_error(env, 'Invalid value format')
+	return value
 
-	def parse(self):
-		self.tokenize()
-		self.current_token = self.tokens[0]
-		self.parse_ruleset()
-		return self.data
+def _parse_rule(env):
+	token = env['current_token']
+	if token['type'] not in (TOK_NAME, TOK_TEXT):
+		_error(env, 'Expected a name, got {!r}'.format(token['value']))
+	name = token['value']
+	if token['type'] == TOK_TEXT:
+		if len(env['stack']) > 1:
+			_error(env, 'Wrong syntax')
+		env['data'][TOK_TEXT] = token['value']
+		_next_token(env)
+		return
+	token = _next_token(env)
+	if token['type'] == TOK_ASSIGN:
+		_next_token(env)
+		value = _parse_value(env)
+		env['stack'][-1][name] = value
+	else:
+		_error(env, 'Invalid syntax')
+
+def _parse_ruleset(env):
+	while env['current_token']['type'] not in (TOK_EOF, TOK_CLOSEGROUP):
+		_parse_rule(env)
+	return env['data']
+
+def repr_token(t):
+	tpl = '{}\t[{}]\t\t({},{})'
+	return tpl.format(t['type'], t['value'], t['line'], t['column'])
+
+def parse(text):
+	env = _create_env(text)
+	tokens = _tokenize(text)
+	env['tokens'] = tokens
+	env['current_token'] = tokens[0]
+	return _parse_ruleset(env)
