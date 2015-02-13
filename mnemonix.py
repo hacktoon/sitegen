@@ -87,6 +87,10 @@ def main():
 						help="show generation messages",
 						action="store_true")
 
+	parser.add_argument("-x", "--update-cache", 
+						help="update the template and page caches",
+						action="store_true")
+
 	subparsers = parser.add_subparsers(title='Commands')
 
 	parser_build = subparsers.add_parser('build', 
@@ -101,7 +105,7 @@ def main():
 	parser_publish = subparsers.add_parser('publish', help='generate the pages')
 	parser_publish.set_defaults(method=publish)
 
-	args = parser.parse_args()	
+	args = parser.parse_args()
 	args.method(args)
 
 if __name__ == '__main__':
