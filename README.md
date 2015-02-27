@@ -1,10 +1,10 @@
-# Mnemonix - The Static Publishing System of Nimus Ages
+# Mechaniscribe - The Awesome Mechanical Scriber of Nimus Ages
 
 ## About
-Mnemonix is a static web publisher.
+Mechaniscribe is a static web publisher.
 
 ## Quickstart
-You only need Python 3 to run Mnemonix.
+You only need Python 3 to run Mechaniscribe.
 
 ### Creating a site
 Create a directory to be your web root. Enter it and call the following command:
@@ -12,14 +12,14 @@ Create a directory to be your web root. Enter it and call the following command:
 	mnemonix build
 
 ### Configure
-After installing, Mnemonix will setup some basic configuration to you, but you must change these values.
+After installing, Mechaniscribe will setup some basic configuration to you, but you must change these values.
 
 Open the *site* config file and define your settings. Here are some examples:
 * **tags** - Tags used in HTML meta tags
 * **base_url** - Will be used for absolute linking.
 * **default_template** - If a custom template is not provided for a page, this one will be used.
 * **feed_num** - Number of items to be listed in feeds
-* **blocked_dirs** - List of directories separated by comma that Mnemonix won't read.
+* **blocked_dirs** - List of directories separated by comma that Mechaniscribe won't read.
 
 ### Create your home page
 Just run the *write* command in the site root folder to create a new page:
@@ -60,7 +60,7 @@ You can add new templates to **templates** folder, create and use optional varia
     content
     My page content
 
-This will make Mnemonix search for a file named **article.tpl** in templates folder. The template property is inherited by its children, so you don't have to manually configure each subpage under a common page.
+This will make Mechaniscribe search for a file named **article.tpl** in templates folder. The template property is inherited by its children, so you don't have to manually configure each subpage under a common page.
 Defining new variables is as simple as that. Just add any new definition to your *page* file...
 
     author = Bob
@@ -78,10 +78,10 @@ If a page uses specific CSS or Javascript files, they can be put in the page's f
 They will be printed in the template through the variables {{page.styles}} and {{page.scripts}}.
 
 ### Page properties
-Properties listed in a page data file can be used to change how Mnemonix will manage the page.
+Properties listed in a page data file can be used to change how Mechaniscribe will manage the page.
 
-* nojson - Mnemonix will not generate a JSON file.
-* nohtml - Mnemonix will not generate a HTML file.
+* nojson - Mechaniscribe will not generate a JSON file.
+* nohtml - Mechaniscribe will not generate a HTML file.
 * nolist - The page will not appear in listings
 * nofeed - The page will not be listed in feeds.
 * draft - The page will not be generated, listed or syndicated in feeds.
@@ -96,7 +96,7 @@ Categories can be used to provide pagination, filter pages in listings and feeds
 	category = my_category ...
 
 ### Collections and template listings
-By default, Mnemonix provides some collections of data for using in templates. The first is the **pages** collection. You can list a subset of the pages of your site by passing arguments in the template tag:
+By default, Mechaniscribe provides some collections of data for using in templates. The first is the **pages** collection. You can list a subset of the pages of your site by passing arguments in the template tag:
 
 	{%pagelist num="10" %}
         <li>{{each.title}}</li>
