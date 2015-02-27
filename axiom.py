@@ -18,7 +18,7 @@ import re
 import shutil
 from datetime import datetime
 
-import mem
+import reader
 from paging import Page, PageList
 from categorization import Category, CategoryList
 from stamper.stamper import Stamper
@@ -151,7 +151,7 @@ class MechaniScribe:
         if os.path.exists(file_path):
             file_content = self.bring_file(file_path)
             try:
-                mem_data = mem.parse(file_content)
+                mem_data = reader.parse(file_content)
             except PageValueError as err:
                 raise PageValueError('In file {!r}: {}'.format(file_path, err))
             return mem_data
@@ -378,7 +378,7 @@ class Library:
             raise FileNotFoundError
         config_file = scriber.bring_file(config_path)
         try:
-            self.meta = mem.parse(config_file)
+            self.meta = reader.parse(config_file)
         except PageValueError as err:
             raise PageValueError('In file {!r}: {}'.format(config_path, err))
         blocked = self.meta.get('blocked_dirs', [])
