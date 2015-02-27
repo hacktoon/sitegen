@@ -18,11 +18,11 @@ import re
 import shutil
 from datetime import datetime
 
-import reader
-from paging import Page, PageList
-from categorization import Category, CategoryList
-from stamper.stamper import Stamper
-from alarum import (ValuesNotDefinedError, FileNotFoundError,
+from . import reader
+from .paging import Page, PageList
+from .categorization import Category, CategoryList
+from .stamper.stamper import Stamper
+from .exceptions import (ValuesNotDefinedError, FileNotFoundError,
                         SiteAlreadyInstalledError, PageExistsError,
                         PageValueError, TemplateError)
 
@@ -30,7 +30,7 @@ from alarum import (ValuesNotDefinedError, FileNotFoundError,
 BASE_URL = 'http://localhost/'
 TEMPLATES_DIR = 'templates'
 STATIC_DIR = 'static'
-DATA_DIR = 'data'
+DATA_DIR = '../data'
 DATA_FILE = 'page.me'
 CONFIG_FILE = 'config.me'
 FEED_FILE = 'feed.xml'

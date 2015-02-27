@@ -1,7 +1,7 @@
 # -*- encoding: UTF-8 -*-
 
 import sys
-from alarum import PageValueError
+from .exceptions import PageValueError
 
 NEWLINE = '\n'
 
