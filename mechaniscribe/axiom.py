@@ -18,11 +18,11 @@ import re
 import shutil
 from datetime import datetime
 
-from mem import MemReader
-from paging import Page, PageList
-from categorization import Category, CategoryList
-from stamper.stamper import Stamper
-from alarum import (ValuesNotDefinedError, FileNotFoundError,
+from . import reader
+from .paging import Page, PageList
+from .categorization import Category, CategoryList
+from .stamper.stamper import Stamper
+from .exceptions import (ValuesNotDefinedError, FileNotFoundError,
                         SiteAlreadyInstalledError, PageExistsError,
                         PageValueError, TemplateError)
 
@@ -30,7 +30,7 @@ from alarum import (ValuesNotDefinedError, FileNotFoundError,
 BASE_URL = 'http://localhost/'
 TEMPLATES_DIR = 'templates'
 STATIC_DIR = 'static'
-DATA_DIR = 'data'
+DATA_DIR = '../data'
 DATA_FILE = 'page.me'
 CONFIG_FILE = 'config.me'
 FEED_FILE = 'feed.xml'
@@ -151,7 +151,7 @@ class MechaniScribe:
         if os.path.exists(file_path):
             file_content = self.bring_file(file_path)
             try:
-                mem_data = MemReader(file_content).parse()
+                mem_data = reader.parse(file_content)
             except PageValueError as err:
                 raise PageValueError('In file {!r}: {}'.format(file_path, err))
             return mem_data
@@ -378,7 +378,7 @@ class Library:
             raise FileNotFoundError
         config_file = scriber.bring_file(config_path)
         try:
-            self.meta = MemReader(config_file).parse()
+            self.meta = reader.parse(config_file)
         except PageValueError as err:
             raise PageValueError('In file {!r}: {}'.format(config_path, err))
         blocked = self.meta.get('blocked_dirs', [])

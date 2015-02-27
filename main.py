@@ -2,11 +2,11 @@
 
 '''
 ===============================================================================
-Mnemonix - The Static Publishing System of Nimus Ages
+Mechaniscribe - The Awesome Mechanical Scriber of Nimus Ages
 
 Author: Karlisson M. Bezerra
 E-mail: contact@hacktoon.com
-URL: https://github.com/hacktoon/mnemonix
+URL: https://github.com/hacktoon/mechaniscribe
 License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 
 ===============================================================================
@@ -16,8 +16,8 @@ import argparse
 import sys
 import os
 
-from axiom import Library
-from alarum import (ValuesNotDefinedError, 
+from mechaniscribe import axiom
+from mechaniscribe.exceptions import (ValuesNotDefinedError, 
 					PageExistsError, 
 					SiteAlreadyInstalledError,
 					FileNotFoundError,
@@ -28,7 +28,7 @@ def publish(args):
 	'''Read recursively every directory under path and
 	outputs HTML/JSON for each page file'''
 	path = os.curdir
-	lib = Library()
+	lib = axiom.Library()
 	try:
 		lib.enter(path)
 	except FileNotFoundError:
@@ -41,14 +41,14 @@ def publish(args):
 	except (FileNotFoundError, ValuesNotDefinedError, 
 			TemplateError, PageValueError) as e:
 		sys.exit(e)
-	if args.output_enabled:
+	if args.verbose:
 		print("{}\nTotal of pages read: {}.".format("-" * 30, len(pages)))
 
 
 def write(args):
 	'''Create a new page in specified path'''
 	path = args.path or os.curdir
-	lib = Library()
+	lib = axiom.Library()
 	try:
 		lib.enter(path)
 	except FileNotFoundError:
@@ -67,7 +67,7 @@ def build(args):
 	print('Writing the plans for the wonder library Mnemonix...')
 	print('Building foundations...')
 	
-	lib = Library()
+	lib = axiom.Library()
 	try:
 		lib.build(os.curdir)
 	except SiteAlreadyInstalledError as e:
@@ -83,8 +83,12 @@ def main():
 	parser = argparse.ArgumentParser(prog='mnemonix', 
 		description=description)
 
-	parser.add_argument("-o", "--output-enabled", 
+	parser.add_argument("-v", "--verbose", 
 						help="show generation messages",
+						action="store_true")
+
+	parser.add_argument("-x", "--update-cache", 
+						help="update the template and page caches",
 						action="store_true")
 
 	subparsers = parser.add_subparsers(title='Commands')
@@ -100,8 +104,9 @@ def main():
 
 	parser_publish = subparsers.add_parser('publish', help='generate the pages')
 	parser_publish.set_defaults(method=publish)
+    #parser_publish.add_argument('path', nargs='?', default=os.curdir)
 
-	args = parser.parse_args()	
+	args = parser.parse_args()
 	args.method(args)
 
 if __name__ == '__main__':

@@ -12,7 +12,7 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 ===============================================================================
 '''
 
-from paging import PageList
+from .paging import PageList
 
 
 class Category:
