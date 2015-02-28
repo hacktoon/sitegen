@@ -1,4 +1,4 @@
-# Mechaniscribe - The Awesome Mechanical Scriber of Nimus Ages
+# Infiniscribe - The Infinite Automaton Scriber of Nimus Ages
 
 ## About
 Mechaniscribe is a static web publisher.
@@ -72,8 +72,8 @@ Defining new variables is as simple as that. Just add any new definition to your
 ### Styles and scripts
 If a page uses specific CSS or Javascript files, they can be put in the page's folder and listed in the **page** file:
 
-	styles = main.css
-	scripts = jquery.js, site.js
+	styles = [main.css]
+	scripts = [jquery.js, site.js]
 
 They will be printed in the template through the variables {{page.styles}} and {{page.scripts}}.
 
@@ -88,45 +88,28 @@ Properties listed in a page data file can be used to change how Mechaniscribe wi
 
 Example:
 
-	props = nojson, nolist
+	props = [nojson, nolist]
 
 ### Categories
 Categories can be used to provide pagination, filter pages in listings and feeds. To define a category, you have to add the 'category' key in **page** file:
 
-	category = my_category ...
+	category = my_category
 
 ### Collections and template listings
 By default, Mechaniscribe provides some collections of data for using in templates. The first is the **pages** collection. You can list a subset of the pages of your site by passing arguments in the template tag:
 
-	{%pagelist num="10" %}
-        <li>{{each.title}}</li>
+	{%list pages as page: %}
+        <li>{{page.title}}</li>
     {%end%}
 
-The **children** collection lists all the child pages of the current page being generated.
+You can limit the number of itens that will be listed:
 
-	{%childlist %}
-        <li>{{each.title}}</li>
+	{%list pages as page limit 10: %}
+        <li>{{page.title}}</li>
     {%end%}
 
-The list options can control the items that will be rendered:
+Or reverse the list printing order using the "rlist" alias:
 
-* sort - The 'sort by' option. Can be any page property. Default: 'date'.
-* ord - Order of listing. Can be 'asc' or 'desc'. It only works if a sort parameter is passed. Default: 'asc'.
-* cat - Filter by category.
-* start - Starting index in the list of pages.
-* num - Number of pages to be listed.
-* exclude - Lists everything but the category specified.
-
-Examples:
-
-    {%pagelist cat="blog" num="6" %}
-		<li>{{each.title}}</li>
-	{%end%}
-
-Renders the last 6 pages of the 'blog' category.
-    
-	{%pagelist start="1" exclude="blog" num="3" %}
-		<li>{{each.title}}</li>
-	{%end%}
-
-Renders the last 3 pages except the 'blog' category ones, starting by the second item.
+	{% rlist pages as page limit 10: %}
+        <li>{{page.title}}</li>
+    {% end %}
