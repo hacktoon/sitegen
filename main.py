@@ -2,13 +2,12 @@
 
 '''
 ===============================================================================
-Mechaniscribe - The Awesome Mechanical Scriber of Nimus Ages
+Infiniscribe - The Infinite Automaton Scriber of Nimus Ages
 
 Author: Karlisson M. Bezerra
 E-mail: contact@hacktoon.com
-URL: https://github.com/hacktoon/mechaniscribe
+URL: https://github.com/hacktoon/infiniscribe
 License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
-
 ===============================================================================
 '''
 
@@ -16,8 +15,8 @@ import argparse
 import sys
 import os
 
-from mechaniscribe import axiom
-from mechaniscribe.exceptions import (ValuesNotDefinedError, 
+from infiniscribe import axiom
+from infiniscribe.exceptions import (ValuesNotDefinedError, 
 					PageExistsError, 
 					SiteAlreadyInstalledError,
 					FileNotFoundError,
