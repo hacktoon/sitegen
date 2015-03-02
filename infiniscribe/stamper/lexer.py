@@ -1,3 +1,16 @@
+# coding: utf-8
+
+'''
+===============================================================================
+Infiniscribe - The Infinite Automaton Scriber of Nimus Ages
+
+Author: Karlisson M. Bezerra
+E-mail: contact@hacktoon.com
+URL: https://github.com/hacktoon/infiniscribe
+License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
+===============================================================================
+'''
+
 import sys
 import operator
 import re
@@ -48,6 +61,8 @@ REVLIST = 'rlist'
 AS = 'as'
 USE = 'use'
 REGION = 'region'
+LIMIT = 'limit'
+BREAK = 'break'
 
 BOOLEAN_VALUES = ['true', 'false']
 
@@ -102,7 +117,7 @@ def build_token_regex():
     KEYWORDS = r'\b|\b'.join([IF, ELSE, WHILE, AS,
         FUNCTION, RETURN, PRINT, INCLUDE, BOOL_NOT,
         BOOL_AND, BOOL_OR, PARSE, END, LIST, REVLIST,
-        USE, REGION])
+        USE, REGION, LIMIT, BREAK])
 
     TAGS = []
     for key, tag in TAG_MAP.items():

@@ -1,3 +1,16 @@
+# coding: utf-8
+
+'''
+===============================================================================
+Infiniscribe - The Infinite Automaton Scriber of Nimus Ages
+
+Author: Karlisson M. Bezerra
+E-mail: contact@hacktoon.com
+URL: https://github.com/hacktoon/infiniscribe
+License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
+===============================================================================
+'''
+
 import sys
 import os
 import operator
@@ -16,6 +29,7 @@ class Parser():
         self.tokens = lexer.Lexer().tokenize(self.template)
         self.tok_index = 0
         self.tok = self.tokens[self.tok_index]
+        self.call_stack = []
         self.regions = {}
         self.base_template = None
         self.stmt_map = {
@@ -29,7 +43,8 @@ class Parser():
             lexer.FUNCTION: self.function_definition,
             lexer.RETURN: self.function_return,
             lexer.USE: self.use_stmt,
-            lexer.REGION: self.region_stmt
+            lexer.REGION: self.region_stmt,
+            lexer.BREAK: self.break_stmt
         }
 
     def search_line_error(self, index):
@@ -230,8 +245,16 @@ class Parser():
         collection = self.identifier()
         self.consume(lexer.AS)
         iter_name = self.identifier()
-        node = self.create_node(tree.List, iter_name, 
-            collection, token, reverse)
+        limit = None
+        if self.tok.value == lexer.LIMIT:
+            self.consume(lexer.LIMIT)
+            if self.tok.value.isdigit():
+                limit = int(self.tok.value)
+                self.next_token()
+            else:
+                self.error("Number expected")
+        node = self.create_node(tree.ListNode, iter_name, 
+            collection, token, reverse, limit)
         node.add_child(self.stmt_block())
         return node
 
@@ -316,7 +339,7 @@ class Parser():
         if self.tok.value != lexer.CLOSE_PARENS:
             params = self.params_list()
         self.consume(lexer.CLOSE_PARENS)
-        node = self.create_node(tree.Function, name, params, token)
+        node = self.create_node(tree.FunctionNode, name, params, token)
         node.add_child(self.stmt_block())
         return node
 
@@ -344,6 +367,12 @@ class Parser():
         self.next_token()
         exp = self.expression()
         return self.create_node(tree.ReturnCommand, exp, token)
+
+    def break_stmt(self):
+        token = self.tok
+        self.next_token()
+        node = self.create_node(tree.BreakCommand, token)
+        return node
 
     def print_tag_stmt(self, token):
         exp_node = self.expression()
@@ -388,7 +417,8 @@ class Parser():
 
     def create_node(self, nodetype, *args):
         node = nodetype(*args)
-        node.set_metadata(parser=self)
+        node.call_stack = self.call_stack
+        node.parser = self
         return node
 
     def parse(self, regions=None):

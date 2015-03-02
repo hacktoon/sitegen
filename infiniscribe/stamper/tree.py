@@ -1,3 +1,16 @@
+# coding: utf-8
+
+'''
+===============================================================================
+Infiniscribe - The Infinite Automaton Scriber of Nimus Ages
+
+Author: Karlisson M. Bezerra
+E-mail: contact@hacktoon.com
+URL: https://github.com/hacktoon/infiniscribe
+License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
+===============================================================================
+'''
+
 import os
 from datetime import datetime
 
@@ -22,9 +35,6 @@ class Node:
             ref = ref[part]
         return ref
 
-    def set_metadata(self, parser):
-        self.parser = parser
-
     def add_child(self, child):
         if isinstance(child, list):
             self.children.extend(child)
@@ -39,8 +49,19 @@ class Node:
         for child in self.children:
             rendered = str(child.render(context))
             output.append(rendered)
+            stack_top = self.call_stack[-1] if len(self.call_stack) else None
             if isinstance(child, ReturnCommand):
-                return self.build_output(output)
+                if isinstance(stack_top, FunctionNode):
+                    return self.build_output(output)
+                else:
+                    self.error(RUNTIME_EXCEPTION, 'Invalid return clause')
+            if isinstance(child, BreakCommand):
+                if isinstance(stack_top, ListNode) or \
+                    isinstance(stack_top, WhileLoop):
+                    stack_top.loop_active = False
+                    break
+                else:
+                    self.error(RUNTIME_EXCEPTION, 'Invalid break clause')
         return self.build_output(output)
 
     def load_file(self, filename, path=''):
@@ -137,20 +158,32 @@ class Condition(Node):
 
 
 class WhileLoop(Node):
+    def __init__(self, value, token):
+        super().__init__(value, token)
+        self.loop_active = True
+
     def render(self, context):
         output = []
+        self.call_stack.append(self)
         while self.value.render(context):
             text = super().render(context)
             output.append(text)
-        return self.build_output(output)
+            if not self.loop_active:
+                self.loop_active = True
+                break
+        text_output = self.build_output(output)
+        self.call_stack.pop()
+        return text_output
 
 
-class List(Node):
-    def __init__(self, iter_name, collection_name, token, reverse=False):
-        super().__init__('List', token)
+class ListNode(Node):
+    def __init__(self, iter_name, collection_name, token, reverse=False, limit=None):
+        super().__init__('list {} as {}'.format(collection_name, iter_name), token)
         self.iter_name = iter_name
         self.collection_name = collection_name
         self.reverse = reverse
+        self.limit = limit
+        self.loop_active = True
 
     def update_iteration_counters(self, context, collection, index):
         item = context[self.iter_name]
@@ -162,34 +195,43 @@ class List(Node):
 
     def render(self, context):
         output = []
+        self.call_stack.append(self)
         collection = context.get(self.collection_name)
         loop_context = context.copy()
         if self.reverse:
             collection = list(collection)
             collection.reverse()
         for index, item in enumerate(collection):
+            if self.limit and index > self.limit - 1:
+                break
             loop_context[self.iter_name] = item
             self.update_iteration_counters(loop_context, collection, index)
             text = super().render(loop_context)
             output.append(text)
-        return self.build_output(output)
+            if not self.loop_active:
+                self.loop_active = True
+                break
+        text_output = self.build_output(output)
+        self.call_stack.pop()
+        return text_output
 
-
-class Function(Node):
+class FunctionNode(Node):
     def __init__(self, value, params, token):
         super().__init__(value, token)
         self.params = params
         self.context = {}
 
     def call(self, args):
-        received = len(args)
-        expected = len(self.params)
+        received, expected = len(args), len(self.params)
         if expected > received:
             msg = 'Expected {} params, received {}'.format(expected, received)
             self.error(RUNTIME_EXCEPTION, msg)
-        scope_context = dict(zip(self.params, args))
-        self.context.update(scope_context)
-        return super().render(self.context)
+        self.call_stack.append(self)
+        scoped_context = dict(zip(self.params, args))
+        self.context.update(scoped_context)
+        output = super().render(self.context)
+        self.call_stack.pop()
+        return output
 
     def render(self, context):
         context[self.value] = self
@@ -205,15 +247,22 @@ class FunctionCall(Node):
     def render(self, context):
         func = self.lookup_context(context, self.value)
         if not func:
-            msg = 'Function {!r} not defined'.format(self.value)
+            msg = 'FunctionNode {!r} not defined'.format(self.value)
             self.error(RUNTIME_EXCEPTION, msg)
         args = [arg.render(context) for arg in self.args]
         return func.call(args)
 
 
 class ReturnCommand(Node):
+    def __init__(self, value, _, token):
+        super().__init__(value, token)
+
     def render(self, context):
         return self.value.render(context)
+
+
+class BreakCommand(Node):
+    pass
 
 
 class PrintCommand(Node):
