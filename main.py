@@ -58,12 +58,12 @@ def write(args):
 		sys.exit(e)
 	
 	print('Page {!r} successfully created!'.format(path))
-	print('Edit the file {!r} and call "mnemonix build"!'.format(path))
+	print('Edit the file {!r} and call "infiniscribe build"!'.format(path))
 
 
 def build(args):
-	'''Builds Mnemonix in the current path'''
-	print('Writing the plans for the wonder library Mnemonix...')
+	'''Builds Infiniscribe in the current path'''
+	print('Writing the plans for the wonder library Infiniscribe...')
 	print('Building foundations...')
 	
 	lib = axiom.Library()
@@ -72,14 +72,14 @@ def build(args):
 	except SiteAlreadyInstalledError as e:
 		sys.exit(e)
 
-	print('\nMnemonix was successfully installed!\n\n'
+	print('\nInfiniscribe was successfully installed!\n\n'
 	'Next steps:\n1 - Edit the "config.me" file.\n'
-	'2 - Run "mnemonix write [path]" to start creating pages!\n')
+	'2 - Run "infiniscribe write [path]" to start creating pages!\n')
 
 
 def main():	
-	description = 'The Static Publishing System of Nimus Ages.'
-	parser = argparse.ArgumentParser(prog='mnemonix', 
+	description = 'The Infinite Automaton Scriber of Nimus Ages'
+	parser = argparse.ArgumentParser(prog='infiniscribe', 
 		description=description)
 
 	parser.add_argument("-v", "--verbose", 
@@ -90,10 +90,11 @@ def main():
 						help="update the template and page caches",
 						action="store_true")
 
-	subparsers = parser.add_subparsers(title='Commands')
+	subparsers = parser.add_subparsers(title='Commands', dest='command')
+	subparsers.required = True
 
 	parser_build = subparsers.add_parser('build', 
-		help='build Mnemonix on current folder')
+		help='build Infiniscribe on current folder')
 	parser_build.set_defaults(method=build)
 
 	parser_write = subparsers.add_parser('write',
@@ -103,7 +104,7 @@ def main():
 
 	parser_publish = subparsers.add_parser('publish', help='generate the pages')
 	parser_publish.set_defaults(method=publish)
-    #parser_publish.add_argument('path', nargs='?', default=os.curdir)
+	#parser_publish.add_argument('path', nargs='?', default=os.curdir)
 
 	args = parser.parse_args()
 	args.method(args)
