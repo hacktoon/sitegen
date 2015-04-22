@@ -104,7 +104,6 @@ def main():
 
 	parser_publish = subparsers.add_parser('publish', help='generate the pages')
 	parser_publish.set_defaults(method=publish)
-	#parser_publish.add_argument('path', nargs='?', default=os.curdir)
 
 	args = parser.parse_args()
 	args.method(args)
