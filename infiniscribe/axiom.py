@@ -384,6 +384,7 @@ class Library:
 
     def write_page(self, path):
         '''Create a book in the library'''
+        scriber = MechaniScribe(self.meta)
         data_file_path = self.meta.get('data_file', DATA_FILE)
         page_file = os.path.join(path, data_file_path)
         if os.path.exists(page_file):
@@ -392,10 +393,10 @@ class Library:
             os.makedirs(path)
         data_file_path = self.meta.get('data_file', DATA_FILE)
         model_page_file = os.path.join(DATA_DIR, data_file_path)
-        content = self.bring_file(model_page_file)
+        content = scriber.bring_file(model_page_file)
         date_format = self.meta.get('date_format', DATE_FORMAT)
         date = datetime.today().strftime(date_format)
-        self.write_file(page_file, content.format(date))
+        scriber.write_file(page_file, content.format(date))
 
     def publish_pages(self, path):
         '''Send the books to the wonderful Infiniscriber for rendering'''

@@ -13,8 +13,11 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 
 import unittest
 
+class TestStamper(unittest.TestCase):
+
+    def testTokenizer(self):
+        self.assertEqual(1, 1)
+
+
 if __name__ == '__main__':
-	testLoader = unittest.TestLoader()
-	suite = testLoader.discover('.')
-	runner = unittest.TextTestRunner()
-	runner.run(suite)
+    unittest.main()
