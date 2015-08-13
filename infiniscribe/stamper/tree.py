@@ -13,6 +13,7 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 
 import os
 from datetime import datetime
+import operator
 
 from . import exceptions
 
@@ -30,7 +31,7 @@ class Node:
         name = name.split('.')
         ref = context.get(name[0], '')
         for part in name[1:]:
-            if not part in ref:
+            if part not in ref:
                 return ''
             ref = ref[part]
         return ref
@@ -47,17 +48,18 @@ class Node:
     def render(self, context):
         output = []
         for child in self.children:
+            stack_top = self.call_stack[-1] if len(self.call_stack) else None
+            if not stack_top.loop_active:
+                break
             rendered = str(child.render(context))
             output.append(rendered)
-            stack_top = self.call_stack[-1] if len(self.call_stack) else None
             if isinstance(child, ReturnCommand):
                 if isinstance(stack_top, FunctionNode):
                     return self.build_output(output)
                 else:
                     self.error(RUNTIME_EXCEPTION, 'Invalid return clause')
             if isinstance(child, BreakCommand):
-                if isinstance(stack_top, ListNode) or \
-                    isinstance(stack_top, WhileLoop):
+                if isinstance(stack_top, ListNode) or isinstance(stack_top, WhileLoop):
                     stack_top.loop_active = False
                     break
                 else:
@@ -150,7 +152,7 @@ class Condition(Node):
     def render(self, context):
         if self.value.render(context):
             self.children = self.true_block
-        elif self.false_block: # just check if there's an ELSE clause
+        elif self.false_block:  # just check if there's an ELSE clause
             self.children = self.false_block
         else:
             self.children = []
@@ -168,9 +170,6 @@ class WhileLoop(Node):
         while self.value.render(context):
             text = super().render(context)
             output.append(text)
-            if not self.loop_active:
-                self.loop_active = True
-                break
         text_output = self.build_output(output)
         self.call_stack.pop()
         return text_output
@@ -208,12 +207,10 @@ class ListNode(Node):
             self.update_iteration_counters(loop_context, collection, index)
             text = super().render(loop_context)
             output.append(text)
-            if not self.loop_active:
-                self.loop_active = True
-                break
         text_output = self.build_output(output)
         self.call_stack.pop()
         return text_output
+
 
 class FunctionNode(Node):
     def __init__(self, value, params, token):

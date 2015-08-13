@@ -11,20 +11,21 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 ===============================================================================
 '''
 
+
 class TemplateError(Exception):
-	pass
+    pass
 
 
 class NodeError(Exception):
-	def __init__(self, msg, token, parser):
-		self.token = token
-		self.parser = parser
-		super().__init__(msg)
+    def __init__(self, msg, token, parser):
+        self.token = token
+        self.parser = parser
+        super().__init__(msg)
 
 
 class RuntimeError(NodeError):
-	pass
+    pass
 
 
 class FileNotFoundError(NodeError):
-	pass
+    pass
