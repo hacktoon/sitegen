@@ -16,6 +16,7 @@ from datetime import datetime
 import operator
 
 from . import exceptions
+from .exceptions import LoopInterruption
 
 FILE_EXCEPTION = exceptions.FileNotFoundError
 RUNTIME_EXCEPTION = exceptions.RuntimeError
@@ -48,22 +49,12 @@ class Node:
     def render(self, context):
         output = []
         for child in self.children:
-            stack_top = self.call_stack[-1] if len(self.call_stack) else None
-            if not stack_top.loop_active:
-                break
-            rendered = str(child.render(context))
-            output.append(rendered)
-            if isinstance(child, ReturnCommand):
-                if isinstance(stack_top, FunctionNode):
-                    return self.build_output(output)
-                else:
-                    self.error(RUNTIME_EXCEPTION, 'Invalid return clause')
-            if isinstance(child, BreakCommand):
-                if isinstance(stack_top, ListNode) or isinstance(stack_top, WhileLoop):
-                    stack_top.loop_active = False
-                    break
-                else:
-                    self.error(RUNTIME_EXCEPTION, 'Invalid break clause')
+            try:
+                child_output = str(child.render(context))
+            except LoopInterruption:
+                partial_output = self.build_output(output)
+                raise LoopInterruption(partial_output)
+            output.append(child_output)
         return self.build_output(output)
 
     def load_file(self, filename, path=''):
@@ -205,7 +196,11 @@ class ListNode(Node):
                 break
             loop_context[self.iter_name] = item
             self.update_iteration_counters(loop_context, collection, index)
-            text = super().render(loop_context)
+            try:
+                text = super().render(loop_context)
+            except LoopInterruption as e:
+                output.append(e.rendered_content)
+                break
             output.append(text)
         text_output = self.build_output(output)
         self.call_stack.pop()
@@ -259,7 +254,8 @@ class ReturnCommand(Node):
 
 
 class BreakCommand(Node):
-    pass
+    def render(self, _):
+        raise exceptions.LoopInterruption
 
 
 class PrintCommand(Node):

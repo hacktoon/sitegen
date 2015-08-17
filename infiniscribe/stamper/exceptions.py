@@ -16,6 +16,11 @@ class TemplateError(Exception):
     pass
 
 
+class LoopInterruption(Exception):
+    def __init__(self, rendered_content=None):
+        self.rendered_content = rendered_content
+
+
 class NodeError(Exception):
     def __init__(self, msg, token, parser):
         self.token = token
