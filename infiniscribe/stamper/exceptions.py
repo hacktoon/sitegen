@@ -16,9 +16,16 @@ class TemplateError(Exception):
     pass
 
 
-class LoopInterruption(Exception):
-    def __init__(self, rendered_content=None):
-        self.rendered_content = rendered_content
+class BreakStatement(Exception):
+    def __init__(self, partial_output='', token=None):
+        self.partial_output = partial_output
+        self.token = token
+
+
+class FunctionReturn(Exception):
+    def __init__(self, token, return_value=None):
+        self.return_value = return_value
+        self.token = token
 
 
 class NodeError(Exception):
@@ -26,10 +33,6 @@ class NodeError(Exception):
         self.token = token
         self.parser = parser
         super().__init__(msg)
-
-
-class RuntimeError(NodeError):
-    pass
 
 
 class FileNotFoundError(NodeError):

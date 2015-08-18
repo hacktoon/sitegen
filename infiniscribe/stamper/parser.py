@@ -29,7 +29,6 @@ class Parser():
         self.tokens = lexer.Lexer().tokenize(self.template)
         self.tok_index = 0
         self.tok = self.tokens[self.tok_index]
-        self.call_stack = []
         self.regions = {}
         self.base_template = None
         self.stmt_map = {
@@ -371,8 +370,7 @@ class Parser():
     def break_stmt(self):
         token = self.tok
         self.next_token()
-        node = self.create_node(tree.BreakCommand, token)
-        return node
+        return self.create_node(tree.BreakCommand, token)
 
     def print_tag_stmt(self, token):
         exp_node = self.expression()
@@ -417,7 +415,6 @@ class Parser():
 
     def create_node(self, nodetype, *args):
         node = nodetype(*args)
-        node.call_stack = self.call_stack
         node.parser = self
         return node
 
