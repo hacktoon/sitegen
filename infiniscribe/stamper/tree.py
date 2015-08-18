@@ -13,11 +13,9 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 
 import os
 from datetime import datetime
+import operator
 
-from . import exceptions
-
-FILE_EXCEPTION = exceptions.FileNotFoundError
-RUNTIME_EXCEPTION = exceptions.RuntimeError
+from .exceptions import BreakStatement, FunctionReturn, FileNotFoundError
 
 
 class Node:
@@ -30,7 +28,7 @@ class Node:
         name = name.split('.')
         ref = context.get(name[0], '')
         for part in name[1:]:
-            if not part in ref:
+            if part not in ref:
                 return ''
             ref = ref[part]
         return ref
@@ -47,33 +45,25 @@ class Node:
     def render(self, context):
         output = []
         for child in self.children:
-            rendered = str(child.render(context))
-            output.append(rendered)
-            stack_top = self.call_stack[-1] if len(self.call_stack) else None
-            if isinstance(child, ReturnCommand):
-                if isinstance(stack_top, FunctionNode):
-                    return self.build_output(output)
-                else:
-                    self.error(RUNTIME_EXCEPTION, 'Invalid return clause')
-            if isinstance(child, BreakCommand):
-                if isinstance(stack_top, ListNode) or \
-                    isinstance(stack_top, WhileLoop):
-                    stack_top.loop_active = False
-                    break
-                else:
-                    self.error(RUNTIME_EXCEPTION, 'Invalid break clause')
+            try:
+                child_output = str(child.render(context))
+            except BreakStatement as break_stmt:
+                partial_output = self.build_output(output)
+                break_stmt.partial_output = partial_output
+                raise break_stmt
+            output.append(child_output)
         return self.build_output(output)
 
     def load_file(self, filename, path=''):
         if not isinstance(filename, str):
-            self.error(RUNTIME_EXCEPTION, 'String expected')
+            self.error(RuntimeError, 'String expected')
         filename = os.path.join(path, filename)
         try:
             with open(filename, 'r') as fp:
                 file_content = fp.read()
         except IOError:
             msg = 'File {!r} not found'.format(filename)
-            self.error(FILE_EXCEPTION, msg)
+            self.error(FileNotFoundError, msg)
         return file_content
 
     def error(self, exception_class, msg):
@@ -87,8 +77,12 @@ class Root(Node):
     def render(self, context):
         try:
             output = super().render(context)
-        except (RUNTIME_EXCEPTION, FILE_EXCEPTION) as err:
+        except (RuntimeError, FileNotFoundError) as err:
             err.parser.error(err, err.token)
+        except BreakStatement as break_stmt:
+            err.parser.error('Invalid break statement', break_stmt.token)
+        except FunctionReturn as func_return:
+            err.parser.error('Invalid return statement', func_return.token)
         return output
 
 
@@ -135,9 +129,9 @@ class Operation(Node):
             else:
                 output = self.value(output)
         except ZeroDivisionError:
-            self.error(RUNTIME_EXCEPTION, 'Division by zero')
+            self.error(RuntimeError, 'Division by zero')
         except TypeError:
-            self.error(RUNTIME_EXCEPTION, 'Wrong types in operation')
+            self.error(RuntimeError, 'Wrong types in operation')
         return output
 
 
@@ -150,7 +144,7 @@ class Condition(Node):
     def render(self, context):
         if self.value.render(context):
             self.children = self.true_block
-        elif self.false_block: # just check if there's an ELSE clause
+        elif self.false_block:  # just check if there's an ELSE clause
             self.children = self.false_block
         else:
             self.children = []
@@ -158,22 +152,16 @@ class Condition(Node):
 
 
 class WhileLoop(Node):
-    def __init__(self, value, token):
-        super().__init__(value, token)
-        self.loop_active = True
-
     def render(self, context):
         output = []
-        self.call_stack.append(self)
         while self.value.render(context):
-            text = super().render(context)
-            output.append(text)
-            if not self.loop_active:
-                self.loop_active = True
+            try:
+                text = super().render(context)
+            except BreakStatement as break_stmt:
+                output.append(break_stmt.partial_output)
                 break
-        text_output = self.build_output(output)
-        self.call_stack.pop()
-        return text_output
+            output.append(text)
+        return self.build_output(output)
 
 
 class ListNode(Node):
@@ -183,7 +171,6 @@ class ListNode(Node):
         self.collection_name = collection_name
         self.reverse = reverse
         self.limit = limit
-        self.loop_active = True
 
     def update_iteration_counters(self, context, collection, index):
         item = context[self.iter_name]
@@ -195,7 +182,6 @@ class ListNode(Node):
 
     def render(self, context):
         output = []
-        self.call_stack.append(self)
         collection = context.get(self.collection_name)
         loop_context = context.copy()
         if self.reverse:
@@ -206,14 +192,14 @@ class ListNode(Node):
                 break
             loop_context[self.iter_name] = item
             self.update_iteration_counters(loop_context, collection, index)
-            text = super().render(loop_context)
-            output.append(text)
-            if not self.loop_active:
-                self.loop_active = True
+            try:
+                text = super().render(loop_context)
+            except BreakStatement as break_stmt:
+                output.append(break_stmt.partial_output)
                 break
-        text_output = self.build_output(output)
-        self.call_stack.pop()
-        return text_output
+            output.append(text)
+        return self.build_output(output)
+
 
 class FunctionNode(Node):
     def __init__(self, value, params, token):
@@ -225,12 +211,13 @@ class FunctionNode(Node):
         received, expected = len(args), len(self.params)
         if expected > received:
             msg = 'Expected {} params, received {}'.format(expected, received)
-            self.error(RUNTIME_EXCEPTION, msg)
-        self.call_stack.append(self)
+            self.error(RuntimeError, msg)
         scoped_context = dict(zip(self.params, args))
         self.context.update(scoped_context)
-        output = super().render(self.context)
-        self.call_stack.pop()
+        try:
+            output = super().render(self.context)
+        except FunctionReturn as func_return:
+            return func_return.return_value
         return output
 
     def render(self, context):
@@ -247,22 +234,21 @@ class FunctionCall(Node):
     def render(self, context):
         func = self.lookup_context(context, self.value)
         if not func:
-            msg = 'FunctionNode {!r} not defined'.format(self.value)
-            self.error(RUNTIME_EXCEPTION, msg)
+            msg = 'Function {!r} not defined'.format(self.value)
+            self.error(RuntimeError, msg)
         args = [arg.render(context) for arg in self.args]
         return func.call(args)
 
 
 class ReturnCommand(Node):
-    def __init__(self, value, _, token):
-        super().__init__(value, token)
-
     def render(self, context):
-        return self.value.render(context)
+        return_value = self.value.render(context)
+        raise FunctionReturn(self.token, return_value)
 
 
 class BreakCommand(Node):
-    pass
+    def render(self, _):
+        raise BreakStatement(token=self.token)
 
 
 class PrintCommand(Node):
@@ -301,7 +287,7 @@ class ParseCommand(Node):
             subtree = p.parse()
         except RuntimeError:
             msg = '{} is including itself.'.format(filename)
-            self.error(RUNTIME_EXCEPTION, msg)
+            self.error(RuntimeError, msg)
         return subtree.render(context)
 
 
