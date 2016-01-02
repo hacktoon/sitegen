@@ -186,6 +186,7 @@ class MechaniScribe:
         page.path = clear_path(path)
         options['date_format'] = self.meta.get('date_format', DATE_FORMAT)
         base_url = self.meta.get('base_url', BASE_URL)
+        page_data['path'] = page.path
         page_data['url'] = self.urljoin(base_url, page.path) + '/'
         
         content = page_data.get('content', '')
