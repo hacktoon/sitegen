@@ -40,6 +40,8 @@ FEED_NUM = 8
 TEMPLATES_EXT = '.tpl'
 JSON_FILENAME = 'data.json'
 HTML_FILENAME = 'index.html'
+THUMB_FILENAME = 'thumb.png'
+EXCERPT_RE = r'<!--\s*more\s*-->'
 
 MODEL_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(MODEL_DIR, DATA_DIR)
@@ -62,7 +64,7 @@ class Renderer:
         if self.tpl_name in cache.keys():
             renderer = cache[self.tpl_name]
         else:
-            renderer = Stamper(self.template, 
+            renderer = Stamper(self.template,
                 filename=self.tpl_name, include_path=self.include_path)
             cache[self.tpl_name] = renderer
         return renderer.render(context)
@@ -188,16 +190,20 @@ class MechaniScribe:
         base_url = self.meta.get('base_url', BASE_URL)
         page_data['path'] = page.path
         page_data['url'] = self.urljoin(base_url, page.path) + '/'
-        
+
         content = page_data.get('content', '')
-        regexp = r'<!--\s*more\s*-->'
-        page_data['excerpt'] = re.split(regexp, content, 1)[0]
-        page_data['content'] = re.sub(regexp, '', content)
+        page_data['excerpt'] = re.split(EXCERPT_RE, content, 1)[0]
+        page_data['content'] = re.sub(EXCERPT_RE, '', content)
+
+        thumb_filepath = os.path.join(page.path, THUMB_FILENAME)
+        if os.path.exists(thumb_filepath):
+            page_data['thumb'] = os.path.join(page.path, THUMB_FILENAME)
+
         try:
             page.initialize(page_data, options)
         except ValuesNotDefinedError as error:
             raise ValuesNotDefinedError('{} at page {!r}'.format(error, path))
-        
+
         category_id = page_data.get('category', '')
         category = self.categorylist[category_id]
 
@@ -212,7 +218,7 @@ class MechaniScribe:
                 template = self.meta.get('default_template', DEFAULT_TEMPLATE)
             page.template = template
         return page
-    
+
     def read_page_tree(self, path):
         '''Read the folders recursively and create an ordered list
         of page objects.'''
@@ -261,7 +267,7 @@ class MechaniScribe:
             raise FileNotFoundError('Template {!r}'
             ' not found'.format(tpl_filepath))
         return self.bring_file(tpl_filepath)
-    
+
     def write_json(self, page):
         '''To write the book data in a style-free, raw format'''
         if 'nojson' in page.props:
@@ -285,7 +291,7 @@ class MechaniScribe:
             raise TemplateError('{} at template {!r}'.format(error,
             page.template))
         self.write_file(html_path, output)
-    
+
     def write_feed(self, env, pagelist, name):
         '''To write an announcement about new books'''
         if not len(pagelist):
@@ -302,7 +308,7 @@ class MechaniScribe:
             feed_num = FEED_NUM
         if not os.path.exists(feed_path):
             os.makedirs(feed_path)
-        
+
         fname = '{}.xml'.format(name)
         env['feed'] = {
             'link': self.urljoin(base_url, feed_dir, fname),
@@ -413,7 +419,7 @@ class Library:
             'categories': category_list,
             'render_cache': {}
         }
-        
+
         for page in pages:
             env['page'] = page
             scriber.publish_page(page, env)
