@@ -21,8 +21,7 @@ from . import reader
 from .paging import Page, PageList
 from .categorization import Category, CategoryList
 from .stamper.stamper import Stamper
-from .exceptions import (ValuesNotDefinedError, FileNotFoundError,
-                        SiteAlreadyInstalledError, PageExistsError,
+from .exceptions import (SiteAlreadyInstalledError, PageExistsError,
                         PageValueError, TemplateError)
 
 
@@ -141,9 +140,8 @@ class MechaniScribe:
             if current_content == content:
                 return
             f.close()
-        f = open(path, 'w')
-        f.write(content)
-        f.close()
+        with open(path, 'w') as f:
+            f.write(content)
 
     def read_page(self, path):
         '''Return the page data specified by path'''
@@ -201,8 +199,8 @@ class MechaniScribe:
 
         try:
             page.initialize(page_data, options)
-        except ValuesNotDefinedError as error:
-            raise ValuesNotDefinedError('{} at page {!r}'.format(error, path))
+        except ValueError as error:
+            raise ValueError('{} at page {!r}'.format(error, path))
 
         category_id = page_data.get('category', '')
         category = self.categorylist[category_id]

@@ -16,10 +16,8 @@ import sys
 import os
 
 from infiniscribe import axiom
-from infiniscribe.exceptions import (ValuesNotDefinedError, 
-					PageExistsError, 
+from infiniscribe.exceptions import (PageExistsError,
 					SiteAlreadyInstalledError,
-					FileNotFoundError,
 					TemplateError,
 					PageValueError)
 
@@ -37,7 +35,7 @@ def publish(args):
 
 	try:
 		pages = lib.publish_pages(path)
-	except (FileNotFoundError, ValuesNotDefinedError, 
+	except (FileNotFoundError, ValueError,
 			TemplateError, PageValueError) as e:
 		sys.exit(e)
 	if args.verbose:
@@ -56,7 +54,7 @@ def write(args):
 		lib.write_page(path)
 	except PageExistsError as e:
 		sys.exit(e)
-	
+
 	print('Page {!r} successfully created!'.format(path))
 	print('Edit the file {!r}/page.me and call "infiniscribe build"!'.format(path))
 
@@ -65,7 +63,7 @@ def build(args):
 	'''Builds Infiniscribe in the current path'''
 	print('Writing the plans for the wonder library Infiniscribe...')
 	print('Building foundations...')
-	
+
 	lib = axiom.Library()
 	try:
 		lib.build(os.curdir)
@@ -77,23 +75,23 @@ def build(args):
 	'2 - Run "infiniscribe write [path]" to start creating pages!\n')
 
 
-def main():	
+def main():
 	description = 'The Infinite Automaton Scriber of Nimus Ages'
-	parser = argparse.ArgumentParser(prog='infiniscribe', 
+	parser = argparse.ArgumentParser(prog='infiniscribe',
 		description=description)
 
-	parser.add_argument("-v", "--verbose", 
+	parser.add_argument("-v", "--verbose",
 						help="show generation messages",
 						action="store_true")
 
-	parser.add_argument("-x", "--update-cache", 
+	parser.add_argument("-x", "--update-cache",
 						help="update the template and page caches",
 						action="store_true")
 
 	subparsers = parser.add_subparsers(title='Commands', dest='command')
 	subparsers.required = True
 
-	parser_build = subparsers.add_parser('build', 
+	parser_build = subparsers.add_parser('build',
 		help='build Infiniscribe on current folder')
 	parser_build.set_defaults(method=build)
 

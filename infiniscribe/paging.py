@@ -29,7 +29,7 @@ class Page():
 
     def __le__(self, other):
         return self['date'] <= other['date']
-    
+
     def __len__(self):
         return 0
 
@@ -60,8 +60,8 @@ class Page():
             if key in params:
                 continue
             msg = 'The following value was not defined: {!r}'
-            raise ValuesNotDefinedError(msg.format(key))
-    
+            raise ValueError(msg.format(key))
+
     def add_child(self, page):
         '''Link books in a familiar way'''
         self.children.insert(page)
@@ -104,7 +104,7 @@ class Page():
     def is_draft(self):
         '''To decide if the book is not ready yet'''
         return 'draft' in self.props
-    
+
     def is_listable(self):
         '''Sometimes a book shall not be listed'''
         return 'nolist' not in self.props and not self.is_draft()
@@ -129,16 +129,16 @@ class PageList:
 
     def __len__(self):
         return len(self.pages)
-    
+
     def __setitem__(self, key, value):
         self.pages[key] = value
 
     def __getitem__(self, key):
         return self.pages[key]
-    
+
     def __delitem__(self, key):
         del self.pages[key]
-    
+
     def reverse(self):
         '''To reverse the list of books'''
         return self.pages.reverse()
