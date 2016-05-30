@@ -12,6 +12,7 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 '''
 
 from datetime import datetime
+import bisect
 
 REQUIRED_KEYS = ('title', 'date')
 
@@ -29,6 +30,9 @@ class Page():
 
     def __le__(self, other):
         return self['date'] <= other['date']
+
+    def __lt__(self, other):
+        return self['date'] < other['date']
 
     def __len__(self):
         return 0
@@ -164,9 +168,4 @@ class PageList:
 
     def insert(self, page):
         '''To insert book in right position by date'''
-        count = 0
-        while True:
-            if count == len(self.pages) or page <= self.pages[count]:
-                self.pages.insert(count, page)
-                break
-            count += 1
+        bisect.insort(self.pages, page)
