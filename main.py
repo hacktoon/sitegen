@@ -56,7 +56,7 @@ def write(args):
 		sys.exit(e)
 
 	print('Page {!r} successfully created!'.format(path))
-	print('Edit the file {!r}/page.me and call "infiniscribe build"!'.format(path))
+	print('Edit the file {}/page.me and call "infiniscribe build"!'.format(path))
 
 
 def build(args):
