@@ -22,11 +22,10 @@ from . import tree
 
 
 class Parser():
-    def __init__(self, template, filename='', include_path=''):
-        self.template = template
-        self.filename = filename
+    def __init__(self, text, include_path=''):
+        self.text = text
         self.include_path = include_path
-        self.tokens = lexer.Lexer().tokenize(self.template)
+        self.tokens = lexer.Lexer().tokenize(text)
         self.tok_index = 0
         self.tok = self.tokens[self.tok_index]
         self.regions = {}
@@ -49,7 +48,7 @@ class Parser():
     def search_line_error(self, index):
         line = 1
         col = 1
-        for i, char in enumerate(self.template):
+        for i, char in enumerate(self.text):
             if index == i:
                 return (line, col)
             if char == '\n':
@@ -61,8 +60,7 @@ class Parser():
     def error(self, msg, token=None):
         token = token or self.tok
         line, column = self.search_line_error(token.column)
-        sys.exit('Error on file {!r}: {} at line {}, column {}'.format(
-            self.filename, msg, line, column))
+        raise Exception('{} at line {}, column {}'.format(msg, line, column))
 
     def next_token(self):
         self.tok_index += 1
@@ -252,7 +250,7 @@ class Parser():
                 self.next_token()
             else:
                 self.error("Number expected")
-        node = self.create_node(tree.ListNode, iter_name, 
+        node = self.create_node(tree.ListNode, iter_name,
             collection, token, reverse, limit)
         node.add_child(self.stmt_block())
         return node
@@ -262,7 +260,7 @@ class Parser():
 
     def list_stmt(self):
         return self._list_stmt(reverse=True)
-    
+
     def print_stmt(self):
         token = self.tok
         self.next_token()
@@ -310,7 +308,7 @@ class Parser():
             # currently parsing a child template
             self.regions[region_name] = node
         else:
-            # parsing a base template, replace regions by 
+            # parsing a base template, replace regions by
             # those defined in child template
             node = self.replace_region(node)
         return node
@@ -382,14 +380,14 @@ class Parser():
             tag_filter = self.tok.value
             self.next_token()
         self.consume(lexer.CLOSE_VAR)
-        return self.create_node(tree.PrintCommand, 
+        return self.create_node(tree.PrintCommand,
             exp_node, token, tag_filter)
 
     def statement(self):
         token = self.tok
         tok_type = self.tok.type
         node = None
-        
+
         if tok_type == lexer.TEXT:
             node = self.create_node(tree.Text, self.tok.value, token)
             self.next_token()
@@ -432,7 +430,7 @@ class Parser():
                 fp = open(filename, 'r')
             except IOError:
                 self.error('File {!r} not found'.format(filename))
-            p = Parser(fp.read(), filename=filename)
+            p = Parser(fp.read(), include_path=self.include_path)
             fp.close()
             tree_root = p.parse(regions=self.regions)
         return tree_root
