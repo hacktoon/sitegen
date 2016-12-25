@@ -15,7 +15,7 @@ import argparse
 import sys
 import os
 
-from infiniscribe import axiom
+from infiniscribe import utils, axiom
 from infiniscribe.exceptions import (PageExistsError,
                                      SiteAlreadyInstalledError,
                                      TemplateError,
@@ -24,7 +24,7 @@ from infiniscribe.exceptions import (PageExistsError,
 def publish(args):
     '''Read recursively every directory under path and
     outputs HTML/JSON for each page file'''
-    path = os.path.join(os.curdir, args.path)
+    path = utils.clear_path(args.path.rstrip('/') + '/')
     lib = axiom.Library()
     try:
         lib.enter(path)
@@ -44,7 +44,7 @@ def publish(args):
 
 def write(args):
     '''Create a new page in specified path'''
-    path = os.path.join(os.curdir, args.path)
+    path = utils.clear_path(args.path)
     lib = axiom.Library()
     try:
         lib.enter(path)
@@ -101,7 +101,7 @@ def main():
     parser_write.set_defaults(method=write)
 
     parser_publish = subparsers.add_parser('publish', help='generate the pages')
-    parser_publish.add_argument('path')
+    parser_publish.add_argument('path', nargs='?', default='.')
     parser_publish.set_defaults(method=publish)
 
     args = parser.parse_args()

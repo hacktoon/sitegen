@@ -36,7 +36,7 @@ class Template:
             raise FileNotFoundError('Template {!r}'
             ' not found'.format(path))
         self.content = utils.read_file(path)
-        self.path = utils.clear_path(path)
+        self.path = path
         self.include_path = ''
 
     def render(self, context):

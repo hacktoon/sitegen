@@ -24,7 +24,7 @@ from .paging import Page, PageList
 from .categorization import Category, CategoryList
 from .stamper.stamper import Stamper
 from .exceptions import (SiteAlreadyInstalledError, PageExistsError,
-                        PageValueError, TemplateError)
+                         PageValueError, TemplateError)
 
 
 BASE_URL = 'http://localhost/'
@@ -99,7 +99,7 @@ class MechaniScribe:
         options['date_format'] = self.meta.get('date_format', DATE_FORMAT)
         base_url = self.meta.get('base_url', BASE_URL)
         page_data['path'] = page.path = path
-        url_path = page.path.replace(utils.clear_path(self.base_path), '')
+        url_path = page.path.replace(self.base_path, '')
         page_data['url'] = utils.urljoin(base_url, url_path) + '/'
 
         content = page_data.get('content', '')
@@ -132,9 +132,9 @@ class MechaniScribe:
     def read_page_tree(self, path):
         '''Read the folders recursively and create an ordered list
         of page objects.'''
-        path = utils.clear_path(path)
         if path in self.meta.get('blocked_dirs'):
             return {}
+
         page_data = self.read_page(path)
         page = None
         children = {}
@@ -159,7 +159,7 @@ class MechaniScribe:
 
     def read_subpages_list(self, path):
         '''Return a list containing the full path of the subpages'''
-        for filename in os.listdir(path):
+        for filename in os.listdir(path or os.curdir):
             fullpath = os.path.join(path, filename)
             if not os.path.isdir(fullpath):
                 continue
@@ -186,7 +186,7 @@ class MechaniScribe:
         templates_dir = os.path.join(self.base_path, templates_dir)
         filename = ".".join([page.template, TEMPLATES_EXT])
         template_path = os.path.join(templates_dir, filename)
-        template = HTMLTemplate(page.template, utils.clear_path(template_path))
+        template = HTMLTemplate(page.template, template_path)
         template.include_path = templates_dir
 
         try:
@@ -209,7 +209,7 @@ class MechaniScribe:
             feed_num = FEED_NUM
 
         dirname = self.meta.get('feed_dir', FEED_DIR)
-        basepath = utils.clear_path(os.path.join(self.base_path, dirname))
+        basepath = os.path.join(self.base_path, dirname)
         if not os.path.exists(basepath):
             os.makedirs(basepath)
 
@@ -254,17 +254,6 @@ class Library:
     def __init__(self):
         self.meta = {}
 
-    def lookup_config(self, path):
-        '''Search a config file upwards in path provided'''
-        while True:
-            path, _ = os.path.split(path)
-            config_path = os.path.join(path, CONFIG_FILE)
-            if os.path.exists(config_path):
-                return config_path
-            if not path:
-                break
-        return ''
-
     def build(self, path):
         '''Build the wonder library'''
         config_file = os.path.join(path, CONFIG_FILE)
@@ -281,7 +270,7 @@ class Library:
 
     def enter(self, path):
         '''Load the config'''
-        config_path = self.lookup_config(path)
+        config_path = os.path.join(path, CONFIG_FILE)
         if not os.path.exists(config_path):
             raise FileNotFoundError
         config_file = utils.read_file(config_path)
@@ -302,7 +291,7 @@ class Library:
             os.makedirs(path)
         data_file_path = self.meta.get('data_file', DATA_FILE)
         model_page_file = os.path.join(DATA_DIR, data_file_path)
-        content = scriber.bring_file(model_page_file)
+        content = utils.read_file(model_page_file)
         date_format = self.meta.get('date_format', DATE_FORMAT)
         date = datetime.today().strftime(date_format)
         utils.write_file(page_file, content.format(date))
@@ -330,7 +319,7 @@ class Library:
             print('Generated page {!r}.'.format(page.path))
         scriber.publish_feeds()
 
-        summary_path = utils.clear_path(os.path.join(path, 'pages.json'))
+        summary_path = os.path.join(path, 'pages.json')
         utils.write_file(summary_path, json.dumps(json_summary))
         print('Generated file tree summary {!r}'.format(summary_path))
 
