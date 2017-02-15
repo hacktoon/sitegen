@@ -22,11 +22,12 @@ from . import tree
 
 
 class Parser():
-    def __init__(self, text, include_path=''):
+    def __init__(self, text, include_path='', filename=None):
         self.text = text
         self.include_path = include_path
         self.tokens = lexer.Lexer().tokenize(text)
         self.tok_index = 0
+        self.filename = filename
         self.tok = self.tokens[self.tok_index]
         self.regions = {}
         self.base_template = None
@@ -58,6 +59,9 @@ class Parser():
                 col += 1
 
     def error(self, msg, token=None):
+        if self.filename:
+            msg = '{!r}: {}'.format(self.filename, msg)
+
         token = token or self.tok
         line, column = self.search_line_error(token.column)
         raise Exception('{} at line {}, column {}'.format(msg, line, column))
