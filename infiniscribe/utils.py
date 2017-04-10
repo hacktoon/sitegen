@@ -37,4 +37,4 @@ def urljoin(base, *slug):
     '''Custom URL join function to concatenate and add slashes'''
     fragments = [base]
     fragments.extend(filter(None, slug))
-    return '/'.join(s.replace('\\', '/').strip('/') for s in fragments)
+    return '/'.join(s.replace(os.path.sep, '/').strip('/') for s in fragments)

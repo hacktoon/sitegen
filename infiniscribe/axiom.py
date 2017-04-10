@@ -20,7 +20,7 @@ from datetime import datetime
 from . import reader
 from . import utils
 from .template import HTMLTemplate, JSONTemplate, Template
-from .paging import Page, PageList
+from .paging import Page, PageList, PageBuilder
 from .categorization import Category, CategoryList
 from .stamper.stamper import Stamper
 from .exceptions import (SiteAlreadyInstalledError, PageExistsError,
@@ -35,13 +35,10 @@ TEMPLATES_EXT = 'tpl'
 DATA_FILE = 'page.me'
 CONFIG_FILE = 'config.me'
 FEED_FILE = 'feed.xml'
-DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
 FEED_DIR = 'feed'
 FEED_NUM = 8
 JSON_FILENAME = 'data.json'
 HTML_FILENAME = 'index.html'
-THUMB_FILENAME = 'thumb.png'
-EXCERPT_RE = r'<!--\s*more\s*-->'
 MODEL_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(MODEL_DIR, '../data')
 FORBIDDEN_DIRS = set((STATIC_DIR, TEMPLATES_DIR, FEED_DIR))
@@ -51,22 +48,24 @@ class MechaniScribe:
     '''An infinite automaton that can write books at a blazing speed'''
     def __init__(self, meta=None):
         self.pagelist = PageList()
-        self.categorylist = CategoryList()
+        self.category_list = CategoryList()
         self.meta = meta or {}
         self.base_path = self.meta.get('base_path', '')
+        self.page_builder = PageBuilder(self.meta)
 
     def read_page(self, path):
         '''Return the page data specified by path'''
         data_file_path = self.meta.get('data_file', DATA_FILE)
         file_path = os.path.join(path, data_file_path)
-        if os.path.exists(file_path):
-            file_content = utils.read_file(file_path)
-            try:
-                mem_data = reader.parse(file_content)
-            except PageValueError as err:
-                raise PageValueError('In file {!r}: {}'.format(file_path, err))
-            return mem_data
-        return
+        if not os.path.exists(file_path):
+            return
+
+        try:
+            mem_data = reader.parse(utils.read_file(file_path))
+        except PageValueError as err:
+            raise PageValueError('In file {!r}: {}'.format(file_path, err))
+        mem_data['path'] = path
+        return mem_data
 
     def build_categories(self):
         category_key = 'categories'
@@ -74,12 +73,12 @@ class MechaniScribe:
         if category_key not in self.meta:
             return
         category_entry = self.meta[category_key]
-        base_url = self.meta.get('base_url', BASE_URL)
+        base_url = self.meta['base_url']
         for key in category_entry.keys():
             item = category_entry[key]
             if item.get('blocked'):
                 continue
-            category = self.categorylist.add_category(key)
+            category = self.category_list.add_category(key)
             url = item.get('url', key)
             category['url'] = utils.urljoin(base_url, url) + '/'
             category['title'] = item.get('title', '')
@@ -91,45 +90,26 @@ class MechaniScribe:
             })
         return render_list
 
-    def build_page(self, path, page_data):
-        '''Page object factory'''
-        options = {}
-        page = Page()
-
-        options['date_format'] = self.meta.get('date_format', DATE_FORMAT)
-        base_url = self.meta.get('base_url', BASE_URL)
-        page_data['path'] = page.path = path
-        url_path = page.path.replace(self.base_path, '')
-        page_data['url'] = utils.urljoin(base_url, url_path) + '/'
-
-        content = page_data.get('content', '')
-        page_data['excerpt'] = re.split(EXCERPT_RE, content, 1)[0]
-        page_data['content'] = re.sub(EXCERPT_RE, '', content)
-
-        thumb_filepath = os.path.join(url_path, THUMB_FILENAME)
-        if os.path.exists(thumb_filepath):
-            page_data['thumb'] = os.path.join(url_path, THUMB_FILENAME)
-
-        try:
-            page.initialize(page_data, options)
-        except ValueError as error:
-            raise ValueError('{} at page {!r}'.format(error, path))
+    def build_page(self, page_data, parent_page):
+        page = self.page_builder.build(page_data, parent_page)
 
         category_id = page_data.get('category', '')
-        category = self.categorylist[category_id]
+        category = self.category_list[category_id]
 
         if category and category_id in self.meta.get('categories', {}).keys():
             page['category'] = category.get_dict()
             if page.is_listable():
-                self.categorylist.add_page(category_id, page)
+                category.add_page(page)
+
         if not page.template:
             if category and category['template']:
                 page.template = category['template']
             else:
                 page.template = self.meta.get('default_template', DEFAULT_TEMPLATE)
+
         return page
 
-    def read_page_tree(self, path):
+    def read_page_tree(self, path, parent_page=None):
         '''Read the folders recursively and create an ordered list
         of page objects.'''
         if path in self.meta.get('blocked_dirs'):
@@ -139,12 +119,12 @@ class MechaniScribe:
         page = None
         children = {}
         if page_data:
-            page = self.build_page(path, page_data)
+            page = self.build_page(page_data, parent_page)
             # add page to ordered list of pages
             if not page.is_draft():
                 self.pagelist.insert(page)
         for sub_page_path in self.read_subpages_list(path):
-            child_info = self.read_page_tree(sub_page_path)
+            child_info = self.read_page_tree(sub_page_path, page)
             if child_info:
                 children.update(child_info)
         # home page
@@ -215,7 +195,7 @@ class MechaniScribe:
 
         pagelist = [p for p in pagelist if p.is_feed_enabled()]
         pagelist.reverse()
-        base_url = self.meta.get('base_url', BASE_URL)
+        base_url = self.meta['base_url']
         filename = '{}.xml'.format(name)
         env['pages'] = pagelist[:feed_num]
         env['feed'] = {
@@ -241,7 +221,7 @@ class MechaniScribe:
         file_path = self.write_feed(env, self.pagelist, 'rss')
         print("Generated {!r}.".format(file_path))
         # generate feeds based on categories
-        for cat in self.categorylist:
+        for cat in self.category_list:
             file_path = self.write_feed(env, cat.pagelist, cat['id'])
             if file_path:
                 print("Generated {!r}.".format(file_path))
@@ -298,12 +278,14 @@ class Library:
 
     def publish_pages(self, path):
         '''Send the books to the wonderful Infiniscriber for rendering'''
-        self.meta['base_path'] = path
+        self.meta['base_path'] = path.rstrip(os.path.sep)
+        self.meta['base_url'] = self.meta.get('base_url', BASE_URL)
+
         scriber = MechaniScribe(self.meta)
         category_list = scriber.build_categories()
 
         json_summary = scriber.read_page_tree(path)
-        for cat in scriber.categorylist:
+        for cat in scriber.category_list:
             cat.paginate()
         pages = scriber.pagelist
         env = {
