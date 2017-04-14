@@ -12,7 +12,10 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 '''
 
 import unittest
+import tempfile
+
 from . import reader
+from . import axiom
 
 class TestReader(unittest.TestCase):
 
@@ -37,6 +40,21 @@ class TestReader(unittest.TestCase):
         text = 'content\nExample text'
         tokens = reader._tokenize(text)
         self.assertEqual(tokens[0]['value'], 'Example text')
+
+
+class TestTemplate(unittest.TestCase):
+    def setUp(self):
+        self.template_content = 'test_template_content'
+        self.file = tempfile.NamedTemporaryFile(mode='w+t', suffix='.tpl')
+        self.file.write(self.template_content)
+
+    def tearDown(self):
+        self.file.close()
+
+    def testTemplateLoading(self):
+        template = axiom.Template(self.file.name)
+        assert template.content == self.template_content
+        assert template.path == self.file.name
 
 
 if __name__ == '__main__':

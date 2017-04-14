@@ -11,9 +11,17 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 ===============================================================================
 '''
 
+import os
+import re
+import bisect
 from datetime import datetime
+from . import utils
 
 REQUIRED_KEYS = ('title', 'date')
+DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
+THUMB_FILENAME = 'thumb.png'
+THUMB_FILENAME = 'thumb.png'
+EXCERPT_RE = r'<!--\s*more\s*-->'
 
 
 class Page():
@@ -29,9 +37,15 @@ class Page():
 
     def __le__(self, other):
         return self['date'] <= other['date']
-    
+
+    def __lt__(self, other):
+        return self['date'] < other['date']
+
     def __len__(self):
         return 0
+
+    def __bool__(self):
+        return True
 
     def __str__(self):
         return 'Page {!r}'.format(self.path)
@@ -60,8 +74,8 @@ class Page():
             if key in params:
                 continue
             msg = 'The following value was not defined: {!r}'
-            raise ValuesNotDefinedError(msg.format(key))
-    
+            raise ValueError(msg.format(key))
+
     def add_child(self, page):
         '''Link books in a familiar way'''
         self.children.insert(page)
@@ -104,7 +118,7 @@ class Page():
     def is_draft(self):
         '''To decide if the book is not ready yet'''
         return 'draft' in self.props
-    
+
     def is_listable(self):
         '''Sometimes a book shall not be listed'''
         return 'nolist' not in self.props and not self.is_draft()
@@ -121,31 +135,32 @@ class Page():
 class PageList:
     '''Define an ordered list of pages'''
     def __init__(self):
-        self.pages = []
+        self.ordered_pages = []
+        self.page_dict = {}
 
     def __iter__(self):
-        for page in self.pages:
+        for page in self.ordered_pages:
             yield page
 
     def __len__(self):
-        return len(self.pages)
-    
+        return len(self.ordered_pages)
+
     def __setitem__(self, key, value):
-        self.pages[key] = value
+        self.ordered_pages[key] = value
 
     def __getitem__(self, key):
-        return self.pages[key]
-    
+        return self.ordered_pages[key]
+
     def __delitem__(self, key):
-        del self.pages[key]
-    
+        del self.ordered_pages[key]
+
     def reverse(self):
         '''To reverse the list of books'''
-        return self.pages.reverse()
+        return self.ordered_pages.reverse()
 
     def page_struct(self, index):
         '''To create a tag to find books'''
-        page = self.pages[index]
+        page = self.ordered_pages[index]
         return {
             'url': page['url'],
             'title': page['title']
@@ -153,8 +168,8 @@ class PageList:
 
     def paginate(self):
         '''To sort books in shelves'''
-        length = len(self.pages)
-        for index, page in enumerate(self.pages):
+        length = len(self.ordered_pages)
+        for index, page in enumerate(self.ordered_pages):
             page['first'] = self.page_struct(0)
             next_index = index + 1 if index < length - 1 else -1
             page['next'] = self.page_struct(next_index)
@@ -164,9 +179,60 @@ class PageList:
 
     def insert(self, page):
         '''To insert book in right position by date'''
-        count = 0
-        while True:
-            if count == len(self.pages) or page <= self.pages[count]:
-                self.pages.insert(count, page)
-                break
-            count += 1
+        bisect.insort(self.ordered_pages, page)
+        self.page_dict[page.path] = page
+
+
+class PageBuilder:
+    def __init__(self, env):
+        self.env = env
+
+    def build_url_from_path(self, path):
+        resource = path.replace(self.env['base_path'], '')
+        return utils.urljoin(self.env['base_url'], resource) + '/'
+
+    def build_thumbnail(self, page_url):
+        thumb_filepath = os.path.join(page_url, THUMB_FILENAME)
+        if os.path.exists(thumb_filepath):
+            return thumb_filepath
+        # TODO: return default thumbnail
+
+    def build_content(self, page_data):
+        content = page_data.get('content', '')
+        page_data['excerpt'] = re.split(EXCERPT_RE, content, 1)[0]
+        page_data['content'] = re.sub(EXCERPT_RE, '', content)
+
+    def build_breadcrumbs(self, parent_page):
+        links = []
+        template = '<li><a href="{}">{}</a></li>'
+        while parent_page:
+            breadcrumb = template.format(parent_page['url'], parent_page['title'])
+            links.insert(0, breadcrumb)
+            parent_page = parent_page.parent
+        # remove all but home page url
+        return ''.join(links[1:])
+
+    def build(self, page_data, parent_page):
+        '''Page object factory'''
+        options = {}
+        page = Page()
+
+        page.parent = parent_page
+        page.path = page_data['path']
+
+        options['date_format'] = self.env.get('date_format', DATE_FORMAT)
+
+        page_url = self.build_url_from_path(page.path)
+
+        page_data['url'] = page_url
+        page_data['thumb'] = self.build_thumbnail(page_url)
+        page_data['breadcrumbs'] = self.build_breadcrumbs(parent_page)
+
+        self.build_content(page_data)
+
+        try:
+            page.initialize(page_data, options)
+        except ValueError as error:
+            raise ValueError('{} at page {!r}'.format(error, page.path))
+
+        return page

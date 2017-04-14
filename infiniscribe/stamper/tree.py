@@ -283,7 +283,7 @@ class ParseCommand(Node):
         filename = self.value.render(context)
         file_content = self.load_file(filename, path)
         try:
-            p = self.parser_cls(file_content, filename=filename)
+            p = self.parser_cls(file_content, include_path=path, filename=filename)
             subtree = p.parse()
         except RuntimeError:
             msg = '{} is including itself.'.format(filename)
@@ -300,4 +300,3 @@ class Assignment(Node):
         value = self.rvalue.render(context)
         context[self.value] = value
         return ''
-
