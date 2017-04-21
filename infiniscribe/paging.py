@@ -204,9 +204,11 @@ class PageBuilder:
         page_data['excerpt'] = re.split(EXCERPT_RE, content, 1)[0]
         page_data['content'] = re.sub(EXCERPT_RE, '', content)
 
-    def build_breadcrumbs(self, parent_page):
+    def build_breadcrumbs(self, parent_page, page_data):
         links = []
         template = '<li><a href="{}">{}</a></li>'
+        current_page = template.format(page_data['url'], page_data['title'])
+        links.insert(0, current_page)
         while parent_page:
             breadcrumb = template.format(parent_page['url'], parent_page['title'])
             links.insert(0, breadcrumb)
@@ -228,7 +230,7 @@ class PageBuilder:
 
         page_data['url'] = page_url
         page_data['thumb'] = self.build_thumbnail(page_url)
-        page_data['breadcrumbs'] = self.build_breadcrumbs(parent_page)
+        page_data['breadcrumbs'] = self.build_breadcrumbs(parent_page, page_data)
 
         page_data['date'] = self.build_date(page_data.get('date'), options.get('date_format', ''))
 
@@ -238,5 +240,6 @@ class PageBuilder:
             page.initialize(page_data, options)
         except ValueError as error:
             raise ValueError('{} at page {!r}'.format(error, page.path))
+
 
         return page
