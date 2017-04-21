@@ -17,7 +17,6 @@ import bisect
 from datetime import datetime
 from . import utils
 
-REQUIRED_KEYS = ('title', 'date')
 DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
 THUMB_FILENAME = 'thumb.png'
 THUMB_FILENAME = 'thumb.png'
@@ -64,38 +63,30 @@ class Page():
 
     def initialize(self, params, options):
         ''' Set books properties dynamically'''
+        if 'title' not in params.keys():
+            msg = 'The title was not provided!'
+            raise ValueError(msg.format(key))
+
         for key in params.keys():
             method_name = 'set_{}'.format(key)
             if hasattr(self, method_name):
                 getattr(self, method_name)(params[key], options)
             else:
                 self.data[key] = params[key]
-        for key in REQUIRED_KEYS:
-            if key in params:
-                continue
-            msg = 'The following value was not defined: {!r}'
-            raise ValueError(msg.format(key))
 
     def add_child(self, page):
         '''Link books in a familiar way'''
         self.children.insert(page)
 
+    def set_date(self, date, _):
+        self['date'] = date
+        self['year'] = date.year
+        self['month'] = date.month
+        self['day'] = date.day
+
     def set_template(self, tpl, options):
         '''To give a book a good look and diagramation'''
         self.template = tpl
-
-    def set_date(self, date_string, options):
-        '''converts date string to datetime object'''
-        try:
-            date_format = options.get('date_format', '')
-            date = datetime.strptime(date_string, date_format)
-            self['date'] = date
-            self['year'] = date.year
-            self['month'] = date.month
-            self['day'] = date.day
-        except ValueError:
-            raise PageValueError('Wrong date format '
-            'detected at {!r}!'.format(self.path))
 
     def convert_param_list(self, param):
         '''Convert param string to list'''
@@ -197,6 +188,17 @@ class PageBuilder:
             return thumb_filepath
         # TODO: return default thumbnail
 
+    def build_date(self, date_string, date_format):
+        '''converts date string to datetime object'''
+        if not date_string:
+            return datetime.now()
+        try:
+            date = datetime.strptime(date_string, date_format)
+        except ValueError:
+            raise PageValueError('Wrong date format '
+            'in {!r}!'.format(self.path))
+        return date
+
     def build_content(self, page_data):
         content = page_data.get('content', '')
         page_data['excerpt'] = re.split(EXCERPT_RE, content, 1)[0]
@@ -227,6 +229,8 @@ class PageBuilder:
         page_data['url'] = page_url
         page_data['thumb'] = self.build_thumbnail(page_url)
         page_data['breadcrumbs'] = self.build_breadcrumbs(parent_page)
+
+        page_data['date'] = self.build_date(page_data.get('date'), options.get('date_format', ''))
 
         self.build_content(page_data)
 
