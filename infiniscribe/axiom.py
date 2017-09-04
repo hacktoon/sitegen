@@ -124,7 +124,7 @@ class MechaniScribe:
             if not page.is_draft():
                 self.pagelist.insert(page)
         for sub_page_path in self.read_subpages_list(path):
-            child_info = self.read_page_tree(sub_page_path, page)
+            child_info = self.read_page_tree(sub_page_path, page or parent_page)
             if child_info:
                 children.update(child_info)
         # home page
