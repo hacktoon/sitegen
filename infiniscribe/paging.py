@@ -98,13 +98,15 @@ class Page():
         '''Books can have some different properties'''
         self.props = self.convert_param_list(props)
 
-    def set_styles(self, styles, options):
+    def set_styles(self, styles, opts):
         '''To get some extra style'''
-        self.styles = self.convert_param_list(styles)
+        styles = self.convert_param_list(styles)
+        self.styles = ["{}/{}".format(opts['page_url'], s) for s in styles]
 
-    def set_scripts(self, scripts, options):
+    def set_scripts(self, scripts, opts):
         '''To get some extra behavior'''
-        self.scripts = self.convert_param_list(scripts)
+        scripts = self.convert_param_list(scripts)
+        self.scripts = ["{}/{}".format(opts['page_url'], s) for s in scripts]
 
     def is_draft(self):
         '''To decide if the book is not ready yet'''
@@ -224,9 +226,9 @@ class PageBuilder:
         page.parent = parent_page
         page.path = page_data['path']
 
-        options['date_format'] = self.env.get('date_format', DATE_FORMAT)
-
         page_url = self.build_url_from_path(page.path)
+        options['date_format'] = self.env.get('date_format', DATE_FORMAT)
+        options['page_url'] = page_url
 
         page_data['url'] = page_url
         page_data['thumb'] = self.build_thumbnail(page_url)
