@@ -134,6 +134,7 @@ class MechaniScribe:
         # it has at least one child or is a page
         is_page = bool(page_data) and page.is_json_enabled() and not page.is_draft()
         if is_page or children:
+            path = path.split(os.sep)[-1]
             return {path: 1 if is_page else children}
         return {}
 
