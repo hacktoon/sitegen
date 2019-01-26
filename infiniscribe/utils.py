@@ -33,8 +33,6 @@ def write_file(path, content=''):
     with open(path, 'w') as f:
         f.write(content)
 
-def urljoin(base, *slug):
+def urljoin(*fragments):
     '''Custom URL join function to concatenate and add slashes'''
-    fragments = [base]
-    fragments.extend(filter(None, slug))
-    return '/'.join(s.replace(os.path.sep, '/').strip('/') for s in fragments)
+    return '/'.join(fragments)
