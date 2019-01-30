@@ -27,7 +27,7 @@ from .exceptions import (SiteAlreadyInstalledError, PageExistsError,
                          PageValueError, TemplateError)
 
 
-BASE_URL = 'http://localhost/'
+BASE_URL = '//localhost/'
 STATIC_DIR = 'static'
 TEMPLATES_DIR = 'templates'
 DEFAULT_TEMPLATE = 'default'
@@ -280,7 +280,8 @@ class Library:
     def publish_pages(self, path):
         '''Send the books to the wonderful Infiniscriber for rendering'''
         self.meta['base_path'] = path.rstrip(os.path.sep)
-        self.meta['base_url'] = self.meta.get('base_url', BASE_URL)
+        env_base_url = os.environ.get('URL')
+        self.meta['base_url'] = env_base_url or BASE_URL
 
         scriber = MechaniScribe(self.meta)
         category_list = scriber.build_categories()
