@@ -80,7 +80,7 @@ class MechaniScribe:
                 continue
             category = self.category_list.add_category(key)
             url = item.get('url', key)
-            category['url'] = utils.urljoin(base_url, url) + '/'
+            category['url'] = utils.urljoin(base_url, url)
             category['title'] = item.get('title', '')
             category['template'] = item.get('template', DEFAULT_TEMPLATE)
             render_list.append({

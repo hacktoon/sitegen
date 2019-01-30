@@ -35,4 +35,4 @@ def write_file(path, content=''):
 
 def urljoin(*fragments):
     '''Custom URL join function to concatenate and add slashes'''
-    return '/'.join(fragments)
+    return '/'.join(fragments) + '/'
