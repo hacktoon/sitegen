@@ -1,34 +1,34 @@
-# Infiniscribe - The Infinite Automaton Scriber of Nimus Ages
+# Sitegen
 
 ## About
-Infiniscribe is a static web publisher.
+Sitegen is a static web generator.
 
 ## Quickstart
-You only need Python 3 to run Infiniscribe.
+You only need Python 3 to run Sitegen.
 
 ### Creating a site
 Create a directory to be your web root. Enter it and call the following command:
-    
-	infiniscribe build
+
+	sitegen build
 
 ### Configure
-After installing, Infiniscribe will setup some basic configuration to you, but you must change these values.
+After installing, Sitegen will setup some basic configuration to you, but you must change these values.
 
 Open the *site* config file and define your settings. Here are some examples:
 * **tags** - Tags used in HTML meta tags
 * **base_url** - Will be used for absolute linking.
 * **default_template** - If a custom template is not provided for a page, this one will be used.
 * **feed_num** - Number of items to be listed in feeds
-* **blocked_dirs** - List of directories separated by comma that Infiniscribe won't read.
+* **blocked_dirs** - List of directories separated by comma that Sitegen won't read.
 
 ### Create your home page
 Just run the *write* command in the site root folder to create a new page:
 
-    infiniscribe write .
-    
+    sitegen write .
+
 To create a different page, you have to pass a path as second parameter:
 
-    infiniscribe write path/to/folder
+    sitegen write path/to/folder
 
 This will create a *page* model file. You're ready to start adding your own content:
 
@@ -45,8 +45,8 @@ The HTML comment tag <!-- more --> can be used to define a limit to distinguish 
 	This is the rest of the content
 
 Now run the *publish* command to generate the pages.
-    
-    infiniscribe publish
+
+    sitegen publish
 
 This will create (by default) a HTML and a JSON file in the folder you specified. Done!
 
@@ -60,7 +60,7 @@ You can add new templates to **templates** folder, create and use optional varia
     content
     My page content
 
-This will make Infiniscribe search for a file named **article.tpl** in templates folder. The template property is inherited by its children, so you don't have to manually configure each subpage under a common page.
+This will make Sitegen search for a file named **article.tpl** in templates folder. The template property is inherited by its children, so you don't have to manually configure each subpage under a common page.
 Defining new variables is as simple as that. Just add any new definition to your *page* file...
 
     author = Bob
@@ -78,10 +78,10 @@ If a page uses specific CSS or Javascript files, they can be put in the page's f
 They will be printed in the template through the variables {{page.styles}} and {{page.scripts}}.
 
 ### Page properties
-Properties listed in a page data file can be used to change how Infiniscribe will manage the page.
+Properties listed in a page data file can be used to change how Sitegen will manage the page.
 
-* nojson - Infiniscribe will not generate a JSON file.
-* nohtml - Infiniscribe will not generate a HTML file.
+* nojson - Sitegen will not generate a JSON file.
+* nohtml - Sitegen will not generate a HTML file.
 * nolist - The page will not appear in listings
 * nofeed - The page will not be listed in feeds.
 * draft - The page will not be generated, listed or syndicated in feeds.
@@ -96,7 +96,7 @@ Categories can be used to provide pagination, filter pages in listings and feeds
 	category = my_category
 
 ### Collections and template listings
-By default, Infiniscribe provides some collections of data for using in templates. The first is the **pages** collection. You can list a subset of the pages of your site by passing arguments in the template tag:
+By default, Sitegen provides some collections of data for using in templates. The first is the **pages** collection. You can list a subset of the pages of your site by passing arguments in the template tag:
 
 	{% list pages as page: %}
         <li>{{page.title}}</li>
@@ -108,7 +108,7 @@ You can limit the number of itens that will be listed:
         <li>{{page.title}}</li>
     {% end %}
 
-Or reverse the list printing order using the "rlist" alias:
+Or reverse the list printing order using `rlist`:
 
 	{% rlist pages as page limit 10: %}
         <li>{{page.title}}</li>

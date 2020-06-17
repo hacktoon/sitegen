@@ -2,11 +2,11 @@
 
 '''
 ===============================================================================
-Infiniscribe - The Infinite Automaton Scriber of Nimus Ages
+Sitegen
 
 Author: Karlisson M. Bezerra
 E-mail: contact@hacktoon.com
-URL: https://github.com/hacktoon/infiniscribe
+URL: https://github.com/hacktoon/sitegen
 License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 ===============================================================================
 '''
@@ -44,8 +44,7 @@ DATA_DIR = os.path.join(MODEL_DIR, '../data')
 FORBIDDEN_DIRS = set((STATIC_DIR, TEMPLATES_DIR, FEED_DIR))
 
 
-class MechaniScribe:
-    '''An infinite automaton that can write books at a blazing speed'''
+class SiteGenerator:
     def __init__(self, meta=None):
         self.pagelist = PageList()
         self.category_list = CategoryList()
@@ -110,8 +109,6 @@ class MechaniScribe:
         return page
 
     def read_page_tree(self, path, parent_page=None):
-        '''Read the folders recursively and create an ordered list
-        of page objects.'''
         if path in self.meta.get('blocked_dirs'):
             return {}
 
@@ -139,7 +136,6 @@ class MechaniScribe:
         return {}
 
     def read_subpages_list(self, path):
-        '''Return a list containing the full path of the subpages'''
         for filename in os.listdir(path or os.curdir):
             fullpath = os.path.join(path, filename)
             if not os.path.isdir(fullpath):
@@ -151,7 +147,6 @@ class MechaniScribe:
             yield fullpath
 
     def write_json(self, page):
-        '''To write the book data in a style-free, raw format'''
         if 'nojson' in page.props:
             return
 
@@ -160,7 +155,6 @@ class MechaniScribe:
         utils.write_file(json_path, output)
 
     def write_html(self, page, env):
-        '''To write a book in the HTML format'''
         if 'nohtml' in page.props:
             return
         templates_dir = self.meta.get('templates_dir', TEMPLATES_DIR)
@@ -180,7 +174,6 @@ class MechaniScribe:
         utils.write_file(html_path, output)
 
     def write_feed(self, env, pagelist, name):
-        '''To write an announcement about new books'''
         if not len(pagelist):
             return
         template = Template(FEED_FILE, os.path.join(DATA_DIR, FEED_FILE))
@@ -208,7 +201,6 @@ class MechaniScribe:
         return rss_file
 
     def publish_page(self, page, env):
-        '''To actually finishing a book and sending it to the shelves'''
         try:
             self.write_html(page, env)
             self.write_json(page)
@@ -216,7 +208,6 @@ class MechaniScribe:
             raise FileNotFoundError('{} at page {!r}'.format(error, page.path))
 
     def publish_feeds(self):
-        '''To write the announcements of new books to the public'''
         env = { 'site': self.meta, 'template_cache': {}}
         # unique feed
         file_path = self.write_feed(env, self.pagelist, 'rss')
@@ -231,12 +222,10 @@ class MechaniScribe:
 
 
 class Library:
-    '''The Abissal library of wonders'''
     def __init__(self):
         self.meta = {}
 
     def build(self, path):
-        '''Build the wonder library'''
         config_file = os.path.join(path, CONFIG_FILE)
         templates_dir = os.path.join(path, TEMPLATES_DIR)
         if os.path.exists(config_file):
@@ -250,7 +239,6 @@ class Library:
             shutil.copyfile(model_config_file, config_file)
 
     def enter(self, path):
-        '''Load the config'''
         config_path = os.path.join(path, CONFIG_FILE)
         if not os.path.exists(config_path):
             raise FileNotFoundError
@@ -262,8 +250,7 @@ class Library:
         blocked = self.meta.get('blocked_dirs', [])
 
     def write_page(self, path):
-        '''Create a book in the library'''
-        scriber = MechaniScribe(self.meta)
+        scriber = SiteGenerator(self.meta)
         data_file_path = self.meta.get('data_file', DATA_FILE)
         page_file = os.path.join(path, data_file_path)
         if os.path.exists(page_file):
@@ -278,12 +265,11 @@ class Library:
         utils.write_file(page_file, content.format(date))
 
     def publish_pages(self, path):
-        '''Send the books to the wonderful Infiniscriber for rendering'''
         self.meta['base_path'] = path.rstrip(os.path.sep)
         env_base_url = os.environ.get('URL')
         self.meta['base_url'] = env_base_url or BASE_URL
 
-        scriber = MechaniScribe(self.meta)
+        scriber = SiteGenerator(self.meta)
         category_list = scriber.build_categories()
 
         json_summary = scriber.read_page_tree(path)

@@ -2,11 +2,11 @@
 
 '''
 ===============================================================================
-Infiniscribe - The Infinite Automaton Scriber of Nimus Ages
+Sitegen
 
 Author: Karlisson M. Bezerra
 E-mail: contact@hacktoon.com
-URL: https://github.com/hacktoon/infiniscribe
+URL: https://github.com/hacktoon/sitegen
 License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 ===============================================================================
 '''
@@ -15,7 +15,7 @@ import unittest
 import tempfile
 
 from . import reader
-from . import axiom
+from . import site
 
 class TestReader(unittest.TestCase):
 
@@ -52,7 +52,7 @@ class TestTemplate(unittest.TestCase):
         self.file.close()
 
     def testTemplateLoading(self):
-        template = axiom.Template(self.file.name)
+        template = site.Template(self.file.name)
         assert template.content == self.template_content
         assert template.path == self.file.name
 

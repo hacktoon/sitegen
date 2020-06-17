@@ -2,11 +2,11 @@
 
 '''
 ===============================================================================
-Infiniscribe - The Infinite Automaton Scriber of Nimus Ages
+Sitegen
 
 Author: Karlisson M. Bezerra
 E-mail: contact@hacktoon.com
-URL: https://github.com/hacktoon/infiniscribe
+URL: https://github.com/hacktoon/sitegen
 License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 ===============================================================================
 '''
@@ -158,7 +158,7 @@ class Token():
 
     def check_symbol(self, *values):
         return self.value in values
-    
+
     def is_addop(self):
         return self.check_symbol(PLUS, MINUS)
 
@@ -178,7 +178,7 @@ class Token():
 class Lexer:
     def __init__(self):
         self.tokens = []
-    
+
     def make_token(self, type, value, index_in_tpl):
         self.tokens.append(Token(type, value, index_in_tpl))
 

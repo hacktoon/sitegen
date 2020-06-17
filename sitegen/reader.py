@@ -2,11 +2,11 @@
 
 '''
 ===============================================================================
-Infiniscribe - The Infinite Automaton Scriber of Nimus Ages
+Sitegen
 
 Author: Karlisson M. Bezerra
 E-mail: contact@hacktoon.com
-URL: https://github.com/hacktoon/infiniscribe
+URL: https://github.com/hacktoon/sitegen
 License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 ===============================================================================
 '''
@@ -57,7 +57,7 @@ def _create_token(type, value, line=1, column=0):
         }
 
 def _tokenize(text):
-        line = 1 
+        line = 1
         column = 0
         cache = []
         tokens = []
@@ -95,7 +95,7 @@ def _tokenize(text):
                         column += 1
                         tokens.append(_create_token(char, char, line, column))
                 cache = []
-                        
+
         # remaining chars
         name = ''.join(cache).strip()
         if name:

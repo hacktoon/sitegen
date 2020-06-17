@@ -2,11 +2,11 @@
 
 '''
 ===============================================================================
-Infiniscribe - The Infinite Automaton Scriber of Nimus Ages
+Sitegen
 
 Author: Karlisson M. Bezerra
 E-mail: contact@hacktoon.com
-URL: https://github.com/hacktoon/infiniscribe
+URL: https://github.com/hacktoon/sitegen
 License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 ===============================================================================
 '''
