@@ -17,6 +17,7 @@ from .paging import PageList
 class Category:
     '''Define a category of pages'''
     def __init__(self, id, weight):
+        self.id = id
         self.props = {'id': id}
         self.pagelist = PageList()
         self.weight = weight;

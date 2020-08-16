@@ -30,8 +30,8 @@ from .exceptions import (SiteAlreadyInstalledError, PageExistsError,
 BASE_URL = '//localhost/'
 STATIC_DIR = 'static'
 TEMPLATES_DIR = 'templates'
-DEFAULT_TEMPLATE = 'default'
 TEMPLATES_EXT = 'tpl'
+DEFAULT_CATEGORY_ID = 'root'
 DATA_FILE = 'page.me'
 CONFIG_FILE = 'config.me'
 FEED_FILE = 'feed.xml'
@@ -81,7 +81,7 @@ class SiteGenerator:
             url = item.get('url', key)
             category['url'] = utils.urljoin(base_url, url)
             category['title'] = item.get('title', '')
-            category['template'] = item.get('template', DEFAULT_TEMPLATE)
+            category['template'] = item.get('template')
             render_list.append({
                 'id': category['id'],
                 'title': category['title'],
@@ -92,20 +92,22 @@ class SiteGenerator:
     def build_page(self, page_data, parent_page):
         page = self.page_builder.build(page_data, parent_page)
 
-        category_id = page_data.get('category', '')
+        category_id = page_data.get('category', DEFAULT_CATEGORY_ID)
         category = self.category_list[category_id]
 
         if category and category_id in self.meta.get('categories', {}).keys():
             page['category'] = category.get_dict()
             if page.is_listable():
                 category.add_page(page)
+        page.category = category
 
         if not page.template:
             if category and category['template']:
                 page.template = category['template']
             else:
-                page.template = self.meta.get('default_template', DEFAULT_TEMPLATE)
-
+                # TODO: warn if default_template is empty
+                # make it the object rule to require a default_template
+                page.template = self.meta.get('default_template')
         return page
 
     def read_page_tree(self, path, parent_page=None):
@@ -286,7 +288,7 @@ class Library:
         for page in pages:
             env['page'] = page
             scriber.publish_page(page, env)
-            print('Generated page {!r}.'.format(page.path))
+            print('Generated page {!r} [{}].'.format(page.path, page.category.id))
         scriber.publish_feeds()
 
         summary_path = os.path.join(path, 'pages.json')
