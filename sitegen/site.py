@@ -12,6 +12,7 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 '''
 
 import os
+import sys
 import json
 import re
 import shutil
@@ -33,6 +34,7 @@ TEMPLATES_DIR = 'templates'
 TEMPLATES_EXT = 'tpl'
 DEFAULT_CATEGORY_ID = 'root'
 DATA_FILE = 'page.me'
+IMAGE_FILE = 'image.png'
 CONFIG_FILE = 'config.me'
 FEED_FILE = 'feed.xml'
 FEED_DIR = 'feed'
@@ -60,11 +62,16 @@ class SiteGenerator:
             return
 
         try:
-            mem_data = reader.parse(utils.read_file(file_path))
+            page_data = reader.parse(utils.read_file(file_path))
         except PageValueError as err:
             raise PageValueError('In file {!r}: {}'.format(file_path, err))
-        mem_data['path'] = path
-        return mem_data
+        page_data['path'] = path
+
+        image_file_name = self.meta.get('image_file', IMAGE_FILE)
+        image_path = os.path.join(path, image_file_name)
+        if os.path.exists(image_path):
+            page_data['image'] = image_file_name
+        return page_data
 
     def build_categories(self):
         category_key = 'categories'

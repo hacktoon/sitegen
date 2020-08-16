@@ -231,6 +231,7 @@ class PageBuilder:
         options['page_url'] = page_url
 
         page_data['url'] = page_url
+        page.image = page_data.get('image')
         page_data['thumb'] = self.build_thumbnail(page_url)
         page_data['breadcrumbs'] = self.build_breadcrumbs(parent_page, page_data)
 
