@@ -208,7 +208,7 @@ class PageBuilder:
 
     def build_breadcrumbs(self, parent_page, page_data):
         links = []
-        template = '<li><a href="{}">{}</a></li>'
+        template = '/<a href="{}">{}</a>'
         current_page = template.format(page_data['url'], page_data['title'])
         links.insert(0, current_page)
         while parent_page:
