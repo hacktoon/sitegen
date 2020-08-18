@@ -16,11 +16,10 @@ from .paging import PageList
 
 class Category:
     '''Define a category of pages'''
-    def __init__(self, id, weight):
+    def __init__(self, id=''):
         self.id = id
         self.props = {'id': id}
         self.pagelist = PageList()
-        self.weight = weight;
 
     def add_page(self, page):
         '''To add a book to a category'''
@@ -51,13 +50,12 @@ class CategoryList:
             yield category
 
     def __getitem__(self, key):
-        return self.items.get(key)
+        return self.items.get(key, Category())
 
     def add_category(self, category_key):
         '''To create a new category of books'''
         if category_key not in self.items.keys():
-            #TODO use category weight
-            self.items[category_key] = Category(category_key, 0)
+            self.items[category_key] = Category(category_key)
         return self.items[category_key]
 
     def add_page(self, category_title, page):

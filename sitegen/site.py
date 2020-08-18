@@ -32,7 +32,6 @@ BASE_URL = '//localhost/'
 STATIC_DIR = 'static'
 TEMPLATES_DIR = 'templates'
 TEMPLATES_EXT = 'tpl'
-DEFAULT_CATEGORY_ID = 'root'
 DATA_FILE = 'page.me'
 IMAGE_FILE = 'image.png'
 CONFIG_FILE = 'config.me'
@@ -99,10 +98,10 @@ class SiteGenerator:
     def build_page(self, page_data, parent_page):
         page = self.page_builder.build(page_data, parent_page)
 
-        category_id = page_data.get('category', DEFAULT_CATEGORY_ID)
+        category_id = page_data.get('category')
         category = self.category_list[category_id]
 
-        if category and category_id in self.meta.get('categories', {}).keys():
+        if category_id in self.meta.get('categories', {}).keys():
             page['category'] = category.get_dict()
             if page.is_listable():
                 category.add_page(page)
