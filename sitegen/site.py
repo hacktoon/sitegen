@@ -13,7 +13,6 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 
 import os
 import sys
-import json
 import re
 import shutil
 from datetime import datetime
@@ -38,7 +37,6 @@ CONFIG_FILE = 'config.me'
 FEED_FILE = 'feed.xml'
 FEED_DIR = 'feed'
 FEED_NUM = 8
-JSON_FILENAME = 'data.json'
 HTML_FILENAME = 'index.html'
 MODEL_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(MODEL_DIR, '../data')
@@ -132,16 +130,6 @@ class SiteGenerator:
             child_info = self.read_page_tree(sub_page_path, page or parent_page)
             if child_info:
                 children.update(child_info)
-        # home page
-        if page_data and page_data.get('type') == 'home':
-            return children
-        # only append this page and its children if
-        # it has at least one child or is a page
-        is_page = bool(page_data) and page.is_json_enabled() and not page.is_draft()
-        if is_page or children:
-            path = path.split(os.sep)[-1]
-            return {path: 1 if is_page else children}
-        return {}
 
     def read_subpages_list(self, path):
         for filename in os.listdir(path or os.curdir):
@@ -153,14 +141,6 @@ class SiteGenerator:
             if set((basedir, basename)).intersection(FORBIDDEN_DIRS):
                 continue
             yield fullpath
-
-    def write_json(self, page):
-        if 'nojson' in page.props:
-            return
-
-        json_path = os.path.join(page.path, self.meta.get('json_filename', JSON_FILENAME))
-        output = JSONTemplate().render(page)
-        utils.write_file(json_path, output)
 
     def write_html(self, page, env):
         if 'nohtml' in page.props:
@@ -211,7 +191,6 @@ class SiteGenerator:
     def publish_page(self, page, env):
         try:
             self.write_html(page, env)
-            self.write_json(page)
         except FileNotFoundError as error:
             raise FileNotFoundError('{} at page {!r}'.format(error, page.path))
 
@@ -280,7 +259,7 @@ class Library:
         scriber = SiteGenerator(self.meta)
         category_list = scriber.build_categories()
 
-        json_summary = scriber.read_page_tree(path)
+        scriber.read_page_tree(path)
         for cat in scriber.category_list:
             cat.paginate()
         pages = scriber.pagelist
@@ -297,8 +276,5 @@ class Library:
             print('Generated page {!r} [{}].'.format(page.path, page.category.id))
         scriber.publish_feeds()
 
-        summary_path = os.path.join(path, 'pages.json')
-        utils.write_file(summary_path, json.dumps(json_summary))
-        print('Generated file tree summary {!r}'.format(summary_path))
-
+        print('Done! {} pages generated.'.format(len(pages)))
         return pages
