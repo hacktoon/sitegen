@@ -19,7 +19,7 @@ from datetime import datetime
 
 from . import reader
 from . import utils
-from .template import HTMLTemplate, JSONTemplate, Template
+from .template import HTMLTemplate, Template
 from .paging import Page, PageList, PageBuilder
 from .categorization import Category, CategoryList
 from .stamper.stamper import Stamper
@@ -234,7 +234,6 @@ class Library:
             self.meta = reader.parse(config_file)
         except PageValueError as err:
             raise PageValueError('In file {!r}: {}'.format(config_path, err))
-        blocked = self.meta.get('blocked_dirs', [])
 
     def write_page(self, path):
         scriber = SiteGenerator(self.meta)
@@ -253,8 +252,7 @@ class Library:
 
     def publish_pages(self, path):
         self.meta['base_path'] = path.rstrip(os.path.sep)
-        env_base_url = os.environ.get('URL')
-        self.meta['base_url'] = env_base_url or BASE_URL
+        self.meta['base_url'] = os.environ.get('URL', BASE_URL)
 
         scriber = SiteGenerator(self.meta)
         category_list = scriber.build_categories()
@@ -273,7 +271,7 @@ class Library:
         for page in pages:
             env['page'] = page
             scriber.publish_page(page, env)
-            print('Generated page {!r} [{}].'.format(page.path, page.category.id))
+            print('Generated page {!r}.'.format(page.path))
         scriber.publish_feeds()
 
         print('Done! {} pages generated.'.format(len(pages)))
