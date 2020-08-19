@@ -208,7 +208,7 @@ class SiteGenerator:
                 print("Category {!r} has no content!".format(cat['id']))
 
 
-class Library:
+class Site:
     def __init__(self):
         self.meta = {}
 

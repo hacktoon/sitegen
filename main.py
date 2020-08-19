@@ -16,25 +16,28 @@ import sys
 import os
 
 from sitegen import utils, site
-from sitegen.exceptions import (PageExistsError,
-                                     SiteAlreadyInstalledError,
-                                     TemplateError,
-                                     PageValueError)
+from sitegen.exceptions import (
+    PageExistsError,
+    SiteAlreadyInstalledError,
+    TemplateError,
+    PageValueError
+)
+
 
 def publish(args):
     '''Read recursively every directory under path and
     outputs HTML/JSON for each page file'''
-    path = utils.clear_path(args.path.rstrip('/') + '/')
-    lib = site.Library()
+    path = args.path
+    _site = site.Site()
     try:
-        lib.enter(path)
+        _site.enter(path)
     except FileNotFoundError:
         sys.exit('No library were ever built in {!r}.'.format(path))
     except PageValueError as err:
         sys.exit(err)
 
     try:
-        pages = lib.publish_pages(path)
+        pages = _site.publish_pages(path)
     except (FileNotFoundError, ValueError,
             TemplateError, PageValueError) as e:
         sys.exit(e)
@@ -45,13 +48,13 @@ def publish(args):
 def write(args):
     '''Create a new page in specified path'''
     path = utils.clear_path(args.path)
-    lib = site.Library()
+    _site = site.Site()
     try:
-        lib.enter(path)
+        _site.enter(path)
     except FileNotFoundError:
         sys.exit('No library were ever built in {!r}.'.format(path))
     try:
-        lib.write_page(path)
+        _site.write_page(path)
     except PageExistsError as e:
         sys.exit(e)
 
@@ -60,17 +63,16 @@ def write(args):
 
 
 def build(args):
-    '''Builds Sitegen in the current path'''
-    print('Writing the plans for the wonder library Sitegen...')
-    print('Building foundations...')
+    '''Build site in the current path'''
+    print('Building site...')
 
-    lib = site.Library()
+    _site = site.Site()
     try:
-        lib.build(os.curdir)
+        _site.build(os.curdir)
     except SiteAlreadyInstalledError as e:
         sys.exit(e)
 
-    print('\nSitegen was successfully installed!\n\n'
+    print('\nSite was successfully installed!\n\n'
     'Next steps:\n1 - Edit the "config.me" file.\n'
     '2 - Run "sitegen write [path]" to start creating pages!\n')
 
