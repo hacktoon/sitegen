@@ -235,21 +235,6 @@ class Site:
         except PageValueError as err:
             raise PageValueError('In file {!r}: {}'.format(config_path, err))
 
-    def write_page(self, path):
-        scriber = SiteGenerator(self.meta)
-        data_file_path = self.meta.get('data_file', DATA_FILE)
-        page_file = os.path.join(path, data_file_path)
-        if os.path.exists(page_file):
-            raise PageExistsError('Page {!r} already exists.'.format(path))
-        if not os.path.exists(path):
-            os.makedirs(path)
-        data_file_path = self.meta.get('data_file', DATA_FILE)
-        model_page_file = os.path.join(DATA_DIR, data_file_path)
-        content = utils.read_file(model_page_file)
-        date_format = self.meta.get('date_format', DATE_FORMAT)
-        date = datetime.today().strftime(date_format)
-        utils.write_file(page_file, content.format(date))
-
     def publish_pages(self, path):
         self.meta['base_path'] = path.rstrip(os.path.sep)
         self.meta['base_url'] = os.environ.get('URL', BASE_URL)
@@ -273,6 +258,4 @@ class Site:
             scriber.publish_page(page, env)
             print('Generated page {!r}.'.format(page.path))
         scriber.publish_feeds()
-
-        print('Done! {} pages generated.'.format(len(pages)))
         return pages

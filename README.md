@@ -3,6 +3,11 @@
 ## About
 Sitegen is a static web generator.
 
+## Roadmap
+
+
+
+
 ## Quickstart
 You only need Python 3 to run Sitegen.
 
