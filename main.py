@@ -18,7 +18,6 @@ import os
 from sitegen import utils, site
 from sitegen.exceptions import (
     PageExistsError,
-    SiteAlreadyInstalledError,
     TemplateError,
     PageValueError
 )
@@ -26,7 +25,7 @@ from sitegen.exceptions import (
 
 def publish(args):
     '''Read recursively every directory under path and
-    outputs HTML/JSON for each page file'''
+    outputs a HTML for each page file'''
     path = args.path
     _site = site.Site(path)
 
@@ -45,7 +44,7 @@ def main():
     subparsers = parser.add_subparsers(title='Commands', dest='command')
     subparsers.required = True
 
-    parser_publish = subparsers.add_parser('publish', help='generate the pages')
+    parser_publish = subparsers.add_parser('publish', help='Generate HTML files')
     parser_publish.add_argument('path', nargs='?', default='.')
     parser_publish.set_defaults(method=publish)
 

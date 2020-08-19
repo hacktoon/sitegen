@@ -23,7 +23,7 @@ from .template import HTMLTemplate, Template
 from .paging import Page, PageList, PageBuilder
 from .categorization import Category, CategoryList
 from .stamper.stamper import Stamper
-from .exceptions import (SiteAlreadyInstalledError, PageExistsError,
+from .exceptions import (PageExistsError,
                          PageValueError, TemplateError)
 
 
@@ -157,8 +157,8 @@ class SiteGenerator:
         except TemplateError as error:
             raise TemplateError('{} at template {!r}'.format(error,
                                 template.path))
-        html_path = os.path.join(page.path,
-                                 self.meta.get('html_filename', HTML_FILENAME))
+        html_filename = self.meta.get('html_filename', HTML_FILENAME)
+        html_path = os.path.join(page.path, html_filename)
         utils.write_file(html_path, output)
 
     def write_feed(self, env, pagelist, name):
@@ -196,16 +196,8 @@ class SiteGenerator:
 
     def publish_feeds(self):
         env = { 'site': self.meta, 'template_cache': {}}
-        # unique feed
         file_path = self.write_feed(env, self.pagelist, 'rss')
-        print("Generated {!r}.".format(file_path))
-        # generate feeds based on categories
-        for cat in self.category_list:
-            file_path = self.write_feed(env, cat.pagelist, cat['id'])
-            if file_path:
-                print("Generated {!r}.".format(file_path))
-            else:
-                print("Category {!r} has no content!".format(cat['id']))
+        print("Generated RSS {!r}.".format(file_path))
 
 
 class Site:
@@ -242,6 +234,6 @@ class Site:
         for page in pages:
             env['page'] = page
             scriber.publish_page(page, env)
-            print('Generated page {!r}.'.format(page.path))
+            print('Generated HTML {!r}.'.format(page.path))
         scriber.publish_feeds()
         return pages

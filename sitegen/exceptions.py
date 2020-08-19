@@ -11,9 +11,6 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 ===============================================================================
 '''
 
-class SiteAlreadyInstalledError(Exception):
-	pass
-
 class PageExistsError(Exception):
 	pass
 
