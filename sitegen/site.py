@@ -33,7 +33,7 @@ TEMPLATES_DIR = 'templates'
 TEMPLATES_EXT = 'tpl'
 DATA_FILE = 'page.me'
 IMAGE_FILE = 'image.png'
-CONFIG_FILE = 'config.me'
+
 FEED_FILE = 'feed.xml'
 FEED_DIR = 'feed'
 FEED_NUM = 8
@@ -201,23 +201,14 @@ class SiteGenerator:
 
 
 class Site:
-    def __init__(self, path):
-        self.meta = {}
-        config_path = os.path.join(path, CONFIG_FILE)
-        if not os.path.exists(config_path):
-            print('No site.')
-            return
-        config_file = utils.read_file(config_path)
-        try:
-            self.meta = reader.parse(config_file)
-        except PageValueError as err:
-            raise PageValueError('File {!r}: {}'.format(config_path, err))
+    def __init__(self, props):
+        self.props = props
 
     def publish_pages(self, path):
-        self.meta['base_path'] = path.rstrip(os.path.sep)
-        self.meta['base_url'] = os.environ.get('URL', BASE_URL)
+        self.props['base_path'] = path.rstrip(os.path.sep)
+        self.props['base_url'] = os.environ.get('URL', BASE_URL)
 
-        scriber = SiteGenerator(self.meta)
+        scriber = SiteGenerator(self.props)
         category_list = scriber.build_categories()
 
         scriber.read_page_tree(path)
@@ -226,7 +217,7 @@ class Site:
         pages = scriber.pagelist
         env = {
             'pages': [p for p in pages if p.is_listable()],
-            'site': self.meta,
+            'site': self.props,
             'categories': category_list,
             'template_cache': {}
         }

@@ -15,7 +15,7 @@ import argparse
 import sys
 import os
 
-from sitegen import utils, site
+from sitegen import utils, site, reader
 from sitegen.exceptions import (
     PageExistsError,
     TemplateError,
@@ -23,11 +23,24 @@ from sitegen.exceptions import (
 )
 
 
+CONFIG_FILE = 'config.me'
+
+
 def publish(args):
     '''Read recursively every directory under path and
     outputs a HTML for each page file'''
     path = args.path
-    _site = site.Site(path)
+
+    config_path = os.path.join(path, CONFIG_FILE)
+    if not os.path.exists(config_path):
+        print('No site.')
+        return
+    config_file = utils.read_file(config_path)
+    try:
+        props = reader.parse(config_file)
+    except PageValueError as err:
+        raise PageValueError('File {!r}: {}'.format(config_path, err))
+    _site = site.Site(props)
 
     try:
         pages = _site.publish_pages(path)
