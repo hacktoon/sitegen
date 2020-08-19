@@ -209,31 +209,17 @@ class SiteGenerator:
 
 
 class Site:
-    def __init__(self):
+    def __init__(self, path):
         self.meta = {}
-
-    def build(self, path):
-        config_file = os.path.join(path, CONFIG_FILE)
-        templates_dir = os.path.join(path, TEMPLATES_DIR)
-        if os.path.exists(config_file):
-            raise SiteAlreadyInstalledError('A wonderful library '
-            'is already built here!')
-        if not os.path.exists(templates_dir):
-            model_templates_dir = os.path.join(DATA_DIR, templates_dir)
-            shutil.copytree(model_templates_dir, templates_dir)
-        if not os.path.exists(config_file):
-            model_config_file = os.path.join(DATA_DIR, config_file)
-            shutil.copyfile(model_config_file, config_file)
-
-    def enter(self, path):
         config_path = os.path.join(path, CONFIG_FILE)
         if not os.path.exists(config_path):
-            raise FileNotFoundError
+            print('No site.')
+            return
         config_file = utils.read_file(config_path)
         try:
             self.meta = reader.parse(config_file)
         except PageValueError as err:
-            raise PageValueError('In file {!r}: {}'.format(config_path, err))
+            raise PageValueError('File {!r}: {}'.format(config_path, err))
 
     def publish_pages(self, path):
         self.meta['base_path'] = path.rstrip(os.path.sep)

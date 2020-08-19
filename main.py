@@ -28,13 +28,7 @@ def publish(args):
     '''Read recursively every directory under path and
     outputs HTML/JSON for each page file'''
     path = args.path
-    _site = site.Site()
-    try:
-        _site.enter(path)
-    except FileNotFoundError:
-        sys.exit("No 'config.me' file in path {!r}.".format(path))
-    except PageValueError as err:
-        sys.exit(err)
+    _site = site.Site(path)
 
     try:
         pages = _site.publish_pages(path)
@@ -42,21 +36,6 @@ def publish(args):
             TemplateError, PageValueError) as e:
         sys.exit(e)
     print("{}\nTotal of pages read: {}".format("-" * 30, len(pages)))
-
-
-def build(args):
-    '''Build site in the current path'''
-    print('Building site...')
-
-    _site = site.Site()
-    try:
-        _site.build(os.curdir)
-    except SiteAlreadyInstalledError as e:
-        sys.exit(e)
-
-    print('\nSite was successfully installed!\n\n'
-    'Next steps:\n1 - Edit the "config.me" file.\n'
-    '2 - Run "sitegen write [path]" to start creating pages!\n')
 
 
 def main():
@@ -72,6 +51,7 @@ def main():
 
     args = parser.parse_args()
     args.method(args)
+
 
 if __name__ == '__main__':
     main()
