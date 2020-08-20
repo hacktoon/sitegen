@@ -44,16 +44,16 @@ FORBIDDEN_DIRS = set((STATIC_DIR, TEMPLATES_DIR, FEED_DIR))
 
 
 class SiteGenerator:
-    def __init__(self, meta=None):
+    def __init__(self, props=None):
         self.pagelist = PageList()
         self.category_list = CategoryList()
-        self.meta = meta or {}
-        self.base_path = self.meta.get('base_path', '')
-        self.page_builder = PageBuilder(self.meta)
+        self.props = props or {}
+        self.base_path = self.props.get('base_path', '')
+        self.page_builder = PageBuilder(self.props)
 
     def read_page(self, path):
         '''Return the page data specified by path'''
-        data_file_path = self.meta.get('data_file', DATA_FILE)
+        data_file_path = self.props.get('data_file', DATA_FILE)
         file_path = os.path.join(path, data_file_path)
         if not os.path.exists(file_path):
             return
@@ -64,23 +64,18 @@ class SiteGenerator:
             raise PageValueError('In file {!r}: {}'.format(file_path, err))
         page_data['path'] = path
 
-        image_file_name = self.meta.get('image_file', IMAGE_FILE)
+        image_file_name = self.props.get('image_file', IMAGE_FILE)
         image_path = os.path.join(path, image_file_name)
         if os.path.exists(image_path):
             page_data['image'] = image_file_name
         return page_data
 
     def build_categories(self):
-        category_key = 'categories'
+        category_entry = self.props.get('categories', {})
         render_list = []
-        if category_key not in self.meta:
-            return
-        category_entry = self.meta[category_key]
-        base_url = self.meta['base_url']
+        base_url = self.props['base_url']
         for key in category_entry.keys():
             item = category_entry[key]
-            if item.get('blocked'):
-                continue
             category = self.category_list.add_category(key)
             url = item.get('url', key)
             category['url'] = utils.urljoin(base_url, url)
@@ -99,7 +94,7 @@ class SiteGenerator:
         category_id = page_data.get('category')
         category = self.category_list[category_id]
 
-        if category_id in self.meta.get('categories', {}).keys():
+        if category_id in self.props.get('categories', {}).keys():
             page['category'] = category.get_dict()
             if page.is_listable():
                 category.add_page(page)
@@ -111,11 +106,11 @@ class SiteGenerator:
             else:
                 # TODO: warn if default_template is empty
                 # make it the object rule to require a default_template
-                page.template = self.meta.get('default_template')
+                page.template = self.props.get('default_template')
         return page
 
     def read_page_tree(self, path, parent_page=None):
-        if path in self.meta.get('blocked_dirs'):
+        if path in self.props.get('blocked_dirs'):
             return {}
 
         page_data = self.read_page(path)
@@ -145,7 +140,7 @@ class SiteGenerator:
     def write_html(self, page, env):
         if 'nohtml' in page.props:
             return
-        templates_dir = self.meta.get('templates_dir', TEMPLATES_DIR)
+        templates_dir = self.props.get('templates_dir', TEMPLATES_DIR)
         templates_dir = os.path.join(self.base_path, templates_dir)
         filename = ".".join([page.template, TEMPLATES_EXT])
         template_path = os.path.join(templates_dir, filename)
@@ -157,27 +152,38 @@ class SiteGenerator:
         except TemplateError as error:
             raise TemplateError('{} at template {!r}'.format(error,
                                 template.path))
-        html_filename = self.meta.get('html_filename', HTML_FILENAME)
+        html_filename = self.props.get('html_filename', HTML_FILENAME)
         html_path = os.path.join(page.path, html_filename)
         utils.write_file(html_path, output)
+
+    def publish_page(self, page, env):
+        try:
+            self.write_html(page, env)
+        except FileNotFoundError as error:
+            raise FileNotFoundError('{} at page {!r}'.format(error, page.path))
+
+    def publish_feeds(self):
+        env = { 'site': self.props, 'template_cache': {}}
+        file_path = self.write_feed(env, self.pagelist, 'rss')
+        print("Generated RSS {!r}.".format(file_path))
 
     def write_feed(self, env, pagelist, name):
         if not len(pagelist):
             return
         template = Template(FEED_FILE, os.path.join(DATA_DIR, FEED_FILE))
         try:
-            feed_num = int(self.meta.get('feed_num', FEED_NUM))
+            feed_num = int(self.props.get('feed_num', FEED_NUM))
         except ValueError:
             feed_num = FEED_NUM
 
-        dirname = self.meta.get('feed_dir', FEED_DIR)
+        dirname = self.props.get('feed_dir', FEED_DIR)
         basepath = os.path.join(self.base_path, dirname)
         if not os.path.exists(basepath):
             os.makedirs(basepath)
 
         pagelist = [p for p in pagelist if p.is_feed_enabled()]
         pagelist.reverse()
-        base_url = self.meta['base_url']
+        base_url = self.props['base_url']
         filename = '{}.xml'.format(name)
         env['pages'] = pagelist[:feed_num]
         env['feed'] = {
@@ -188,23 +194,12 @@ class SiteGenerator:
         utils.write_file(rss_file, template.render(env))
         return rss_file
 
-    def publish_page(self, page, env):
-        try:
-            self.write_html(page, env)
-        except FileNotFoundError as error:
-            raise FileNotFoundError('{} at page {!r}'.format(error, page.path))
-
-    def publish_feeds(self):
-        env = { 'site': self.meta, 'template_cache': {}}
-        file_path = self.write_feed(env, self.pagelist, 'rss')
-        print("Generated RSS {!r}.".format(file_path))
-
 
 class Site:
     def __init__(self, props):
         self.props = props
 
-    def publish_pages(self, path):
+    def generate(self, path):
         self.props['base_path'] = path.rstrip(os.path.sep)
         self.props['base_url'] = os.environ.get('URL', BASE_URL)
 

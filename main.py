@@ -43,7 +43,7 @@ def publish(args):
     _site = site.Site(props)
 
     try:
-        pages = _site.publish_pages(path)
+        pages = _site.generate(path)
     except (FileNotFoundError, ValueError,
             TemplateError, PageValueError) as e:
         sys.exit(e)
