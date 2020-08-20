@@ -208,13 +208,13 @@ class Site:
         self.props['base_path'] = path.rstrip(os.path.sep)
         self.props['base_url'] = os.environ.get('URL', BASE_URL)
 
-        scriber = SiteGenerator(self.props)
-        category_list = scriber.build_categories()
+        generator = SiteGenerator(self.props)
+        category_list = generator.build_categories()
 
-        scriber.read_page_tree(path)
-        for cat in scriber.category_list:
+        generator.read_page_tree(path)
+        for cat in generator.category_list:
             cat.paginate()
-        pages = scriber.pagelist
+        pages = generator.pagelist
         env = {
             'pages': [p for p in pages if p.is_listable()],
             'site': self.props,
@@ -224,7 +224,7 @@ class Site:
 
         for page in pages:
             env['page'] = page
-            scriber.publish_page(page, env)
+            generator.publish_page(page, env)
             print('Generated HTML {!r}.'.format(page.path))
-        scriber.publish_feeds()
+        generator.publish_feeds()
         return pages
