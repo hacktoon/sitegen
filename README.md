@@ -3,11 +3,6 @@
 ## About
 Sitegen is a static web generator.
 
-## Roadmap
-
- -
-
-
 ## Quickstart
 You only need Python 3 to run Sitegen.
 
@@ -24,7 +19,6 @@ Open the *site* config file and define your settings. Here are some examples:
 * **base_url** - Will be used for absolute linking.
 * **default_template** - If a custom template is not provided for a page, this one will be used.
 * **feed_num** - Number of items to be listed in feeds
-* **blocked_dirs** - List of directories separated by comma that Sitegen won't read.
 
 ### Create your home page
 Just run the *write* command in the site root folder to create a new page:

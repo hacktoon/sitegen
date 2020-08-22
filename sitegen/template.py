@@ -18,7 +18,7 @@ import sys
 from . import reader
 from . import utils
 from .paging import Page, PageList
-from .categorization import Category, CategoryList
+from .category import Category, CategoryList
 from .stamper.stamper import Stamper
 from .exceptions import TemplateError
 

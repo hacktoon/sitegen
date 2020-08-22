@@ -200,6 +200,8 @@ def repr_token(t):
         return tpl.format(t['type'], t['value'], t['line'], t['column'])
 
 def parse(text):
+        if not len(text.strip()):
+                return {}
         env = _create_env(text)
         tokens = _tokenize(text)
         env['tokens'] = tokens

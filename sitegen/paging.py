@@ -16,6 +16,10 @@ import re
 import bisect
 from datetime import datetime
 from . import utils
+from . import reader
+
+from .exceptions import PageValueError
+
 
 DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
 THUMB_FILENAME = 'thumb.png'
@@ -218,31 +222,35 @@ class PageBuilder:
         # remove all but home page url
         return ''.join(links[1:])
 
-    def build(self, page_data, parent_page):
-        '''Page object factory'''
-        options = {}
-        page = Page()
 
-        page.parent = parent_page
-        page.path = page_data['path']
+def build_page(node):
+    text = parse_data(node.text)
 
-        page_url = self.build_url_from_path(page.path)
-        options['date_format'] = self.env.get('date_format', DATE_FORMAT)
-        options['page_url'] = page_url
+    # page.parent = parent_page
+    # page.path = page_data['path']
 
-        page_data['url'] = page_url
-        page.image = page_data.get('image')
-        page_data['thumb'] = self.build_thumbnail(page_url)
-        page_data['breadcrumbs'] = self.build_breadcrumbs(parent_page, page_data)
+    # page_url = self.build_url_from_path(page.path)
+    # options['date_format'] = self.env.get('date_format', DATE_FORMAT)
+    # options['page_url'] = page_url
 
-        page_data['date'] = self.build_date(page_data.get('date'), options.get('date_format', ''))
+    # page_data['url'] = page_url
+    # page.image = page_data.get('image')
+    # page_data['thumb'] = self.build_thumbnail(page_url)
+    # page_data['breadcrumbs'] = self.build_breadcrumbs(parent_page, page_data)
 
-        self.build_content(page_data)
+    # page_data['date'] = self.build_date(page_data.get('date'), options.get('date_format', ''))
 
-        try:
-            page.initialize(page_data, options)
-        except ValueError as error:
-            raise ValueError('{} at page {!r}'.format(error, page.path))
+    # self.build_content(page_data)
+
+    # try:
+    #     page.initialize(page_data, options)
+    # except ValueError as error:
+    #     raise ValueError('{} at page {!r}'.format(error, page.path))
+    return text
 
 
-        return page
+def parse_data(data):
+    try:
+        return reader.parse(data)
+    except PageValueError as err:
+        raise PageValueError('In page {!r}: {}'.format(data.title, err))
