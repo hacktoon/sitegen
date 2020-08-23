@@ -224,10 +224,9 @@ class PageBuilder:
 
 
 def build_page(node):
-    text = parse_data(node.text)
+    page_data = parse_data(node.data)
 
-    # page.parent = parent_page
-    # page.path = page_data['path']
+    parent = node.path.parent
 
     # page_url = self.build_url_from_path(page.path)
     # options['date_format'] = self.env.get('date_format', DATE_FORMAT)
@@ -246,7 +245,7 @@ def build_page(node):
     #     page.initialize(page_data, options)
     # except ValueError as error:
     #     raise ValueError('{} at page {!r}'.format(error, page.path))
-    return text
+    return page_data
 
 
 def parse_data(data):

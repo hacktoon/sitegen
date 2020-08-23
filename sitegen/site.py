@@ -149,7 +149,6 @@ class Site:
         build_path = path + '/build'
 
         filesystem = FileSystem(data_path)
-        generator = SiteGenerator(self.config)
         for node in filesystem:
             page = paging.build_page(node)
             print(page)
@@ -172,4 +171,4 @@ class Site:
         #     generator.publish_page(page, env)
         #     # print('Generated HTML {!r}.'.format(page.path))
         # generator.publish_feeds()
-        return pages
+        return []  # pages
