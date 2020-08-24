@@ -12,9 +12,9 @@ class FileSystem:
         self.base_path = base_path
         self.nodes = []
         for path, folders, files in os.walk(base_path):
-            fileset = Fileset(folders, files)
-            node = Node(path, fileset)
-            self.nodes.append(node)
+            pathset = PathSet(base_path, path)
+            fileset = FileSet(folders, files)
+            self.nodes.append(Node(pathset, fileset))
 
     def __iter__(self):
         for node in self.nodes:
@@ -22,18 +22,18 @@ class FileSystem:
 
 
 class Node:
-    def __init__(self, path, fileset):
-        self.path = PurePath(path)
+    def __init__(self, pathset, fileset):
+        self.path = pathset
         self.fileset = fileset
 
     @property
     def data(self):
         full_data = []
         for me_file in self.fileset.files('me'):
-            file_path = self.path / me_file
+            file_path = self.path.full / me_file
             with open(file_path) as f:
                 full_data.append(f.read())
-        return '\n'.join(full_data)
+        return '\n'.join(full_data).strip()
 
     @property
     def css(self):
@@ -44,11 +44,37 @@ class Node:
         return self.fileset.files('js')
 
     def __repr__(self):
-        return f'\n"{self.path}"'
-        # return f'\n"{self.path}" - {self.data}'
+        return f'\n"{self.path.relative}"'
 
 
-class Fileset:
+class PathSet:
+    def __init__(self, base_path, path):
+        self.base_path = base_path
+        self.path = path
+
+    @property
+    def full(self):
+        return PurePath(self.path)
+
+    @property
+    def base(self):
+        return PurePath(self.base_path)
+
+    @property
+    def parent(self):
+        return self.relative.parent
+
+    @property
+    def relative(self):
+        return PurePath(self.path).relative_to(self.base_path)
+
+    @property
+    def folder(self):
+        return self.relative.stem
+
+
+
+class FileSet:
     def __init__(self, folder_list, file_list):
         self.folder_list = folder_list
         self.file_list = file_list
@@ -57,7 +83,7 @@ class Fileset:
     def files(self, extension=None):
         if extension is None:
             return self.file_list
-        return self.extension_dict[extension]
+        return self.extension_dict.get(extension, [])
 
 
 def extension_dict(file_list):

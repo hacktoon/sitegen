@@ -172,38 +172,38 @@ def _parse_value(env):
         return value
 
 def _parse_rule(env):
-        token = env['current_token']
-        if token['type'] not in (TOK_NAME, TOK_TEXT):
-                _error(env, 'Expected a name, got {!r}'.format(token['value']))
-        name = token['value']
-        if token['type'] == TOK_TEXT:
-                if len(env['stack']) > 1:
-                        _error(env, 'Wrong syntax')
-                env['data'][TOK_TEXT] = token['value']
-                _next_token(env)
-                return
-        token = _next_token(env)
-        if token['type'] == TOK_ASSIGN:
-                _next_token(env)
-                value = _parse_value(env)
-                env['stack'][-1][name] = value
-        else:
-                _error(env, 'Invalid syntax')
+    token = env['current_token']
+    if token['type'] not in (TOK_NAME, TOK_TEXT):
+            _error(env, 'Expected a name, got {!r}'.format(token['value']))
+    name = token['value']
+    if token['type'] == TOK_TEXT:
+            if len(env['stack']) > 1:
+                    _error(env, 'Wrong syntax')
+            env['data'][TOK_TEXT] = token['value']
+            _next_token(env)
+            return
+    token = _next_token(env)
+    if token['type'] == TOK_ASSIGN:
+            _next_token(env)
+            value = _parse_value(env)
+            env['stack'][-1][name] = value
+    else:
+            _error(env, 'Invalid syntax')
 
 def _parse_ruleset(env):
-        while env['current_token']['type'] not in (TOK_EOF, TOK_CLOSEGROUP):
-                _parse_rule(env)
-        return env['data']
+    while env['current_token']['type'] not in (TOK_EOF, TOK_CLOSEGROUP):
+            _parse_rule(env)
+    return env['data']
 
 def repr_token(t):
-        tpl = '{}\t[{}]\t\t({},{})'
-        return tpl.format(t['type'], t['value'], t['line'], t['column'])
+    tpl = '{}\t[{}]\t\t({},{})'
+    return tpl.format(t['type'], t['value'], t['line'], t['column'])
 
 def parse(text):
-        if not len(text.strip()):
-                return {}
-        env = _create_env(text)
-        tokens = _tokenize(text)
-        env['tokens'] = tokens
-        env['current_token'] = tokens[0]
-        return _parse_ruleset(env)
+    if not len(text.strip()):
+        return {}
+    env = _create_env(text)
+    tokens = _tokenize(text)
+    env['tokens'] = tokens
+    env['current_token'] = tokens[0]
+    return _parse_ruleset(env)

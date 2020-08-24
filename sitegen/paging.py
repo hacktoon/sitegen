@@ -224,28 +224,27 @@ class PageBuilder:
 
 
 def build_page(node):
-    page_data = parse_data(node.data)
-
-    parent = node.path.parent
+    data = parse_data(node.data)
 
     # page_url = self.build_url_from_path(page.path)
     # options['date_format'] = self.env.get('date_format', DATE_FORMAT)
     # options['page_url'] = page_url
 
-    # page_data['url'] = page_url
-    # page.image = page_data.get('image')
-    # page_data['thumb'] = self.build_thumbnail(page_url)
-    # page_data['breadcrumbs'] = self.build_breadcrumbs(parent_page, page_data)
+    # data['url'] = page_url
+    # page.image = data.get('image')
+    # data['thumb'] = self.build_thumbnail(page_url)
+    # data['breadcrumbs'] = self.build_breadcrumbs(parent_page, data)
 
-    # page_data['date'] = self.build_date(page_data.get('date'), options.get('date_format', ''))
+    # data['date'] = self.build_date(data.get('date'), options.get('date_format', ''))
 
-    # self.build_content(page_data)
+    # self.build_content(data)
 
     # try:
-    #     page.initialize(page_data, options)
+    #     page.initialize(data, options)
     # except ValueError as error:
     #     raise ValueError('{} at page {!r}'.format(error, page.path))
-    return page_data
+    path_info = f'{node.path.base} + {node.path.parent} + {node.path.folder} = {node.path.full}'
+    return data
 
 
 def parse_data(data):
