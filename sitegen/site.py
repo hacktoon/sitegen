@@ -140,21 +140,21 @@ class SiteGenerator:
 class Site:
     def __init__(self, config):
         self.config = config
+        self.base_url = os.environ.get('URL', 'http://localhost')
 
     def generate(self, path):
-        self.config['base_path'] = path.rstrip(os.path.sep)
-        self.config['base_url'] = os.environ.get('URL', '')
-
         data_path = path + '/data'
         build_path = path + '/build'
 
-        filesystem = FileSystem(data_path)
-        for node in filesystem:
-            page = paging.build_page(node)
-            print(page)
-        #     env['page'] = page
-        #     generator.publish_page(page, env)
-        return []
+        filesystem = FileSystem()
+        nodes = filesystem.read(data_path)
+
+        # for folder in filesystem:
+        #     page = paging.build_page(folder, self.base_url)
+        #     print(page)
+        # #     env['page'] = page
+        # #     generator.publish_page(page, env)
+        # return []
 
 
         # for cat in generator.category_list:

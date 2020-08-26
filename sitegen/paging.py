@@ -23,7 +23,7 @@ from .exceptions import PageValueError
 
 DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
 THUMB_FILENAME = 'thumb.png'
-THUMB_FILENAME = 'thumb.png'
+COVER_FILENAME = 'cover.png'
 EXCERPT_RE = r'<!--\s*more\s*-->'
 
 
@@ -188,11 +188,7 @@ class PageBuilder:
         resource = path.replace(self.env['base_path'], '').strip('/')
         return utils.urljoin(self.env['base_url'], resource)
 
-    def build_thumbnail(self, page_url):
-        thumb_filepath = os.path.join(page_url, THUMB_FILENAME)
-        if os.path.exists(thumb_filepath):
-            return thumb_filepath
-        # TODO: return default thumbnail
+
 
     def build_date(self, date_string, date_format):
         '''converts date string to datetime object'''
@@ -223,28 +219,23 @@ class PageBuilder:
         return ''.join(links[1:])
 
 
-def build_page(node):
-    data = parse_data(node.data)
+def build_page(node, base_url):
+    data_dict = parse_data(node.data)
 
-    # page_url = self.build_url_from_path(page.path)
-    # options['date_format'] = self.env.get('date_format', DATE_FORMAT)
-    # options['page_url'] = page_url
+    # page_url = build_page_url(node, base_url)
+    # cover_url = build_cover_url(node, base_url)
+    # data_dict['thumb'] = self.build_thumbnail(page_url)
+    # data_dict['breadcrumbs'] = self.build_breadcrumbs(parent_page, data_dict)
 
-    # data['url'] = page_url
-    # page.image = data.get('image')
-    # data['thumb'] = self.build_thumbnail(page_url)
-    # data['breadcrumbs'] = self.build_breadcrumbs(parent_page, data)
+    # data_dict['date'] = self.build_date(data_dict.get('date'), DATE_FORMAT)
 
-    # data['date'] = self.build_date(data.get('date'), options.get('date_format', ''))
-
-    # self.build_content(data)
+    # self.build_content(data_dict)
 
     # try:
-    #     page.initialize(data, options)
+    #     page.initialize(data_dict, options)
     # except ValueError as error:
     #     raise ValueError('{} at page {!r}'.format(error, page.path))
-    path_info = f'{node.path.base} + {node.path.parent} + {node.path.folder} = {node.path.full}'
-    return data
+    return node.fileset.path
 
 
 def parse_data(data):
@@ -252,3 +243,21 @@ def parse_data(data):
         return reader.parse(data)
     except PageValueError as err:
         raise PageValueError('In page {!r}: {}'.format(data.title, err))
+
+
+def build_page_url(folder, base_url):
+    return utils.urljoin(base_url, str(folder.path.relative))
+
+
+def build_cover_url(folder, base_url):
+    if folder.cover:
+        resource_url = str(folder.path.relative / folder.cover)
+        return utils.urljoin(base_url, resource_url)
+    return ''
+
+
+def build_thumbnail(self, page_url):
+        thumb_filepath = os.path.join(page_url, THUMB_FILENAME)
+        if os.path.exists(thumb_filepath):
+            return thumb_filepath
+        # TODO: return default thumbnail
