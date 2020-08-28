@@ -25,6 +25,8 @@ DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
 THUMB_FILENAME = 'thumb.png'
 COVER_FILENAME = 'cover.png'
 EXCERPT_RE = r'<!--\s*more\s*-->'
+DATA_FILE = 'page.me'
+COVER = 'image.png'
 
 
 class Page():
@@ -188,8 +190,6 @@ class PageBuilder:
         resource = path.replace(self.env['base_path'], '').strip('/')
         return utils.urljoin(self.env['base_url'], resource)
 
-
-
     def build_date(self, date_string, date_format):
         '''converts date string to datetime object'''
         if not date_string:
@@ -220,7 +220,7 @@ class PageBuilder:
 
 
 def build_page(node, base_url):
-    data_dict = parse_data(node.data)
+    data_dict = parse_data(node.read(DATA_FILE))
 
     # page_url = build_page_url(node, base_url)
     # cover_url = build_cover_url(node, base_url)
@@ -235,7 +235,7 @@ def build_page(node, base_url):
     #     page.initialize(data_dict, options)
     # except ValueError as error:
     #     raise ValueError('{} at page {!r}'.format(error, page.path))
-    return node.fileset.path
+    return data_dict
 
 
 def parse_data(data):

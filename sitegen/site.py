@@ -143,32 +143,13 @@ class Site:
         self.base_url = os.environ.get('URL', 'http://localhost')
 
     def generate(self, path):
-        data_path = path + '/data'
+        source_path = path + '/data'
         build_path = path + '/build'
 
         filesystem = FileSystem()
-        nodes = filesystem.read(data_path)
+        nodes = filesystem.read(source_path)
 
-        # for folder in filesystem:
-        #     page = paging.build_page(folder, self.base_url)
-        #     print(page)
-        # #     env['page'] = page
-        # #     generator.publish_page(page, env)
-        # return []
-
-
-        # for cat in generator.category_list:
-        #     cat.paginate()
-        # pages = generator.pagelist
-        # env = {
-        #     'pages': [p for p in pages if p.is_listable()],
-        #     'site': self.config,
-        #     'template_cache': {}
-        # }
-
-        # for page in pages:
-        #     env['page'] = page
-        #     generator.publish_page(page, env)
-        #     # print('Generated HTML {!r}.'.format(page.path))
-        # generator.publish_feeds()
-        return []  # pages
+        for node in nodes:
+            item = paging.build_page(node, self.base_url)
+            # filesystem.write(item)
+        return []
