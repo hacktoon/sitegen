@@ -15,6 +15,8 @@ import argparse
 import sys
 import os
 
+from pathlib import PurePath
+
 from sitegen import utils, site, reader
 from sitegen.exceptions import (
     PageExistsError,
@@ -30,16 +32,16 @@ CONFIG_FILE = 'config.me'
 def publish(args):
     '''Read recursively every directory under path and
     outputs a HTML for each page file'''
-    path = args.path
-    source_path = path + '/data'
-    build_path = path + '/build'
-    config_path = source_path + f'/{CONFIG_FILE}'
+    path = PurePath(args.path)
+    source_path = path / 'data'
+    build_path = path / 'build'
 
-    filesystem = FileSystem()
-    fileset = filesystem.fileset(source_path)
+    filesystem = FileSystem(source_path)
 
-    config_file_content = filesystem.read_file(config_path)
-    site_data = reader.parse(config_file_content)
+    config_string = filesystem.read_file(CONFIG_FILE)
+    site_data = reader.parse(config_string)
+
+    # fileset = filesystem.fileset()
     print(site_data)
 
     # for node in fileset:

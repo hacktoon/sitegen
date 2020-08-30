@@ -1,16 +1,17 @@
 import os
 from collections import defaultdict
-from pathlib import PurePath
+from pathlib import PurePath, Path
 
 
 class FileSystem:
-    FILE_TYPE = 1
-    FOLDER_TYPE = 2
+    def __init__(self, base_path):
+        self.base_path = base_path
 
     def exists(self, path):
-        return path
+        return Path(path).exists()
 
-    def read_file(self, path):
+    def read_file(self, file_name):
+        path = self.base_path / file_name
         if not self.exists(path):
             return ''
         with open(path) as file:
