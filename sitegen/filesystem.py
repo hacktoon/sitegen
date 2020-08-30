@@ -10,41 +10,31 @@ class FileSystem:
     def exists(self, path):
         return Path(path).exists()
 
-    def read_file(self, file_name):
-        path = self.base_path / file_name
+    def read_file(self, path):
         if not self.exists(path):
             return ''
         with open(path) as file:
             return file.read()
 
-    def fileset(self, data_path):
+    def read_filetree(self):
         return [
-            FileSystemNode(path, files)
-            for path, _, files in os.walk(data_path)
+            Node(PurePath(path), filenames)
+            for path, _, filenames
+            in os.walk(self.base_path)
         ]
 
 
-class FileSystemNode:
-    def __init__(self, path, files):
-        self.path = PurePath(path)
-        self.file_names = set(files)
-        self.extension_map = ExtensionMap(files)
-
-    def read(self, filename, default=''):
-        if not self.exists(filename):
-            return default
-        file_path = self.path / filename
-        with open(file_path) as fp:
-            return fp.read()
+class Node:
+    def __init__(self, path, filenames):
+        self.path = path
+        self.filenames = set(filenames)
+        self.extensions = ExtensionMap(filenames)
 
     def files(self, extension=''):
-        return self.extension_map.get(extension, self.file_names)
-
-    def exists(self, name):
-        return name in self.file_names
+        return self.extensions.get(extension, self.filenames)
 
     def __repr__(self):
-        return f'FileSystemNode({self.path})'
+        return f'Node({self.path})'
 
 
 class ExtensionMap:

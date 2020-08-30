@@ -18,6 +18,7 @@ import os
 from pathlib import PurePath
 
 from sitegen import utils, site, reader
+from sitegen import paging
 from sitegen.exceptions import (
     PageExistsError,
     TemplateError,
@@ -27,6 +28,7 @@ from sitegen.filesystem import FileSystem
 
 
 CONFIG_FILE = 'config.me'
+DATA_FILE = 'page.me'
 
 
 def publish(args):
@@ -38,18 +40,19 @@ def publish(args):
 
     filesystem = FileSystem(source_path)
 
-    config_string = filesystem.read_file(CONFIG_FILE)
+    config_string = filesystem.read_file(source_path / CONFIG_FILE)
     site_data = reader.parse(config_string)
 
-    # fileset = filesystem.fileset()
-    print(site_data)
+    filetree = filesystem.read_filetree()
+    for node in filetree:
+        node_string = filesystem.read_file(node.path / DATA_FILE)
+        page_data = reader.parse(node_string)
+        print(node.path)
+        # item = paging.read_page_file(node)
 
-    # for node in fileset:
-    #     item = paging.read_page_file(node)
-
+    # _site = site.Site(site_data)
     # filesystem.write(item)
 
-    # _site = site.Site(props)
 
     print("Success")
     # print("{}\nTotal of pages read: {}".format("-" * 30, len(pages)))
