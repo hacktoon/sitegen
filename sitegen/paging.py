@@ -190,22 +190,6 @@ class PageBuilder:
         resource = path.replace(self.env['base_path'], '').strip('/')
         return utils.urljoin(self.env['base_url'], resource)
 
-    def build_date(self, date_string, date_format):
-        '''converts date string to datetime object'''
-        if not date_string:
-            return datetime.now()
-        try:
-            date = datetime.strptime(date_string, date_format)
-        except ValueError:
-            raise PageValueError('Wrong date format '
-            'in {!r}!'.format(self.path))
-        return date
-
-    def build_content(self, page_data):
-        content = page_data.get('content', '')
-        page_data['excerpt'] = re.split(EXCERPT_RE, content, 1)[0]
-        page_data['content'] = re.sub(EXCERPT_RE, '', content)
-
     def build_breadcrumbs(self, parent_page, page_data):
         links = []
         template = '/<a href="{}">{}</a>'
@@ -219,30 +203,38 @@ class PageBuilder:
         return ''.join(links[1:])
 
 
-def build_page(node, base_url):
-    data_dict = parse_data(node.read(DATA_FILE))
-
-    # page_url = build_page_url(node, base_url)
-    # cover_url = build_cover_url(node, base_url)
-    # data_dict['thumb'] = self.build_thumbnail(page_url)
-    # data_dict['breadcrumbs'] = self.build_breadcrumbs(parent_page, data_dict)
-
-    # data_dict['date'] = self.build_date(data_dict.get('date'), DATE_FORMAT)
-
-    # self.build_content(data_dict)
-
-    # try:
-    #     page.initialize(data_dict, options)
-    # except ValueError as error:
-    #     raise ValueError('{} at page {!r}'.format(error, page.path))
-    return data_dict
+def read_page_file(node):
+    if not node.exists(DATA_FILE):
+        return {}
+    metadata = build_metadata(node.read(DATA_FILE))
+    page_data = {
+        'title': metadata.get('title', 'Untitled page'),
+        'date': build_date(metadata.get('date')),
+        'tags': metadata.get('tags', []),
+        'content': metadata.get('content', ''),
+        'style': metadata.get('style', []),
+        'script': metadata.get('script', []),
+    }
+    # print(page_data['title'], page_data['tags'])
+    return page_data
 
 
-def parse_data(data):
+def build_metadata(data):
     try:
         return reader.parse(data)
     except PageValueError as err:
         raise PageValueError('In page {!r}: {}'.format(data.title, err))
+
+
+def build_date(date_string):
+    '''converts date string to datetime object'''
+    if date_string is None:
+        return datetime.now()
+    try:
+        date = datetime.strptime(date_string, DATE_FORMAT)
+    except ValueError:
+        raise PageValueError('Wrong date format ')
+    return date
 
 
 def build_page_url(folder, base_url):

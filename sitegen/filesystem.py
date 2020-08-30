@@ -4,14 +4,28 @@ from pathlib import PurePath
 
 
 class FileSystem:
-    def read(self, data_path):
-        return [FileSystemNode(*params) for params in os.walk(data_path)]
+    FILE_TYPE = 1
+    FOLDER_TYPE = 2
+
+    def exists(self, path):
+        return path
+
+    def read_file(self, path):
+        if not self.exists(path):
+            return ''
+        with open(path) as file:
+            return file.read()
+
+    def fileset(self, data_path):
+        return [
+            FileSystemNode(path, files)
+            for path, _, files in os.walk(data_path)
+        ]
 
 
 class FileSystemNode:
-    def __init__(self, path, folders, files):
+    def __init__(self, path, files):
         self.path = PurePath(path)
-        self.folder_names = set(folders)
         self.file_names = set(files)
         self.extension_map = ExtensionMap(files)
 
@@ -23,14 +37,10 @@ class FileSystemNode:
             return fp.read()
 
     def files(self, extension=''):
-        file_names = self.extension_map.get(extension, self.file_names)
-        return [self.path / file for file in file_names]
-
-    def folders(self):
-        return [self.path / folder for folder in self.folder_names]
+        return self.extension_map.get(extension, self.file_names)
 
     def exists(self, name):
-        return name in self.folder_names or name in self.file_names
+        return name in self.file_names
 
     def __repr__(self):
         return f'FileSystemNode({self.path})'

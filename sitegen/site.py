@@ -22,10 +22,10 @@ from . import utils
 from . import paging
 from .paging import Page, PageList
 
-from .filesystem import FileSystem
 from .template import HTMLTemplate, Template
 from .exceptions import (PageExistsError,
                          PageValueError, TemplateError)
+from . import reader
 
 
 STATIC_DIR = 'static'
@@ -33,6 +33,7 @@ TEMPLATES_DIR = 'templates'
 TEMPLATES_EXT = 'tpl'
 IMAGE_FILE = 'image.png'
 
+CONFIG_FILE = 'config.me'
 FEED_FILE = 'feed.xml'
 FEED_DIR = 'feed'
 FEED_NUM = 8
@@ -138,18 +139,6 @@ class SiteGenerator:
 
 
 class Site:
-    def __init__(self, config):
-        self.config = config
+    def __init__(self, path):
+        self.path = path
         self.base_url = os.environ.get('URL', 'http://localhost')
-
-    def generate(self, path):
-        source_path = path + '/data'
-        build_path = path + '/build'
-
-        filesystem = FileSystem()
-        nodes = filesystem.read(source_path)
-
-        for node in nodes:
-            item = paging.build_page(node, self.base_url)
-            # filesystem.write(item)
-        return []
