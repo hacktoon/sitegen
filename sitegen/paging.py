@@ -183,10 +183,15 @@ class PageList:
 
 
 class PageBuilder:
-    def __init__(self, env):
-        self.env = env
+    def __init__(self, page_data):
+        self.title = page_data.get('title', 'Untitled page')
+        self.date = self.build_date(page_data.get('date'))
+        self.tags = page_data.get('tags', [])
+        self.content = page_data.get('content', '')
+        self.style = page_data.get('style', [])
+        self.script = page_data.get('script', [])
 
-    def build_url_from_path(self, path):
+    def build_url(self, path):
         resource = path.replace(self.env['base_path'], '').strip('/')
         return utils.urljoin(self.env['base_url'], resource)
 
@@ -202,39 +207,12 @@ class PageBuilder:
         # remove all but home page url
         return ''.join(links[1:])
 
-
-def read_page_file(node):
-    if not node.exists(DATA_FILE):
-        return {}
-    metadata = build_metadata(node.read(DATA_FILE))
-    page_data = {
-        'title': metadata.get('title', 'Untitled page'),
-        'date': build_date(metadata.get('date')),
-        'tags': metadata.get('tags', []),
-        'content': metadata.get('content', ''),
-        'style': metadata.get('style', []),
-        'script': metadata.get('script', []),
-    }
-    # print(page_data['title'], page_data['tags'])
-    return page_data
-
-
-def build_metadata(data):
-    try:
-        return reader.parse(data)
-    except PageValueError as err:
-        raise PageValueError('In page {!r}: {}'.format(data.title, err))
-
-
-def build_date(date_string):
-    '''converts date string to datetime object'''
-    if date_string is None:
-        return datetime.now()
-    try:
-        date = datetime.strptime(date_string, DATE_FORMAT)
-    except ValueError:
-        raise PageValueError('Wrong date format ')
-    return date
+    def build_date(self, date_string=datetime.now()):
+        '''converts date string to datetime object'''
+        try:
+            return datetime.strptime(date_string, DATE_FORMAT)
+        except ValueError:
+            raise PageValueError(f'Date must have the format "{DATE_FORMAT}".')
 
 
 def build_page_url(folder, base_url):
@@ -249,7 +227,18 @@ def build_cover_url(folder, base_url):
 
 
 def build_thumbnail(self, page_url):
-        thumb_filepath = os.path.join(page_url, THUMB_FILENAME)
-        if os.path.exists(thumb_filepath):
-            return thumb_filepath
-        # TODO: return default thumbnail
+    thumb_filepath = os.path.join(page_url, THUMB_FILENAME)
+    if os.path.exists(thumb_filepath):
+        return thumb_filepath
+    # TODO: return default thumbnail
+
+
+class PageIndex:
+    def __init__(self):
+        self.page_dict = {}
+
+    def add(self, node):
+        self.page_dict[path] = node
+
+    def get(self, path):
+        return self.page_dict.get(path, {})

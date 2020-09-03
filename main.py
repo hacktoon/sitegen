@@ -18,17 +18,18 @@ import os
 from pathlib import PurePath
 
 from sitegen import utils, site, reader
-from sitegen import paging
+from sitegen.paging import PageBuilder
 from sitegen.exceptions import (
     PageExistsError,
     TemplateError,
     PageValueError
 )
-from sitegen.filesystem import FileSystem
+from sitegen.lib.filesystem import FileSystem
+from sitegen.lib import URL
 
 
-CONFIG_FILE = 'config.me'
-DATA_FILE = 'page.me'
+SITE_CONFIG_FILE = 'config.me'
+PAGE_CONFIG_FILE = 'page.me'  # change to content.txt
 
 
 def publish(args):
@@ -36,21 +37,23 @@ def publish(args):
     outputs a HTML for each page file'''
     path = PurePath(args.path)
     source_path = path / 'data'
-    build_path = path / 'build'
 
-    filesystem = FileSystem(source_path)
+    input_fs = FileSystem(source_path)
+    output_fs = FileSystem(path / 'build')
 
-    config_string = filesystem.read_file(source_path / CONFIG_FILE)
-    site_data = reader.parse(config_string)
+    config_string = input_fs.read_file(source_path / SITE_CONFIG_FILE)
+    site_config = reader.parse(config_string)
 
-    filetree = filesystem.read_filetree()
-    for node in filetree:
-        node_string = filesystem.read_file(node.path / DATA_FILE)
-        page_data = reader.parse(node_string)
+    base_url = URL('http://localhost:8080')
+
+    for node in input_fs.read_filetree():
+        # node_string = input_fs.read_file(node.path / PAGE_CONFIG_FILE)
+        # page_config = reader.parse(node_string)
+
+        # pageset.add(page)
         print(node.path)
-        # item = paging.read_page_file(node)
 
-    # _site = site.Site(site_data)
+    # _site = site.Site(site_config, pages)
     # filesystem.write(item)
 
 
