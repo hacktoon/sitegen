@@ -24,8 +24,6 @@ from .exceptions import PageValueError
 DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
 THUMB_FILENAME = 'thumb.png'
 COVER_FILENAME = 'cover.png'
-EXCERPT_RE = r'<!--\s*more\s*-->'
-DATA_FILE = 'page.me'
 COVER = 'image.png'
 
 
@@ -231,14 +229,3 @@ def build_thumbnail(self, page_url):
     if os.path.exists(thumb_filepath):
         return thumb_filepath
     # TODO: return default thumbnail
-
-
-class PageIndex:
-    def __init__(self):
-        self.page_dict = {}
-
-    def add(self, node):
-        self.page_dict[path] = node
-
-    def get(self, path):
-        return self.page_dict.get(path, {})

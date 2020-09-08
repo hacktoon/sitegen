@@ -1,40 +1,60 @@
 import os
 from collections import defaultdict
+from functools import cached_property
 from pathlib import PurePath, Path
 
-
-class FileSystem:
-    def __init__(self, base_path):
-        self.base_path = base_path
-
-    def exists(self, path):
-        return Path(path).exists()
-
-    def read_file(self, path):
-        if not self.exists(path):
-            return ''
-        with open(path) as file:
-            return file.read()
-
-    def read_filetree(self):
-        return [
-            Node(PurePath(path), filenames)
-            for path, _, filenames
-            in os.walk(self.base_path)
-        ]
+from .. import reader
 
 
-class Node:
-    def __init__(self, path, filenames):
+DATA_FILE = 'page.me'
+
+
+class PageArchive:
+    def __init__(self, source_path):
+        self.source_path = source_path
+        self._path_hash = {
+            str(pagefile.path) : pagefile
+            for pagefile in self._filetree(source_path)
+        }
+
+    def __iter__(self):
+        for pagefile in self._path_hash.values():
+            yield pagefile
+
+    def _filetree(self, source_path):
+        for path_string, folders, files in os.walk(source_path):
+            full_path = PurePath(path_string)
+            page_path = full_path.relative_to(source_path)
+            yield PageFile(full_path, page_path, folders, files)
+
+    def get(self, path):
+        pf = self._path_hash.get(path)
+        print(pf)
+        return self._path_hash.get(path)
+
+
+class PageFile:
+    def __init__(self, fullpath=PurePath(), path=PurePath(), folders=set(), files=set()):
         self.path = path
-        self.filenames = set(filenames)
-        self.extensions = ExtensionMap(filenames)
+        self._fullpath = fullpath
+        self._folders = set(folders)
+        self._files = set(files)
+        self._extensions = ExtensionMap(self._files)
 
     def files(self, extension=''):
-        return self.extensions.get(extension, self.filenames)
+        return self._extensions.get(extension, self._files)
+
+    def folders(self):
+        return self._folders
+
+    @cached_property
+    def data(self):
+        file = self._fullpath / DATA_FILE
+        print(file)
+        return reader.parse(read_file(self._fullpath / DATA_FILE))
 
     def __repr__(self):
-        return f'Node({self.path})'
+        return f'PageFile({self.path})'
 
 
 class ExtensionMap:
@@ -49,3 +69,20 @@ class ExtensionMap:
 
     def get(self, extension, default=[]):
         return self._map.get(extension, default)
+
+
+class Page():
+    def __init__(self):
+        pass
+
+
+
+def read_file(path):
+    if not exists(path):
+        return ''
+    with open(path) as file:
+        return file.read()
+
+
+def exists(path):
+    return Path(path).exists()
