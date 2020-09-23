@@ -30,7 +30,7 @@ def generate(args):
     # Get file structure
     # read/build config Files
     fileset = FileSet(args.input)
-    print(list(fileset.templates))
+    print(list(fileset.data))
 
 
 def main():
