@@ -65,7 +65,7 @@ class Page():
         ''' Set books properties dynamically'''
         if 'title' not in params.keys():
             msg = 'The title was not provided!'
-            raise ValueError(msg.format(key))
+            raise ValueError(msg)
 
         for key in params.keys():
             method_name = 'set_{}'.format(key)
@@ -181,7 +181,8 @@ class PageBuilder:
         self.env = env
 
     def build_url_from_path(self, path):
-        resource = path.replace(self.env['base_path'], '').strip('/')
+        base_path = self.env['base_path'] + '/data'
+        resource = path.replace(base_path, '').strip('/')
         return utils.urljoin(self.env['base_url'], resource)
 
     def build_thumbnail(self, page_url):
