@@ -16,9 +16,10 @@ import re
 import bisect
 from datetime import datetime
 from . import utils
+from .exceptions import PageValueError
+
 
 DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
-THUMB_FILENAME = 'thumb.png'
 THUMB_FILENAME = 'thumb.png'
 EXCERPT_RE = r'<!--\s*more\s*-->'
 

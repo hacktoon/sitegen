@@ -12,19 +12,14 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 '''
 
 import os
-import sys
-import re
-import shutil
 from datetime import datetime
 
 from . import reader
 from . import utils
 from .template import HTMLTemplate, Template
-from .paging import Page, PageList, PageBuilder
-from .categorization import Category, CategoryList
-from .stamper.stamper import Stamper
-from .exceptions import (PageExistsError,
-                         PageValueError, TemplateError)
+from .paging import PageList, PageBuilder
+from .categorization import CategoryList
+from .exceptions import (PageValueError, TemplateError)
 
 
 BASE_URL = '//localhost/'
