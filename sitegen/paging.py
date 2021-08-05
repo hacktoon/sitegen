@@ -182,8 +182,7 @@ class PageBuilder:
         self.env = env
 
     def build_url_from_path(self, path):
-        base_path = self.env['base_path'] + '/data'
-        resource = path.replace(base_path, '').strip('/')
+        resource = path.replace(self.env['base_path'], '').strip('/')
         return utils.urljoin(self.env['base_url'], resource)
 
     def build_thumbnail(self, page_url):

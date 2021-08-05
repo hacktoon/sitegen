@@ -23,14 +23,14 @@ from .exceptions import (PageValueError, TemplateError)
 
 
 BASE_URL = '//localhost/'
-STATIC_DIR = 'static'
+STATIC_DIR = 'data/static'
 TEMPLATES_DIR = 'templates'
 TEMPLATES_EXT = 'tpl'
 DATA_FILE = 'page.me'
 IMAGE_FILE = 'image.png'
 
 FEED_FILE = 'feed.xml'
-FEED_DIR = 'feed'
+FEED_DIR = 'data/feed'
 FEED_NUM = 8
 HTML_FILENAME = 'index.html'
 MODEL_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -201,7 +201,7 @@ class Site:
         generator = SiteGenerator(self.props)
         category_list = generator.build_categories()
 
-        generator.read_page_tree(path)
+        generator.read_page_tree(f'{path}/data')
         for cat in generator.category_list:
             cat.paginate()
         pages = generator.pagelist
