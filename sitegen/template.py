@@ -42,11 +42,14 @@ class Template:
     def render(self, context):
         cache = context['template_cache']
         if self.id in cache.keys():
-            template = cache[self.id]
+            tree = cache[self.id]
         else:
-            template = Stamper(self.content, include_path=self.include_path)
-            cache[self.id] = template
-        return template.render(context)
+            tree = Stamper(self.content, include_path=self.include_path)
+            cache[self.id] = tree
+            if 'page' in context:
+                page_content = context['page'].get('content', '')
+                context['page']['content'] = Stamper(page_content).render(context)
+        return tree.render(context)
 
 
 class JSONTemplate(Template):
@@ -85,7 +88,6 @@ class HTMLTemplate(Template):
         return self.build_external_tags(links, script_tpl)
 
     def render(self, page, env):
-        '''Show a book in HTML format'''
         page_data = page.data.copy()
         page_data.update({
             'styles': self.build_style_tags(page.styles),

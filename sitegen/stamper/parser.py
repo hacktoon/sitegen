@@ -28,7 +28,7 @@ class Parser():
         self.tokens = lexer.Lexer().tokenize(text)
         self.tok_index = 0
         self.filename = filename
-        self.tok = self.tokens[self.tok_index]
+        self.tok = self.tokens[self.tok_index] if self.tokens else None
         self.regions = {}
         self.base_template = None
         self.stmt_map = {

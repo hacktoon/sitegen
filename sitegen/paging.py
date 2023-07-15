@@ -54,7 +54,7 @@ class Page():
         self.data[key] = value
 
     def __getitem__(self, key):
-        return self.data.get(key)
+        return self.data.get(key, '')
 
     def __delitem__(self, key):
         del self.data[key]
@@ -63,11 +63,6 @@ class Page():
         return key in self.data.keys()
 
     def initialize(self, params, options):
-        ''' Set books properties dynamically'''
-        if 'title' not in params.keys():
-            msg = 'The title was not provided!'
-            raise ValueError(msg)
-
         for key in params.keys():
             method_name = 'set_{}'.format(key)
             if hasattr(self, method_name):
@@ -211,7 +206,7 @@ class PageBuilder:
     def build_breadcrumbs(self, parent_page, page_data):
         links = []
         template = '/<a href="{}">{}</a>'
-        current_page = template.format(page_data['url'], page_data['title'])
+        current_page = template.format(page_data['url'], page_data.get('title'))
         links.insert(0, current_page)
         while parent_page:
             breadcrumb = template.format(parent_page['url'], parent_page['title'])

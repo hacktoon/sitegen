@@ -11,7 +11,6 @@ License: WTFPL - http://sam.zoy.org/wtfpl/COPYING
 ===============================================================================
 '''
 
-import sys
 from .exceptions import PageValueError
 
 NEWLINE = '\n'
