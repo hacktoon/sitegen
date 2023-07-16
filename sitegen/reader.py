@@ -186,6 +186,9 @@ def _parse_rule(env):
         _next_token(env)
         value = _parse_value(env)
         env['stack'][-1][name] = value
+    elif token['type'] == TOK_EOF:
+        _next_token(env)
+        return
     else:
         _error(env, 'Invalid syntax')
 
@@ -193,10 +196,6 @@ def _parse_ruleset(env):
     while env['current_token']['type'] not in (TOK_EOF, TOK_CLOSEGROUP):
         _parse_rule(env)
     return env['data']
-
-def repr_token(t):
-    tpl = '{}\t[{}]\t\t({},{})'
-    return tpl.format(t['type'], t['value'], t['line'], t['column'])
 
 def parse(text):
     if not len(text.strip()):
