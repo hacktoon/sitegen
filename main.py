@@ -44,10 +44,10 @@ def publish(args):
 
     try:
         pages = _site.generate(path)
+        print("{}\nTotal of pages read: {}".format("-" * 30, len(pages)))
     except (FileNotFoundError, ValueError,
             TemplateError, PageValueError) as e:
         sys.exit(e)
-    print("{}\nTotal of pages read: {}".format("-" * 30, len(pages)))
 
 
 def main():
