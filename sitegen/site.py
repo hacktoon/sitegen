@@ -174,11 +174,16 @@ class SiteGenerator:
         if not os.path.exists(basepath):
             os.makedirs(basepath)
 
-        pagelist = [p for p in pagelist if p.is_feed_enabled()]
-        pagelist.reverse()
+        pages = []
+        for page in reversed(pagelist.ordered_pages):
+            if len(pages) >= feed_num:
+                break
+            if page.is_feed_enabled():
+                pages.append(page)
+
         base_url = self.props['base_url']
         filename = '{}.xml'.format(name)
-        env['pages'] = pagelist[:feed_num]
+        env['pages'] = pages[:feed_num]
         env['feed'] = {
             'link': utils.urljoin(base_url, dirname, filename),
             'build_date': datetime.today()

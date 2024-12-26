@@ -143,10 +143,6 @@ class PageList:
     def __delitem__(self, key):
         del self.ordered_pages[key]
 
-    def reverse(self):
-        '''To reverse the list of books'''
-        return self.ordered_pages.reverse()
-
     def page_struct(self, index):
         '''To create a tag to find books'''
         page = self.ordered_pages[index]
